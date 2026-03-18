@@ -30,6 +30,7 @@ if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection(); // HTTPS is handled by Render's load balancer in production
 }
 
+app.UseRouting();
 app.UseCors("AllowFrontend");
 
 app.MapGet("/api/stats/active-users", () => Results.Ok(new { count = ChatAndSignalingHub.GetActiveUserCount() }))
