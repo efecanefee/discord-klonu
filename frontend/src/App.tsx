@@ -12,7 +12,8 @@ function App() {
 
   useEffect(() => {
     // 1. HTTP üzerinden ilk veriyi çek
-    fetch('http://localhost:5098/api/stats/active-users')
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
+    fetch(`${API_BASE_URL}/api/stats/active-users`)
       .then(res => res.json())
       .then(data => setGlobalActiveUsers(data.count))
       .catch(console.error);

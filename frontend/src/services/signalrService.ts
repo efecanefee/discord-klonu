@@ -3,7 +3,7 @@ import * as signalR from '@microsoft/signalr';
 class SignalRService {
     private connection: signalR.HubConnection;
     private connectionPromise: Promise<void> | null = null;
-    private backendUrl = 'http://localhost:5098/hub/chat';
+    private backendUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5098'}/hub/chat`;
 
     constructor() {
         this.connection = new signalR.HubConnectionBuilder()
