@@ -2,6 +2,9 @@ using DiscordClone.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Bind to Render.com dynamic PORT
+builder.WebHost.UseUrls("http://0.0.0.0:" + (Environment.GetEnvironmentVariable("PORT") ?? "5098"));
+
 // Add services to the container.
 builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
@@ -24,9 +27,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseHttpsRedirection(); // HTTPS is handled by Render's load balancer in production
 }
-
-app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
 
