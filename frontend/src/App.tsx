@@ -57,134 +57,106 @@ function App() {
     return <ChatRoom username={username} roomId={roomId} onLeave={() => setInRoom(false)} />;
   }
 
-  return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0A0B1A]">
-      {/* Dynamic patterned background to match the image */}
-      <div className="absolute inset-0 z-0 opacity-80 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#13173A] via-[#0A0B1A] to-[#0A0B1A]" />
-      <div 
-        className="absolute inset-0 z-0 opacity-[0.03]" 
-        style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '16px 16px' }}
-      ></div>
+  // Animation values based on user rules
+  const fadeUp = {
+    initial: { opacity: 0, y: 15 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.4, ease: "easeOut" }
+  };
 
+  return (
+    <div className="relative min-h-screen flex items-center justify-center bg-bg-base overflow-hidden">
+      
+      {/* Container */}
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 30 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-[420px] bg-[#313338] p-8 rounded-2xl shadow-2xl border border-white/5"
+        {...fadeUp}
+        className="relative z-10 w-full max-w-[420px] bg-bg-card p-8 rounded-2xl border border-border-main shadow-premium"
       >
-        <div className="text-center mb-8">
-          <motion.h1 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="text-2xl font-bold text-white mb-2"
-          >
-            Sandalyeci Metin!
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-            className="text-gray-400 text-sm"
-          >
+        <div className="text-center mb-10">
+          <h1 className="text-2xl font-bold text-text-main mb-2 tracking-tight">
+            SandalyeciMetin
+          </h1>
+          <p className="text-text-muted text-sm font-medium">
             Hemen konuşmaya başla...
-          </motion.p>
+          </p>
         </div>
 
         <div className="space-y-6">
-          <motion.div 
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-          >
-            <label className="flex items-center text-xs font-bold text-[#B5BAC1] uppercase mb-2 tracking-wide">
-              Kullanıcı Adı <span className="text-red-500 ml-1">*</span>
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">
+              Kullanıcı Adı <span className="text-primary-main ml-0.5">*</span>
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="İsmini gir..."
-              className="w-full px-4 py-3 bg-[#1E1F22] border border-transparent rounded-lg text-white placeholder-[#87898C] focus:outline-none focus:ring-2 focus:ring-[#5865F2] transition-all"
+              className="w-full px-4 py-3.5 bg-bg-surface border border-border-main rounded-xl text-text-main placeholder:text-text-muted/50 focus:border-primary-main focus:ring-2 focus:ring-primary-main/20 transition-all duration-200"
             />
-          </motion.div>
+          </div>
 
-          <motion.button
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5, duration: 0.4 }}
+          <button
             onClick={() => handleJoinRoom('Ana Salon')}
-            className="w-full py-3 bg-[#5865F2] hover:bg-[#4752C4] text-white font-semibold rounded-lg shadow-lg hover:shadow-[#5865F2]/20 transition-all active:scale-[0.98]"
+            className="w-full py-3.5 bg-primary-main hover:bg-primary-hover text-white font-medium rounded-xl transition-all duration-200 hover:-translate-y-[2px] hover:shadow-premium active:translate-y-[0px] active:scale-[0.98]"
           >
             Giriş Yap
-          </motion.button>
+          </button>
 
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.6, duration: 0.5 }}
-            className="pt-4"
-          >
-            <h3 className="text-xs font-bold text-[#B5BAC1] uppercase mb-3 tracking-wide">Aktif Odalar</h3>
+          <div className="pt-6 border-t border-border-main/50 space-y-4">
+            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Aktif Odalar</h3>
             <div className="space-y-3">
               <button 
                 onClick={() => handleJoinRoom('Ana Salon')}
-                className="w-full flex items-center justify-between p-3 bg-[#2B2D31] hover:bg-[#1E1F22] rounded-xl transition-colors group border border-transparent hover:border-white/5 active:scale-[0.98]"
+                className="group w-full flex items-center justify-between p-4 bg-bg-surface hover:bg-bg-surface border border-border-main hover:border-primary-main/40 rounded-xl transition-all duration-200 hover:-translate-y-[2px] hover:shadow-premium active:translate-y-[0px] active:scale-[0.98]"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#242A42] flex items-center justify-center text-[#5865F2] group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 rounded-lg bg-bg-base flex items-center justify-center text-primary-main transition-colors duration-200 group-hover:bg-primary-main/10">
                     <Users size={18} />
                   </div>
                   <div className="text-left">
-                    <div className="text-white font-medium text-sm">Ana Salon</div>
-                    <div className="text-gray-400 text-xs mt-0.5">{globalActiveUsers} kişi aktif (Sistem geneli)</div>
+                    <div className="text-text-main font-medium text-sm">Ana Salon</div>
+                    <div className="text-text-muted text-xs mt-1">{globalActiveUsers} kişi aktif</div>
                   </div>
                 </div>
-                <ChevronRight className="text-gray-500 group-hover:text-white transition-colors" size={18} />
+                <ChevronRight className="text-text-muted group-hover:text-text-main transition-colors duration-200" size={18} />
               </button>
 
               <button 
                 onClick={() => handleJoinRoom('Müzik Odası')}
-                className="w-full flex items-center justify-between p-3 bg-[#2B2D31] hover:bg-[#1E1F22] rounded-xl transition-colors group border border-transparent hover:border-white/5 active:scale-[0.98]"
+                className="group w-full flex items-center justify-between p-4 bg-bg-surface hover:bg-bg-surface border border-border-main hover:border-primary-main/40 rounded-xl transition-all duration-200 hover:-translate-y-[2px] hover:shadow-premium active:translate-y-[0px] active:scale-[0.98]"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-[#182F2A] flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                  <div className="w-10 h-10 rounded-lg bg-bg-base flex items-center justify-center text-emerald-500 transition-colors duration-200 group-hover:bg-emerald-500/10">
                     <Music size={18} />
                   </div>
                   <div className="text-left">
-                    <div className="text-white font-medium text-sm">Müzik Odası</div>
-                    <div className="text-gray-400 text-xs mt-0.5">{globalActiveUsers} kişi aktif (Sistem geneli)</div>
+                    <div className="text-text-main font-medium text-sm">Müzik Odası</div>
+                    <div className="text-text-muted text-xs mt-1">{globalActiveUsers} kişi aktif</div>
                   </div>
                 </div>
-                <ChevronRight className="text-gray-500 group-hover:text-white transition-colors" size={18} />
+                <ChevronRight className="text-text-muted group-hover:text-text-main transition-colors duration-200" size={18} />
               </button>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            className="text-center pt-2"
-          >
-            <span className="text-gray-400 text-xs">Yeni bir oda mı açmak istiyorsun? </span>
-            <button onClick={handleCustomRoom} className="text-[#5865F2] text-xs hover:underline font-medium">Tıkla</button>
-          </motion.div>
+          <div className="text-center pt-2">
+            <span className="text-text-muted text-sm">Yeni bir oda mı açmak istiyorsun? </span>
+            <button onClick={handleCustomRoom} className="text-primary-main text-sm font-medium hover:text-primary-hover transition-colors">Tıkla</button>
+          </div>
         </div>
       </motion.div>
 
       {/* Footer Branding */}
       <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-        className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-2 text-[#2D3380]"
+        {...fadeUp}
+        transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
+        className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-2"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-text-muted">
           <rect x="11" y="2" width="11" height="11" rx="1" />
           <rect x="2" y="11" width="11" height="11" rx="1" />
         </svg>
-        <span className="font-bold tracking-widest text-sm uppercase text-[#2D3380]">Metin Müzik</span>
+        <span className="font-semibold tracking-widest text-xs uppercase text-text-muted">SandalyeciMetin</span>
       </motion.div>
     </div>
   );

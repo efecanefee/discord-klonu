@@ -1,13 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-discord-gray-900: #1e1f22;
-  --color-discord-gray-800: #2b2d31;
-  --color-discord-gray-700: #313338;
-  --color-discord-blurple: #5865F2;
-  --color-discord-blurple-hover: #4752C4;
+  --color-bg-base: #0B1020;
+  --color-bg-surface: #151B2E;
+  --color-bg-card: #1B2236;
+  --color-border-main: #2A3350;
+  --color-primary-main: #6C7BFF;
+  --color-primary-hover: #7E8BFF;
+  --color-text-main: #F3F6FF;
+  --color-text-muted: #9AA6C3;
+  
+  --shadow-premium: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 0 2px rgba(108, 123, 255, 0.3);
 }
 
 body {
-  @apply bg-discord-gray-700 text-gray-100 font-sans m-0 p-0;
+  @apply bg-bg-base text-text-main font-sans m-0 p-0 antialiased;
+}
+
+/* Base custom styles to ensure consistent overrides */
+input:focus {
+  outline: none;
 }
