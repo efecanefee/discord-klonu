@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import signalrService from '../services/signalrService';
 import { Send, Users, LogOut, Mic, MicOff, VolumeX, Volume1, Volume2 } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 interface ChatRoomProps {
     username: string;
@@ -52,7 +52,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
         const handleUserJoined = (u: string, connId: string) => {
             if (isMounted) {
-                setMessages((prev) => [...prev, { id: Date.now(), username: 'System', text: `${u} katıldı.`, type: 'system' }]);
+                setMessages((prev) => [...prev, { id: Date.now(), username: 'System', text: `${u} odaya katıldı.`, type: 'system' }]);
                 setUsersInRoom((prev) => {
                     if (!prev.find(user => user.connectionId === connId)) {
                         return [...prev, { username: u, connectionId: connId }];
@@ -63,7 +63,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         };
         const handleUserLeft = (u: string, connId: string) => {
             if (isMounted) {
-                setMessages((prev) => [...prev, { id: Date.now(), username: 'System', text: `${u} ayrıldı.`, type: 'system' }]);
+                setMessages((prev) => [...prev, { id: Date.now(), username: 'System', text: `${u} odadan ayrıldı.`, type: 'system' }]);
                 setUsersInRoom((prev) => prev.filter((user) => user.connectionId !== connId));
             }
         };
@@ -110,6 +110,21 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         }
     };
 
+    // Animation Variants
+    const containerVariants: Variants = {
+        hidden: { opacity: 0, y: 10 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: { duration: 0.4, ease: "easeOut", staggerChildren: 0.05, delayChildren: 0.1 }
+        }
+    };
+    
+    const itemVariants: Variants = {
+        hidden: { opacity: 0, y: 10 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: "easeOut" } }
+    };
+
     return (
         <div className="relative flex flex-col h-screen overflow-hidden bg-bg-base font-sans selection:bg-primary-main/30 selection:text-text-main">
             {/* Active Audio Streams */}
@@ -121,33 +136,35 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             })}
 
             {/* Main App Container */}
-            <div className="relative z-10 flex flex-col h-full max-w-[1400px] mx-auto w-full p-4 sm:p-6 lg:p-8">
-
+            <motion.div 
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="relative z-10 flex flex-col h-full max-w-[1400px] mx-auto w-full p-4 sm:p-6 lg:p-8"
+            >
                 {/* Header (Minimal) */}
                 <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex items-center justify-between p-5 mb-6 bg-bg-surface border border-border-main rounded-2xl shadow-premium"
+                    variants={itemVariants}
+                    className="flex items-center justify-between p-5 mb-6 bg-bg-surface border border-border-main rounded-2xl shadow-card"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="p-2.5 bg-bg-base rounded-xl border border-border-main">
-                            <Users className="text-primary-main" size={22} />
+                        <div className="p-3 bg-bg-base rounded-[14px] border border-border-main shadow-sm">
+                            <Users className="text-primary-main" size={24} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-text-main tracking-tight leading-none">{roomId}</h2>
-                            <span className="text-xs text-text-muted font-medium mt-1 inline-block">Sohbet Odası</span>
+                            <h2 className="text-[18px] font-semibold text-text-main tracking-tight leading-none mb-1.5">{roomId}</h2>
+                            <span className="text-[13px] text-text-muted font-normal block">Sohbet Odası</span>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="hidden sm:flex items-center px-4 py-2 bg-bg-base rounded-xl border border-border-main">
-                            <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2.5 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></div>
-                            <span className="text-sm text-text-muted font-medium">{username}</span>
+                        <div className="hidden sm:flex items-center px-4 py-2.5 bg-bg-base rounded-xl border border-border-main">
+                            <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full mr-2.5 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                            <span className="text-sm text-text-main font-medium">{username}</span>
                         </div>
 
                         <button
                             onClick={toggleMute}
-                            className={`flex items-center justify-center p-2.5 rounded-xl border transition-colors duration-200 ${isMuted ? 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20' : 'bg-bg-base border-border-main text-text-muted hover:text-text-main hover:border-text-muted/30'}`}
+                            className={`flex items-center justify-center p-3 rounded-xl border cursor-pointer transition-colors duration-200 active:scale-[0.97] ${isMuted ? 'bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20' : 'bg-bg-base border-border-main text-text-main hover:border-primary-main/40 hover:text-primary-main'}`}
                             title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
                         >
                             {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
@@ -155,7 +172,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
                         <button
                             onClick={handleExplicitLeave}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-red-500/10 text-text-muted hover:text-red-400 border border-border-main hover:border-red-500/30 rounded-xl text-sm font-semibold transition-colors duration-200"
+                            className="flex items-center gap-2 px-5 py-3 bg-bg-base hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border-main hover:border-red-500/30 rounded-xl text-[14px] font-semibold transition-colors duration-200 active:scale-[0.97] cursor-pointer"
                         >
                             <LogOut size={18} /> <span className="hidden sm:inline">Ayrıl</span>
                         </button>
@@ -164,18 +181,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
                 <div className="flex flex-1 overflow-hidden gap-6 mb-6">
                     {/* Main Chat Area */}
-                    <div className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-premium min-w-0">
+                    <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
                         <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
                             {messages.length === 0 && (
-                                <div className="absolute inset-0 flex items-center justify-center flex-col gap-4 opacity-100">
-                                    <div className="p-4 bg-bg-surface rounded-full border border-border-main">
+                                <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
+                                    <div className="p-4 bg-bg-surface rounded-2xl border border-border-main shadow-sm">
                                         <Send size={32} className="text-text-muted" />
                                     </div>
                                     <span className="text-text-muted font-medium text-sm">İlk mesajı sen gönder...</span>
                                 </div>
                             )}
 
-                            <div className="space-y-5">
+                            <div className="space-y-6">
                                 <AnimatePresence initial={false}>
                                     {messages.map((msg, idx) => {
                                         if (msg.type === 'system') {
@@ -184,9 +201,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                     initial={{ opacity: 0, y: 5 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     key={idx}
-                                                    className="flex justify-center my-3"
+                                                    className="flex justify-center my-4"
                                                 >
-                                                    <span className="bg-bg-surface border border-border-main px-4 py-1.5 rounded-full text-xs font-medium text-text-muted">
+                                                    <span className="bg-bg-surface border border-border-main px-4 py-1.5 rounded-[12px] text-[12px] font-normal text-text-muted shadow-sm">
                                                         {msg.text}
                                                     </span>
                                                 </motion.div>
@@ -204,14 +221,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                 className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}
                                             >
                                                 <div className={`flex max-w-[85%] sm:max-w-[75%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                    <div className="w-9 h-9 mt-0.5 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center font-bold text-sm text-primary-main border border-border-main">
+                                                    <div className="w-10 h-10 mt-1 rounded-[14px] bg-bg-surface flex flex-shrink-0 items-center justify-center font-bold text-[14px] text-primary-main border border-border-main shadow-sm">
                                                         {msg.username.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                                                        <span className="text-xs text-text-muted mb-1 mx-1 font-medium">
+                                                        <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
                                                             {isMine ? 'Sen' : msg.username}
                                                         </span>
-                                                        <div className={`px-4 py-3 rounded-2xl shadow-sm ${isMine ? 'bg-primary-main text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                        <div className={`px-5 py-3.5 rounded-2xl shadow-sm ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
                                                             <p className="whitespace-pre-wrap text-[15px] leading-relaxed break-words">{msg.text}</p>
                                                         </div>
                                                     </div>
@@ -220,38 +237,36 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                         );
                                     })}
                                 </AnimatePresence>
-                                <div ref={messagesEndRef} className="h-1" />
+                                <div ref={messagesEndRef} className="h-2" />
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Users Sidebar (Right Panel) */}
                     <motion.div 
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="hidden md:flex w-72 flex-col bg-bg-card border border-border-main rounded-2xl shadow-premium overflow-hidden shrink-0"
+                        variants={itemVariants}
+                        className="hidden md:flex w-72 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0"
                     >
-                        <div className="p-5 border-b border-border-main bg-bg-surface/50">
-                            <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center justify-between gap-2 mb-3">
-                                <span>Odada Olanlar</span>
-                                <span className="bg-bg-base px-2 py-0.5 rounded-md border border-border-main text-text-main">{Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}</span>
+                        <div className="p-5 border-b border-border-main bg-bg-surface/30">
+                            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center justify-between gap-2 mb-4">
+                                <span className="flex items-center gap-2">Odada Olanlar</span>
+                                <span className="bg-bg-surface px-2.5 py-1 rounded-[8px] border border-border-main text-text-main font-semibold shadow-sm text-[12px]">{Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}</span>
                             </h3>
 
                             {/* Master Volume Control */}
-                            <div className="flex flex-col gap-2 mt-4">
-                                <span className="text-xs text-text-muted font-medium">Genel Ses</span>
+                            <div className="flex flex-col gap-2.5 mt-2">
+                                <span className="text-[13px] text-text-muted font-medium">Sistem Sesi</span>
                                 <input 
                                     type="range" 
                                     min="0" max="1" step="0.01" 
                                     value={masterVolume}
                                     onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
-                                    className="w-full h-1.5 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main"
+                                    className="w-full h-1.5 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main focus:outline-none"
                                 />
                             </div>
                         </div>
                         
-                        <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
                             <AnimatePresence>
                                 {usersInRoom.map((u, idx) => (
                                     <motion.div 
@@ -259,29 +274,29 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                         animate={{ opacity: 1 }}
                                         exit={{ opacity: 0 }}
                                         key={u.connectionId + String(idx)}
-                                        className="flex flex-col gap-1.5 p-2 rounded-xl border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200"
+                                        className="flex flex-col gap-2 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200"
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <div className="relative">
-                                                    <div className="w-8 h-8 rounded-full bg-bg-base flex items-center justify-center font-bold text-text-main border border-border-main text-xs">
+                                                    <div className="w-10 h-10 rounded-[12px] bg-bg-surface flex items-center justify-center font-semibold text-text-main border border-border-main shadow-sm text-[14px]">
                                                         {u.username.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-bg-card shadow-[0_0_5px_rgba(52,211,153,0.3)]"></div>
+                                                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-[2.5px] border-bg-card"></div>
                                                 </div>
-                                                <span className="font-medium text-sm text-text-main truncate max-w-[110px]">
-                                                    {u.username} {u.username === username && <span className="text-xs text-text-muted font-normal ml-1">(Sen)</span>}
+                                                <span className="font-semibold text-[14px] text-text-main truncate max-w-[110px]">
+                                                    {u.username} {u.username === username && <span className="text-[12px] text-text-muted font-normal ml-1">(Sen)</span>}
                                                 </span>
                                             </div>
                                         </div>
                                         
                                         {/* Individual Volume Control */}
                                         {u.username !== username && (
-                                            <div className="flex items-center gap-2 pl-11 pr-2 mt-0.5 opacity-60 hover:opacity-100 transition-opacity duration-200">
+                                            <div className="flex items-center gap-2 pl-[52px] pr-2 opacity-60 hover:opacity-100 transition-opacity duration-200">
                                                 {(userVolumes[u.username] ?? 1.0) === 0 ? (
-                                                    <VolumeX size={12} className="text-text-muted" />
+                                                    <VolumeX size={14} className="text-text-muted" />
                                                 ) : (
-                                                    <Volume1 size={12} className="text-text-muted" />
+                                                    <Volume1 size={14} className="text-text-muted" />
                                                 )}
                                                 <input 
                                                     type="range" 
@@ -291,9 +306,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                         const val = parseFloat(e.target.value);
                                                         setUserVolumes(prev => ({ ...prev, [u.username]: val }));
                                                     }}
-                                                    className="w-full h-1 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main"
+                                                    className="w-full h-1 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main focus:outline-none"
                                                 />
-                                                <Volume2 size={12} className="text-text-muted" />
+                                                <Volume2 size={14} className="text-text-muted" />
                                             </div>
                                         )}
                                     </motion.div>
@@ -304,31 +319,27 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                 </div>
 
                 {/* Floating Input Area */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                >
-                    <form onSubmit={handleSendMessage} className="flex flex-row items-center p-2 bg-bg-surface border border-border-main rounded-2xl shadow-premium focus-within:ring-2 focus-within:ring-primary-main/20 focus-within:border-primary-main transition-all duration-300">
+                <motion.div variants={itemVariants}>
+                    <form onSubmit={handleSendMessage} className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:ring-glow focus-within:border-primary-main transition-all duration-200">
                         <input
                             type="text"
                             value={messageInput}
                             onChange={(e) => setMessageInput(e.target.value)}
-                            placeholder="Sohbete yaz..."
-                            className="w-full bg-transparent px-5 py-3.5 placeholder:text-text-muted/60 text-text-main focus:outline-none text-[15px]"
+                            placeholder="Sohbete mesajını yaz..."
+                            className="w-full bg-transparent px-5 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1"
                             autoFocus
                         />
                         <button
                             type="submit"
                             disabled={!messageInput.trim()}
-                            className="flex items-center justify-center px-6 py-3 mr-1 rounded-xl bg-primary-main hover:bg-primary-hover text-white font-medium disabled:opacity-50 disabled:hover:-translate-y-0 transition-all duration-200 hover:-translate-y-[2px] active:translate-y-[0px] shadow-sm whitespace-nowrap"
+                            className="flex items-center justify-center px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white font-semibold disabled:opacity-50 disabled:hover:-translate-y-0 transition-all duration-250 hover:-translate-y-[2px] hover:shadow-card hover:brightness-110 active:scale-[0.97] active:translate-y-[0px] shadow-sm whitespace-nowrap cursor-pointer"
                         >
                             <Send size={18} className="mr-2" />
                             <span className="hidden sm:inline">Gönder</span>
                         </button>
                     </form>
                 </motion.div>
-            </div>
+            </motion.div>
         </div>
     );
 };
