@@ -28,7 +28,7 @@ class SignalRService {
         if (this.connectionPromise) {
             try {
                 await this.connectionPromise;
-            } catch (err) {
+            } catch {
                 return; // Error already logged.
             }
         }
