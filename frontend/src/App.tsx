@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import ChatRoom from './components/ChatRoom';
 import { ChevronRight, Music, Users } from 'lucide-react';
-import { motion, Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
+import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 
 function App() {

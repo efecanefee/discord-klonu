@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import signalrService from '../services/signalrService';
 import { Send, Users, LogOut, Mic, MicOff, VolumeX, Volume1, Volume2 } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Variants } from 'framer-motion';
 
 interface ChatRoomProps {
     username: string;
