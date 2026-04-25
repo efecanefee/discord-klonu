@@ -145,12 +145,14 @@ export function useWebRTC() {
                 }
             });
 
+        const currentPeerConnections = peerConnections.current;
+
         return () => {
             isMounted = false;
             if (cleanupListeners) cleanupListeners();
             streamRef.current?.getTracks().forEach(track => track.stop());
-            peerConnections.current.forEach(pc => pc.close());
-            peerConnections.current.clear();
+            currentPeerConnections.forEach(pc => pc.close());
+            currentPeerConnections.clear();
             setRemoteStreams(new Map());
         };
     }, []);

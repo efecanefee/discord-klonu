@@ -96,7 +96,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             signalrService.offReceiveMessage(handleReceiveMessage);
             signalrService.offRoomUsers(handleRoomUsers);
         };
-    }, [roomId, username, isReady]);
+    }, [roomId, username, isReady, playJoinSound, playLeaveSound]);
 
     const handleExplicitLeave = async () => {
         await signalrService.stopConnection(roomId, username);

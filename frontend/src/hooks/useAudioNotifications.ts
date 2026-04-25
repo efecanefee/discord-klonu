@@ -42,7 +42,7 @@ export function useAudioNotifications() {
 
       osc.start(ctx.currentTime);
       osc.stop(ctx.currentTime + duration);
-    } catch (e) {
+    } catch {
       // AudioContext kullanıcı etkileşimi olmadan başlayamazsa sessizce geç
     }
   }, []);
