@@ -194,9 +194,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                 <div className="flex flex-1 overflow-hidden gap-6 mb-6">
                     {/* Main Chat Area */}
                     <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
-                        <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
+                        <div className="relative flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
                             {messages.length === 0 && (
-                                <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
+                                <div className="absolute inset-0 flex items-center justify-center flex-col gap-4 pointer-events-none">
                                     <div className="p-4 bg-bg-surface rounded-2xl border border-border-main shadow-sm">
                                         <Send size={32} className="text-text-muted" />
                                     </div>
