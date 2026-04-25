@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import signalrService from '../services/signalrService';
+import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { Send, Users, LogOut, Mic, MicOff, VolumeX, Volume1, Volume2 } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -45,6 +46,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const { remoteStreams, isMuted, toggleMute, isReady } = useWebRTC();
+    const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound } = useAudioNotifications();
 
     useEffect(() => {
         if (!isReady) return;
@@ -53,6 +55,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
         const handleUserJoined = (u: string, connId: string) => {
             if (isMounted) {
+                playJoinSound(); // ← kanaldaki herkes duyar (SignalR zaten herkese broadcast eder)
                 setMessages((prev) => [...prev, { id: Date.now(), username: 'System', text: `${u} odaya katıldı.`, type: 'system' }]);
                 setUsersInRoom((prev) => {
                     if (!prev.find(user => user.connectionId === connId)) {
@@ -64,6 +67,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         };
         const handleUserLeft = (u: string, connId: string) => {
             if (isMounted) {
+                playLeaveSound(); // ← kanalda kalan herkes duyar
                 setMessages((prev) => [...prev, { id: Date.now(), username: 'System', text: `${u} odadan ayrıldı.`, type: 'system' }]);
                 setUsersInRoom((prev) => prev.filter((user) => user.connectionId !== connId));
             }
@@ -164,7 +168,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                         </div>
 
                         <button
-                            onClick={toggleMute}
+                            onClick={() => {
+                                if (!isMuted) {
+                                    playMuteSound();
+                                } else {
+                                    playUnmuteSound();
+                                }
+                                toggleMute();
+                            }}
                             className={`flex items-center justify-center p-3 rounded-xl border cursor-pointer transition-colors duration-200 active:scale-[0.97] ${isMuted ? 'bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20' : 'bg-bg-base border-border-main text-text-main hover:border-primary-main/40 hover:text-primary-main'}`}
                             title={isMuted ? "Sesi Aç" : "Sesi Kapat"}
                         >
