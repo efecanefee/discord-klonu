@@ -246,14 +246,37 @@ export function useWebRTC() {
                 }
                 try {
                     if (signalData.type === 'offer') {
+                        // Glare durumu: her iki taraf da offer göndermiş
+                        // "Polite peer" paterni: connectionId küçük olan geri çekilir
+                        const myId = signalrService.connectionId || '';
+                        const isPolite = myId < senderConnectionId;
+
+                        if (pc.signalingState !== 'stable') {
+                            if (!isPolite) {
+                                // Biz impolite peer'ız — gelen offer'ı yoksay, kendi offer'ımızı koru
+                                console.log('[WebRTC] Glare: impolite peer, gelen offer yoksayıldı');
+                                return;
+                            }
+                            // Biz polite peer'ız — kendi offer'ımızı geri al, karşının offer'ını kabul et
+                            console.log('[WebRTC] Glare: polite peer, rollback yapılıyor');
+                            await pc.setLocalDescription({ type: 'rollback' });
+                        }
+
                         await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
                         signalrService.sendSignalToUser(JSON.stringify({ type: 'answer', sdp: answer }), senderConnectionId);
                     } else if (signalData.type === 'answer') {
-                        await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
+                        // Sadece offer göndermiş ve cevap bekliyorsak answer'ı kabul et
+                        if (pc.signalingState === 'have-local-offer') {
+                            await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
+                        } else {
+                            console.warn(`[WebRTC] Answer yoksayıldı, state: ${pc.signalingState}`);
+                        }
                     } else if (signalData.type === 'ice') {
-                        await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+                        if (pc.remoteDescription) {
+                            await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+                        }
                     }
                 } catch (e) {
                     console.error(`[WebRTC] Sinyal hatası (${signalData.type}):`, e);
