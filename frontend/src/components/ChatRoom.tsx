@@ -37,6 +37,28 @@ const AudioPlayer: React.FC<{ stream: MediaStream, volume: number }> = ({ stream
     return <audio ref={audioRef} autoPlay />;
 };
 
+const RemoteVideoPlayer: React.FC<{ stream: MediaStream, label: string }> = ({ stream, label }) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        if (videoRef.current && stream) {
+            videoRef.current.srcObject = stream;
+        }
+    }, [stream]);
+
+    // Sadece video track varsa render et
+    if (!stream.getVideoTracks().length) return null;
+
+    return (
+        <div className="relative rounded-xl overflow-hidden border border-border-main bg-black">
+            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain" />
+            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm">
+                {label}
+            </div>
+        </div>
+    );
+};
+
 const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [usersInRoom, setUsersInRoom] = useState<{connectionId: string, username: string}[]>([]);
@@ -138,8 +160,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         }
     };
 
-    // Kamera veya ekran paylaşımı aktif mi?
-    const isMediaActive = isCameraOn || isScreenSharing;
+    // Kamera veya ekran paylaşımı aktif mi? (lokal veya remote)
+    const hasRemoteVideo = Array.from(remoteStreams.values()).some(s => s.getVideoTracks().length > 0);
+    const isMediaActive = isCameraOn || isScreenSharing || hasRemoteVideo;
 
     // Animation Variants
     const containerVariants: Variants = {
@@ -299,30 +322,61 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                     <div className="flex flex-1 overflow-hidden gap-4 mb-4">
                         {/* Video / Ekran Paylaşımı Alanı — Ana büyük panel */}
                         <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
-                            <div className="relative flex-1 flex items-center justify-center bg-black/40 rounded-2xl overflow-hidden">
-                                {/* Ekran paylaşımı varsa onu göster */}
-                                {screenStream && (
-                                    <video
-                                        autoPlay
-                                        muted
-                                        className="w-full h-full object-contain"
-                                        ref={el => { if (el) el.srcObject = screenStream; }}
-                                    />
-                                )}
+                            <div className="relative flex-1 flex flex-col bg-black/40 rounded-2xl overflow-hidden">
+                                {/* Video Grid */}
+                                <div className={`flex-1 grid gap-2 p-2 ${(() => {
+                                    const totalVideos = (isCameraOn && !isScreenSharing ? 1 : 0) + (isScreenSharing ? 1 : 0) + Array.from(remoteStreams.values()).filter(s => s.getVideoTracks().length > 0).length;
+                                    if (totalVideos <= 1) return 'grid-cols-1';
+                                    if (totalVideos <= 4) return 'grid-cols-2';
+                                    return 'grid-cols-3';
+                                })()}`}>
+                                    {/* Ekran paylaşımı */}
+                                    {screenStream && (
+                                        <div className="relative rounded-xl overflow-hidden border border-border-main bg-black col-span-full">
+                                            <video
+                                                autoPlay
+                                                muted
+                                                className="w-full h-full object-contain"
+                                                ref={el => { if (el) el.srcObject = screenStream; }}
+                                            />
+                                            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm">
+                                                {username} (Ekran)
+                                            </div>
+                                            <button
+                                                onClick={toggleScreenShare}
+                                                className="absolute top-3 right-3 px-3 py-1.5 bg-red-500/90 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer backdrop-blur-sm"
+                                            >
+                                                Durdur
+                                            </button>
+                                        </div>
+                                    )}
 
-                                {/* Kamera açıksa ve ekran paylaşımı yoksa büyük göster */}
-                                {isCameraOn && !isScreenSharing && (
-                                    <video
-                                        ref={localVideoRef}
-                                        autoPlay
-                                        muted
-                                        className="w-full h-full object-contain"
-                                    />
-                                )}
+                                    {/* Kendi kamera (sadece ekran paylaşımı yoksa büyük, varsa PiP) */}
+                                    {isCameraOn && !isScreenSharing && (
+                                        <div className="relative rounded-xl overflow-hidden border border-border-main bg-black">
+                                            <video
+                                                ref={localVideoRef}
+                                                autoPlay
+                                                muted
+                                                className="w-full h-full object-contain"
+                                            />
+                                            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm">
+                                                {username} (Sen)
+                                            </div>
+                                        </div>
+                                    )}
 
-                                {/* Ekran paylaşımı varken kamera küçük pip olarak göster */}
+                                    {/* Remote video stream'ler */}
+                                    {Array.from(remoteStreams.entries()).map(([connId, stream]) => {
+                                        const userObj = usersInRoom.find(u => u.connectionId === connId);
+                                        const uName = userObj ? userObj.username : 'Bilinmeyen';
+                                        return <RemoteVideoPlayer key={connId} stream={stream} label={uName} />;
+                                    })}
+                                </div>
+
+                                {/* Ekran paylaşımı varken kamera küçük PiP */}
                                 {isCameraOn && isScreenSharing && (
-                                    <div className="absolute bottom-4 right-4 w-48 h-36 rounded-xl overflow-hidden border-2 border-border-main shadow-2xl bg-black">
+                                    <div className="absolute bottom-4 right-4 w-48 h-36 rounded-xl overflow-hidden border-2 border-border-main shadow-2xl bg-black z-10">
                                         <video
                                             ref={localVideoRef}
                                             autoPlay
@@ -330,16 +384,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                             className="w-full h-full object-cover"
                                         />
                                     </div>
-                                )}
-
-                                {/* Durma butonu overlay */}
-                                {isScreenSharing && (
-                                    <button
-                                        onClick={toggleScreenShare}
-                                        className="absolute top-4 right-4 px-4 py-2 bg-red-500/90 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer backdrop-blur-sm"
-                                    >
-                                        Paylaşımı Durdur
-                                    </button>
                                 )}
                             </div>
                         </motion.div>

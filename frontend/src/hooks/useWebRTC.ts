@@ -106,10 +106,17 @@ export function useWebRTC() {
                 setLocalVideoStream(videoStream);
                 setIsCameraOn(true);
 
-                // Peer'lara video track ekle
+                // Peer'lara video track ekle + renegotiation
                 const videoTrack = videoStream.getVideoTracks()[0];
-                peerConnections.current.forEach(pc => {
+                peerConnections.current.forEach(async (pc, connId) => {
                     pc.addTrack(videoTrack, videoStream);
+                    try {
+                        const offer = await pc.createOffer();
+                        await pc.setLocalDescription(offer);
+                        signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
+                    } catch (e) {
+                        console.error('[WebRTC] Kamera renegotiation hatası:', e);
+                    }
                 });
             } catch (e) {
                 console.error('[WebRTC] Kamera açılamadı:', e);
@@ -148,14 +155,21 @@ export function useWebRTC() {
                 setScreenStream(display);
                 setIsScreenSharing(true);
 
-                // Peer'lara ekran track'i ekle/değiştir
+                // Peer'lara ekran track'i ekle/değiştir + renegotiation
                 const screenTrack = display.getVideoTracks()[0];
-                peerConnections.current.forEach(pc => {
+                peerConnections.current.forEach(async (pc, connId) => {
                     const existingSender = pc.getSenders().find(s => s.track?.kind === 'video');
                     if (existingSender) {
                         existingSender.replaceTrack(screenTrack);
                     } else {
                         pc.addTrack(screenTrack, display);
+                    }
+                    try {
+                        const offer = await pc.createOffer();
+                        await pc.setLocalDescription(offer);
+                        signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
+                    } catch (e) {
+                        console.error('[WebRTC] Ekran renegotiation hatası:', e);
                     }
                 });
             } catch (e) {
