@@ -19,6 +19,8 @@ export function useWebRTC() {
     const [isCameraOn, setIsCameraOn] = useState(false);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [isReady, setIsReady] = useState(false);
+    const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
+    const analyserRefs = useRef<Map<string, { analyser: AnalyserNode, interval: number }>>(new Map());
 
     // Cihaz listesi
     const [audioInputs, setAudioInputs] = useState<DeviceInfo[]>([]);
@@ -219,6 +221,27 @@ export function useWebRTC() {
                     newMap.set(targetConnectionId, remoteStream);
                     return newMap;
                 });
+
+                // Speaking indicator — ses analizi
+                const audioCtx = new window.AudioContext();
+                const source = audioCtx.createMediaStreamSource(remoteStream);
+                const analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 512;
+                source.connect(analyser);
+                const data = new Uint8Array(analyser.frequencyBinCount);
+
+                const interval = window.setInterval(() => {
+                    analyser.getByteFrequencyData(data);
+                    const avg = data.reduce((a, b) => a + b, 0) / data.length;
+                    setSpeakingUsers(prev => {
+                        const next = new Set(prev);
+                        if (avg > 8) { next.add(targetConnectionId); }
+                        else { next.delete(targetConnectionId); }
+                        return next;
+                    });
+                }, 100);
+
+                analyserRefs.current.set(targetConnectionId, { analyser, interval });
             };
 
             pc.oniceconnectionstatechange = () => {
@@ -244,6 +267,18 @@ export function useWebRTC() {
             const handleUserLeft = (_: string, connectionId: string) => {
                 peerConnections.current.get(connectionId)?.close();
                 peerConnections.current.delete(connectionId);
+                
+                const analyserData = analyserRefs.current.get(connectionId);
+                if (analyserData) {
+                    clearInterval(analyserData.interval);
+                    analyserRefs.current.delete(connectionId);
+                }
+                setSpeakingUsers(prev => {
+                    const next = new Set(prev);
+                    next.delete(connectionId);
+                    return next;
+                });
+
                 setRemoteStreams(prev => {
                     const newMap = new Map(prev);
                     newMap.delete(connectionId);
@@ -343,5 +378,6 @@ export function useWebRTC() {
         selectedOutputId,
         setSelectedOutputId,
         isReady,
+        speakingUsers,
     };
 }
