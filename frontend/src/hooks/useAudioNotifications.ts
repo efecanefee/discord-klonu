@@ -69,5 +69,16 @@ export function useAudioNotifications() {
     playTone(520, 0.12, 'sine', true, 400);
   }, [playTone]);
 
-  return { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound };
+  // Mesaj gönderme sesi — kısa whoosh
+  const playSendSound = useCallback(() => {
+    playTone(600, 0.1, 'sine', true, 750);
+  }, [playTone]);
+
+  // Mesaj alma sesi — hafif bildirim
+  const playReceiveSound = useCallback(() => {
+    playTone(820, 0.08, 'sine', true);
+    setTimeout(() => playTone(1020, 0.12, 'sine', true), 80);
+  }, [playTone]);
+
+  return { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playSendSound, playReceiveSound };
 }

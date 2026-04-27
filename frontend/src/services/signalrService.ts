@@ -13,6 +13,10 @@ class SignalRService {
             .build();
     }
 
+    public get connectionId(): string | null {
+        return this.connection.connectionId;
+    }
+
     public async startConnection(roomId?: string, username?: string): Promise<void> {
         if (this.connection.state === signalR.HubConnectionState.Disconnected) {
             console.log(`🔌 SignalR bağlantısı deneniyor... Hedef: ${this.backendUrl}`);

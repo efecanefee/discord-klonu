@@ -46,7 +46,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const { remoteStreams, isMuted, toggleMute, isReady } = useWebRTC();
-    const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound } = useAudioNotifications();
+    const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playSendSound, playReceiveSound } = useAudioNotifications();
 
     useEffect(() => {
         if (!isReady) return;
@@ -73,7 +73,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             }
         };
         const handleReceiveMessage = (u: string, m: string) => {
-            if (isMounted) setMessages((prev) => [...prev, { id: Date.now(), username: u, text: m, type: 'message' }]);
+            if (isMounted) {
+                if (u !== username) {
+                    playReceiveSound(); // sadece başkası yazınca çalsın
+                }
+                setMessages((prev) => [...prev, { id: Date.now(), username: u, text: m, type: 'message' }]);
+            }
         };
         const handleRoomUsers = (usersDict: Record<string, string>) => {
             if (isMounted) {
@@ -96,7 +101,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             signalrService.offReceiveMessage(handleReceiveMessage);
             signalrService.offRoomUsers(handleRoomUsers);
         };
-    }, [roomId, username, isReady, playJoinSound, playLeaveSound]);
+    }, [roomId, username, isReady, playJoinSound, playLeaveSound, playReceiveSound]);
 
     const handleExplicitLeave = async () => {
         await signalrService.stopConnection(roomId, username);
@@ -110,6 +115,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
         if (messageInput.trim()) {
+            playSendSound();
             signalrService.sendMessage(roomId, username, messageInput);
             setMessageInput('');
         }

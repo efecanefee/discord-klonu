@@ -73,14 +73,37 @@ export function useWebRTC() {
                 }
             };
 
+            // Odaya ilk katılınca mevcut kullanıcılara WebRTC bağlantısı kur
+            const handleRoomUsers = async (usersDict: Record<string, string>) => {
+                const myConnectionId = signalrService.connectionId;
+                for (const [connId] of Object.entries(usersDict)) {
+                    // Kendimize bağlanmayalım ve zaten bağlı olduğumuz peer'lara tekrar bağlanmayalım
+                    if (connId === myConnectionId || peerConnections.current.has(connId)) continue;
+
+                    console.log(`[WebRTC] Mevcut kullanıcıya bağlanılıyor: ${connId}`);
+                    const peerConnection = createPeerConnection(connId);
+                    peerConnections.current.set(connId, peerConnection);
+
+                    try {
+                        const offer = await peerConnection.createOffer();
+                        await peerConnection.setLocalDescription(offer);
+                        signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
+                    } catch (e) {
+                        console.error("[WebRTC] Mevcut kullanıcıya offer hatası:", e);
+                    }
+                }
+            };
+
             signalrService.onUserJoined(handleUserJoined);
             signalrService.onUserLeft(handleUserLeft);
             signalrService.onReceiveSignal(handleReceiveSignal);
+            signalrService.onRoomUsers(handleRoomUsers);
 
             return () => {
                 signalrService.offUserJoined(handleUserJoined);
                 signalrService.offUserLeft(handleUserLeft);
                 signalrService.offReceiveSignal(handleReceiveSignal);
+                signalrService.offRoomUsers(handleRoomUsers);
             };
         };
 
