@@ -290,13 +290,14 @@ export function useWebRTC() {
         };
 
         const init = async () => {
-            await loadDevices();
+            // Önce mikrofon izni al, sonra cihazları listele (izin olmadan isimler boş döner)
             const stream = await openMicStream();
             if (!isMounted) { stream?.getTracks().forEach(t => t.stop()); return; }
             if (stream) {
                 streamRef.current = stream;
                 setLocalStream(stream);
             }
+            await loadDevices();
             const cleanup = setupWebRTCListeners();
             setIsReady(true);
             return cleanup;
