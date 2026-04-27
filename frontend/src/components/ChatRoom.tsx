@@ -148,8 +148,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
         const handleReceiveMessage = (u: string, m: string) => {
             if (!isMounted) return;
-            if (u !== username) playReceiveSound();
-            // Optimistic: karşı tarafın mesajı zaten pending değil
+            if (u === username) return; // Optimistic update yapıldığı için kendi mesajımızı yoksayıyoruz
+            playReceiveSound();
             setMessages(prev => [...prev, { id: ++messageIdCounter.current, username: u, text: m, type: 'message', timestamp: Date.now() }]);
             setTypingUsers(prev => { const n = new Set(prev); n.delete(u); return n; });
         };
