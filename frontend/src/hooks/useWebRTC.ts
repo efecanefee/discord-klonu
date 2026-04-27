@@ -215,7 +215,7 @@ export function useWebRTC() {
         };
 
         const setupWebRTCListeners = () => {
-            const handleUserJoined = async (joinedUsername: string, connectionId: string) => {
+            const handleUserJoined = async (_joinedUsername: string, connectionId: string) => {
                 const pc = createPeerConnection(connectionId);
                 peerConnections.current.set(connectionId, pc);
                 try {
