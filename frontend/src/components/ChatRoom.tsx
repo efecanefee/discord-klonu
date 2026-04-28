@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Send, Users, LogOut, Mic, MicOff, VolumeX, Volume1, Volume2, Camera, CameraOff, Monitor, MonitorOff, Settings, Search, X } from 'lucide-react';
+import { Send, Users, LogOut, Mic, MicOff, VolumeX, Volume1, Volume2, Camera, CameraOff, Monitor, MonitorOff, Settings, Search, X, Code } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -76,6 +76,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     const [showSearch, setShowSearch] = useState(false);
     const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
     const [isTyping, setIsTyping] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const isPageVisible = useRef(true);
+    const originalTitle = useRef(document.title);
+    const notificationPermission = useRef<NotificationPermission>('default');
     // Pagination
     const [displayCount, setDisplayCount] = useState(50);
     const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -183,6 +187,54 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         if (localVideoRef.current && localVideoStream) localVideoRef.current.srcObject = localVideoStream;
     }, [localVideoStream]);
 
+    // Sayfa görünürlüğü + tab title + bildirim izni
+    useEffect(() => {
+        // Bildirim izni iste
+        if ('Notification' in window) {
+            Notification.requestPermission().then(p => {
+                notificationPermission.current = p;
+            });
+        }
+
+        const handleVisibilityChange = () => {
+            isPageVisible.current = !document.hidden;
+            if (!document.hidden) {
+                // Sekme aktif olunca unread sıfırla
+                setUnreadCount(0);
+                document.title = originalTitle.current;
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
+
+    // Tab title ve push notification — yeni mesaj gelince
+    useEffect(() => {
+        if (messages.length === 0) return;
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.type !== 'message' || lastMsg.username === username) return;
+
+        if (document.hidden) {
+            // Tab title güncelle
+            setUnreadCount(prev => {
+                const next = prev + 1;
+                document.title = `(${next}) SandalyeciMetin`;
+                return next;
+            });
+
+            // Push notification
+            if (notificationPermission.current === 'granted') {
+                new Notification(`${lastMsg.username}`, {
+                    body: lastMsg.text.length > 60 ? lastMsg.text.slice(0, 60) + '...' : lastMsg.text,
+                    icon: '/logo.png',
+                    tag: 'chat-message', // Aynı tag ile gelenleri günceller, spam yapmaz
+                    silent: false,
+                });
+            }
+        }
+    }, [messages, username]);
+
     // Scroll bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -258,6 +310,71 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     };
 
     const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+    // Kod bloğu renderer — `kod` veya ```kod``` formatını parse eder
+    const renderMessageText = (text: string) => {
+        // Çok satırlı kod bloğu: ```...```
+        const multiCodeRegex = /```([\s\S]*?)```/g;
+        // Tek satır kod: `...`
+        const inlineCodeRegex = /`([^`]+)`/g;
+
+        const parts: React.ReactNode[] = [];
+        let lastIndex = 0;
+        let match;
+
+        // Önce çok satırlı blokları işle
+        const segments: { start: number; end: number; code: string; inline: boolean }[] = [];
+        while ((match = multiCodeRegex.exec(text)) !== null) {
+            segments.push({ start: match.index, end: match.index + match[0].length, code: match[1], inline: false });
+        }
+        while ((match = inlineCodeRegex.exec(text)) !== null) {
+            // Çok satırlı bloğun içinde değilse ekle
+            const inMulti = segments.some(s => match!.index >= s.start && match!.index < s.end);
+            if (!inMulti) {
+                segments.push({ start: match.index, end: match.index + match[0].length, code: match[1], inline: true });
+            }
+        }
+        segments.sort((a, b) => a.start - b.start);
+
+        segments.forEach((seg, i) => {
+            if (seg.start > lastIndex) {
+                parts.push(<span key={`t${i}`}>{text.slice(lastIndex, seg.start)}</span>);
+            }
+            if (seg.inline) {
+                parts.push(
+                    <code key={`c${i}`} className="px-1.5 py-0.5 rounded-md text-[13px] font-mono"
+                        style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)', color: '#a78bfa' }}>
+                        {seg.code}
+                    </code>
+                );
+            } else {
+                parts.push(
+                    <div key={`cb${i}`} className="mt-2 mb-1 rounded-xl overflow-hidden border border-border-main"
+                        style={{ background: 'rgba(0,0,0,0.4)' }}>
+                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-main"
+                            style={{ background: 'rgba(0,0,0,0.2)' }}>
+                            <div className="flex gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+                            </div>
+                            <Code size={11} className="text-text-muted" />
+                        </div>
+                        <pre className="px-4 py-3 text-[12px] font-mono text-emerald-300 overflow-x-auto leading-relaxed whitespace-pre">
+                            {seg.code.trim()}
+                        </pre>
+                    </div>
+                );
+            }
+            lastIndex = seg.end;
+        });
+
+        if (lastIndex < text.length) {
+            parts.push(<span key="last">{text.slice(lastIndex)}</span>);
+        }
+
+        return parts.length > 0 ? parts : text;
+    };
 
     return (
         <div className="relative flex flex-col h-screen overflow-hidden bg-bg-base font-sans selection:bg-primary-main/30 selection:text-text-main">
@@ -448,8 +565,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                         </div>
                                                         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                             <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
-                                                            <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
-                                                                <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                                                            <div className="relative group/msg">
+                                                                <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                                    <p className="whitespace-pre-wrap break-words">{renderMessageText(msg.text)}</p>
+                                                                </div>
+                                                                <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
+                                                                    <div className="px-2 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap"
+                                                                        style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                                        {new Date(msg.timestamp).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                                        {msg.pending && ' · gönderiliyor...'}
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -531,8 +657,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                 <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
                                                                     {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}
                                                                 </span>
-                                                                <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
-                                                                    <p className="whitespace-pre-wrap text-[15px] leading-relaxed break-words">{msg.text}</p>
+                                                                <div className="relative group/msg">
+                                                                    <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                                        <p className="whitespace-pre-wrap text-[15px] leading-relaxed break-words">{renderMessageText(msg.text)}</p>
+                                                                    </div>
+                                                                    {/* Zaman damgası tooltip */}
+                                                                    <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
+                                                                        <div className="px-2 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap"
+                                                                            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                                            {new Date(msg.timestamp).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                                            {msg.pending && ' · gönderiliyor...'}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -583,11 +719,28 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
                                                             <div className="relative">
-                                                                {/* Speaking indicator — yeşil pulse */}
-                                                                {isSpeaking && (
-                                                                    <div className="absolute -inset-1 rounded-[16px] bg-emerald-500/25 animate-pulse z-0" />
-                                                                )}
-                                                                <div className={`relative z-10 w-10 h-10 rounded-[12px] bg-bg-surface flex items-center justify-center font-semibold text-text-main border text-[14px] shadow-sm transition-all duration-150 ${isSpeaking ? 'border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]' : 'border-border-main'}`}>
+                                                                {/* Dalga animasyonu — konuşunca */}
+                                                                <AnimatePresence>
+                                                                    {isSpeaking && (
+                                                                        <>
+                                                                            <motion.div
+                                                                                initial={{ scale: 1, opacity: 0.6 }}
+                                                                                animate={{ scale: 1.8, opacity: 0 }}
+                                                                                exit={{ opacity: 0 }}
+                                                                                transition={{ duration: 1, repeat: Infinity, ease: 'easeOut' }}
+                                                                                className="absolute inset-0 rounded-[12px] bg-emerald-500/30 z-0"
+                                                                            />
+                                                                            <motion.div
+                                                                                initial={{ scale: 1, opacity: 0.4 }}
+                                                                                animate={{ scale: 1.5, opacity: 0 }}
+                                                                                exit={{ opacity: 0 }}
+                                                                                transition={{ duration: 1, repeat: Infinity, ease: 'easeOut', delay: 0.2 }}
+                                                                                className="absolute inset-0 rounded-[12px] bg-emerald-500/20 z-0"
+                                                                            />
+                                                                        </>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                                <div className={`relative z-10 w-10 h-10 rounded-[12px] bg-bg-surface flex items-center justify-center font-semibold text-text-main border text-[14px] shadow-sm transition-all duration-150 ${isSpeaking ? 'border-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]' : 'border-border-main'}`}>
                                                                     {u.username.charAt(0).toUpperCase()}
                                                                 </div>
                                                                 <div className={`absolute -bottom-1 -right-1 w-3 h-3 ${STATUS_COLORS[u.username === username ? myStatus : 'online']} rounded-full border-[2.5px] border-bg-card z-20`} />
