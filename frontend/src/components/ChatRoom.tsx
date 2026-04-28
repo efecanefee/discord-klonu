@@ -98,7 +98,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     const [showSearch, setShowSearch] = useState(false);
     const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
     const [isTyping, setIsTyping] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [_unreadCount, setUnreadCount] = useState(0);
     const isPageVisible = useRef(true);
     const originalTitle = useRef(document.title);
     const notificationPermission = useRef<NotificationPermission>('default');
