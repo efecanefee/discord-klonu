@@ -153,6 +153,14 @@ export function useWebRTC() {
                     }
                 }
             });
+
+            // Ekran paylaşımı durduğunda karşı tarafa bildir (güvenilir fallback)
+            peerConnections.current.forEach((_, connId) => {
+                signalrService.sendSignalToUser(
+                    JSON.stringify({ type: 'screen-stopped' }),
+                    connId
+                );
+            });
         } else {
             try {
                 const display = await navigator.mediaDevices.getDisplayMedia({
@@ -236,6 +244,26 @@ export function useWebRTC() {
                     return newMap;
                 });
 
+                // Her track ended olunca stream'i güncelle
+                event.track.addEventListener('ended', () => {
+                    setRemoteStreams(prev => {
+                        const newMap = new Map(prev);
+                        const stream = newMap.get(targetConnectionId);
+                        if (stream) {
+                            const liveTracks = stream.getTracks().filter(t => t.readyState === 'live');
+                            if (liveTracks.length === 0) {
+                                // Hiç canlı track kalmadı, stream'i sil
+                                newMap.delete(targetConnectionId);
+                            } else {
+                                // Sadece video track bitti, stream'i güncelle (audio kalsın)
+                                const newStream = new MediaStream(liveTracks);
+                                newMap.set(targetConnectionId, newStream);
+                            }
+                        }
+                        return newMap;
+                    });
+                });
+
                 // Speaking indicator — ses analizi
                 const audioCtx = new window.AudioContext();
                 const source = audioCtx.createMediaStreamSource(remoteStream);
@@ -317,6 +345,22 @@ export function useWebRTC() {
                         await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
                     } else if (signalData.type === 'ice') {
                         await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+                    } else if (signalData.type === 'screen-stopped') {
+                        // Karşı tarafın ekran paylaşımı durdu, stream'den video track'leri temizle
+                        setRemoteStreams(prev => {
+                            const newMap = new Map(prev);
+                            const stream = newMap.get(senderConnectionId);
+                            if (stream) {
+                                const audioTracks = stream.getAudioTracks().filter(t => t.readyState === 'live');
+                                if (audioTracks.length > 0) {
+                                    // Sadece audio kalsın
+                                    newMap.set(senderConnectionId, new MediaStream(audioTracks));
+                                } else {
+                                    newMap.delete(senderConnectionId);
+                                }
+                            }
+                            return newMap;
+                        });
                     }
                 } catch (e) {
                     console.error(`[WebRTC] Sinyal hatası (${signalData.type}):`, e);
