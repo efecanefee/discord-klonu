@@ -135,9 +135,23 @@ export function useWebRTC() {
             setScreenStream(null);
             setIsScreenSharing(false);
 
-            peerConnections.current.forEach(pc => {
+            // Karşı tarafa "video bitti" sinyali gönder — boş track yerine null track
+            peerConnections.current.forEach(async (pc, connId) => {
                 const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                if (sender) pc.removeTrack(sender);
+                if (sender) {
+                    pc.removeTrack(sender);
+                    // Renegotiation — karşı taraf stream'i temizlesin
+                    try {
+                        const offer = await pc.createOffer();
+                        await pc.setLocalDescription(offer);
+                        signalrService.sendSignalToUser(
+                            JSON.stringify({ type: 'offer', sdp: offer }),
+                            connId
+                        );
+                    } catch (e) {
+                        console.error('[WebRTC] Screen stop renegotiation hatası:', e);
+                    }
+                }
             });
         } else {
             try {

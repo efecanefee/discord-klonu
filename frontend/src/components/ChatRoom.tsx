@@ -44,8 +44,30 @@ const AudioPlayer: React.FC<{ stream: MediaStream; volume: number }> = ({ stream
 
 const RemoteVideoPlayer: React.FC<{ stream: MediaStream; label: string }> = ({ stream, label }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-    useEffect(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, [stream]);
-    if (!stream.getVideoTracks().length) return null;
+
+    useEffect(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream;
+    }, [stream]);
+
+    // Track değişimlerini dinle — video track eklenince/silinince re-render
+    const [hasVideo, setHasVideo] = useState(() => stream.getVideoTracks().some(t => t.enabled && t.readyState === 'live'));
+
+    useEffect(() => {
+        const checkTracks = () => {
+            setHasVideo(stream.getVideoTracks().some(t => t.enabled && t.readyState === 'live'));
+        };
+        stream.addEventListener('addtrack', checkTracks);
+        stream.addEventListener('removetrack', checkTracks);
+        // Track ended event'ini de dinle
+        stream.getVideoTracks().forEach(t => t.addEventListener('ended', checkTracks));
+        return () => {
+            stream.removeEventListener('addtrack', checkTracks);
+            stream.removeEventListener('removetrack', checkTracks);
+        };
+    }, [stream]);
+
+    if (!hasVideo) return null;
+
     return (
         <div className="relative rounded-xl overflow-hidden border border-border-main bg-black">
             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain" />
