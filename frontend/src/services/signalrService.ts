@@ -37,11 +37,25 @@ class SignalRService {
             }
         }
 
+        // Her zaman JoinRoom çağır — bağlantı zaten Connected olsa bile
         if (roomId && username && this.connection.state === signalR.HubConnectionState.Connected) {
             try {
                 await this.connection.invoke('JoinRoom', roomId, username);
+                console.log(`✅ Odaya katıldı: ${roomId} (${username})`);
             } catch (err) {
                 console.error('Odaya katılma hatası:', err);
+            }
+        }
+    }
+
+    /** Odadan ayrıl — SignalR bağlantısını kapatmadan sadece LeaveRoom çağırır */
+    public async leaveRoom(roomId: string, username: string): Promise<void> {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            try {
+                await this.connection.invoke('LeaveRoom', roomId, username);
+                console.log(`👋 Odadan ayrıldı: ${roomId}`);
+            } catch (e) {
+                console.error('LeaveRoom hatası:', e);
             }
         }
     }

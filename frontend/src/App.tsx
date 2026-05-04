@@ -53,7 +53,7 @@ function App() {
     if (e.key === 'Enter') handleJoinRoom('Ana Salon');
   };
 
-  if (inRoom) return <ChatRoom username={username} roomId={roomId} onLeave={() => setInRoom(false)} />;
+  if (inRoom) return <ChatRoom username={username} roomId={roomId} onLeave={() => { setInRoom(false); setRoomId(''); }} />;
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },

@@ -197,6 +197,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
         return () => {
             isMounted = false;
+            // Odadan temiz çık — bağlantıyı kapatmadan sadece LeaveRoom'u çağır
+            signalrService.leaveRoom(roomId, username);
             signalrService.offUserJoined(handleUserJoined);
             signalrService.offUserLeft(handleUserLeft);
             signalrService.offReceiveMessage(handleReceiveMessage);
