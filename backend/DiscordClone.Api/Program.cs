@@ -14,8 +14,13 @@ builder.Services.AddSignalR();
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? throw new Exception("DATABASE_URL environment variable eksik!");
 
+// Supabase SSL gerektirir — connection string'e SSL parametresi ekle
+var sslConnectionString = connectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase)
+    ? connectionString
+    : connectionString.TrimEnd(';') + ";sslmode=require;Trust Server Certificate=true";
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(sslConnectionString));
 
 builder.Services.AddHostedService<MessageCleanupService>();
 
