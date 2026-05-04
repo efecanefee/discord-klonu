@@ -14,6 +14,7 @@ interface ChatRoomProps {
 
 interface Message {
     id: number;
+    serverId?: number;
     username: string;
     text: string;
     type: 'message' | 'system';
@@ -172,11 +173,26 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             setTypingUsers(prev => { const n = new Set(prev); n.delete(u); return n; });
         };
 
-        const handleReceiveMessage = (u: string, m: string) => {
+        const handleReceiveMessage = (u: string, m: string, serverId: number, timestamp: number) => {
             if (!isMounted) return;
-            if (u === username) return; // Optimistic update yapıldığı için kendi mesajımızı yoksayıyoruz
+            if (u === username) {
+                // Optimistic mesajın pending'ini kaldır, serverId'sini güncelle
+                setMessages(prev => prev.map(msg =>
+                    msg.pending && msg.username === username && msg.text === m
+                        ? { ...msg, serverId, timestamp, pending: false }
+                        : msg
+                ));
+                return;
+            }
             playReceiveSound();
-            setMessages(prev => [...prev, { id: ++messageIdCounter.current, username: u, text: m, type: 'message', timestamp: Date.now() }]);
+            setMessages(prev => [...prev, {
+                id: serverId,
+                serverId,
+                username: u,
+                text: m,
+                type: 'message',
+                timestamp,
+            }]);
             setTypingUsers(prev => { const n = new Set(prev); n.delete(u); return n; });
         };
 
@@ -185,12 +201,31 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             setUsersInRoom(Object.entries(usersDict).map(([connId, uName]) => ({ connectionId: connId, username: uName })));
         };
 
+        const handleRoomHistory = (history: { id: number; username: string; text: string; timestamp: number }[]) => {
+            if (!isMounted) return;
+            setMessages(history.map(m => ({
+                id: m.id,
+                serverId: m.id,
+                username: m.username,
+                text: m.text,
+                type: 'message' as const,
+                timestamp: m.timestamp,
+            })));
+        };
+
+        const handleMessageDeleted = (messageId: number) => {
+            if (!isMounted) return;
+            setMessages(prev => prev.filter(m => m.serverId !== messageId));
+        };
+
         // signalrService.onTyping?.(handleTyping);
 
         signalrService.onUserJoined(handleUserJoined);
         signalrService.onUserLeft(handleUserLeft);
         signalrService.onReceiveMessage(handleReceiveMessage);
         signalrService.onRoomUsers(handleRoomUsers);
+        signalrService.onRoomHistory(handleRoomHistory);
+        signalrService.onMessageDeleted(handleMessageDeleted);
         // Yazıyor eventi varsa: signalrService.onTyping?.(handleTyping);
 
         signalrService.startConnection(roomId, username);
@@ -203,6 +238,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             signalrService.offUserLeft(handleUserLeft);
             signalrService.offReceiveMessage(handleReceiveMessage);
             signalrService.offRoomUsers(handleRoomUsers);
+            signalrService.offRoomHistory(handleRoomHistory);
+            signalrService.offMessageDeleted(handleMessageDeleted);
         };
     }, [roomId, username, isReady, playJoinSound, playLeaveSound, playReceiveSound]);
 
@@ -600,6 +637,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                         {msg.pending && ' · gönderiliyor...'}
                                                                     </div>
                                                                 </div>
+                                                                {isMine && msg.serverId && !msg.pending && (
+                                                                    <button
+                                                                        onClick={() => signalrService.deleteMessage(msg.serverId!)}
+                                                                        className="absolute -top-2 -left-6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 w-5 h-5 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer z-20"
+                                                                        title="Mesajı sil"
+                                                                    >
+                                                                        <X size={10} className="text-white" />
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -693,6 +739,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                             {msg.pending && ' · gönderiliyor...'}
                                                                         </div>
                                                                     </div>
+                                                                    {isMine && msg.serverId && !msg.pending && (
+                                                                        <button
+                                                                            onClick={() => signalrService.deleteMessage(msg.serverId!)}
+                                                                            className="absolute -top-2 -left-6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 w-5 h-5 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer z-20"
+                                                                            title="Mesajı sil"
+                                                                        >
+                                                                            <X size={10} className="text-white" />
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>

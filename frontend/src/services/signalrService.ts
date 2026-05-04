@@ -73,7 +73,7 @@ class SignalRService {
     public onUserLeft(callback: (username: string, connectionId: string) => void) {
         this.connection?.on('UserLeft', callback);
     }
-    public onReceiveMessage(callback: (username: string, message: string) => void) {
+    public onReceiveMessage(callback: (username: string, message: string, serverId: number, timestamp: number) => void) {
         this.connection?.on('ReceiveMessage', callback);
     }
     public onReceiveSignal(callback: (senderConnectionId: string, signalData: string) => void) {
@@ -93,11 +93,27 @@ class SignalRService {
     public offUserLeft(callback: (username: string, connectionId: string) => void) {
         this.connection?.off('UserLeft', callback);
     }
-    public offReceiveMessage(callback: (username: string, message: string) => void) {
+    public offReceiveMessage(callback: (username: string, message: string, serverId: number, timestamp: number) => void) {
         this.connection?.off('ReceiveMessage', callback);
     }
     public offReceiveSignal(callback: (senderConnectionId: string, signalData: string) => void) {
         this.connection?.off('ReceiveSignal', callback);
+    }
+
+    // Geçmiş mesajlar
+    public onRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number }[]) => void) {
+        this.connection?.on('RoomHistory', callback);
+    }
+    public offRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number }[]) => void) {
+        this.connection?.off('RoomHistory', callback);
+    }
+
+    // Mesaj silindi
+    public onMessageDeleted(callback: (messageId: number) => void) {
+        this.connection?.on('MessageDeleted', callback);
+    }
+    public offMessageDeleted(callback: (messageId: number) => void) {
+        this.connection?.off('MessageDeleted', callback);
     }
 
     // Senders
@@ -106,6 +122,11 @@ class SignalRService {
             await this.connection.invoke('SendMessage', roomId, username, message);
         } else {
             console.warn("Mesaj gönderilemedi, bağlantı koptu.");
+        }
+    }
+    public async deleteMessage(messageId: number) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('DeleteMessage', messageId);
         }
     }
     public async sendSignalToUser(signalData: string, targetConnectionId: string) {
