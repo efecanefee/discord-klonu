@@ -29,17 +29,6 @@ if (rawConnectionString.StartsWith("postgres://", StringComparison.OrdinalIgnore
     var user = Uri.UnescapeDataString(userInfo[0]);
     var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
 
-    // Render IPv6 desteklemiyor — DNS'i IPv4'e zorla
-    try
-    {
-        var addresses = await System.Net.Dns.GetHostAddressesAsync(host);
-        var ipv4 = addresses.FirstOrDefault(a =>
-            a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
-        if (ipv4 != null)
-            host = ipv4.ToString();
-    }
-    catch { /* DNS başarısız olursa orijinal host'u kullanmaya devam et */ }
-
     npgsqlConnectionString =
         $"Host={host};Port={port};Database={database};Username={user};Password={password};" +
         "sslmode=require;Trust Server Certificate=true;";
