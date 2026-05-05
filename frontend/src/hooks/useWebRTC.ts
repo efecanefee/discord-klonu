@@ -111,7 +111,11 @@ export function useWebRTC() {
                 // Peer'lara video track ekle + renegotiation
                 const videoTrack = videoStream.getVideoTracks()[0];
                 peerConnections.current.forEach(async (pc, connId) => {
-                    pc.addTrack(videoTrack, videoStream);
+                    if (streamRef.current) {
+                        pc.addTrack(videoTrack, streamRef.current);
+                    } else {
+                        pc.addTrack(videoTrack, videoStream);
+                    }
                     try {
                         const offer = await pc.createOffer();
                         await pc.setLocalDescription(offer);
@@ -186,7 +190,11 @@ export function useWebRTC() {
                     if (existingSender) {
                         existingSender.replaceTrack(screenTrack);
                     } else {
-                        pc.addTrack(screenTrack, display);
+                        if (streamRef.current) {
+                            pc.addTrack(screenTrack, streamRef.current);
+                        } else {
+                            pc.addTrack(screenTrack, display);
+                        }
                     }
                     try {
                         const offer = await pc.createOffer();
@@ -264,26 +272,34 @@ export function useWebRTC() {
                     });
                 });
 
-                // Speaking indicator — ses analizi
-                const audioCtx = new window.AudioContext();
-                const source = audioCtx.createMediaStreamSource(remoteStream);
-                const analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 512;
-                source.connect(analyser);
-                const data = new Uint8Array(analyser.frequencyBinCount);
+                // Speaking indicator — ses analizi sadece ses track'i için
+                if (event.track.kind === 'audio') {
+                    try {
+                        const audioCtx = new window.AudioContext();
+                        // remoteStream yerine sadece bu track'ten oluşan yeni bir stream kullan,
+                        // aksi halde stream içinde sessiz video track varsa hata fırlatabilir.
+                        const source = audioCtx.createMediaStreamSource(new MediaStream([event.track]));
+                        const analyser = audioCtx.createAnalyser();
+                        analyser.fftSize = 512;
+                        source.connect(analyser);
+                        const data = new Uint8Array(analyser.frequencyBinCount);
 
-                const interval = window.setInterval(() => {
-                    analyser.getByteFrequencyData(data);
-                    const avg = data.reduce((a, b) => a + b, 0) / data.length;
-                    setSpeakingUsers(prev => {
-                        const next = new Set(prev);
-                        if (avg > 8) { next.add(targetConnectionId); }
-                        else { next.delete(targetConnectionId); }
-                        return next;
-                    });
-                }, 100);
+                        const interval = window.setInterval(() => {
+                            analyser.getByteFrequencyData(data);
+                            const avg = data.reduce((a, b) => a + b, 0) / data.length;
+                            setSpeakingUsers(prev => {
+                                const next = new Set(prev);
+                                if (avg > 8) { next.add(targetConnectionId); }
+                                else { next.delete(targetConnectionId); }
+                                return next;
+                            });
+                        }, 100);
 
-                analyserRefs.current.set(targetConnectionId, { analyser, interval });
+                        analyserRefs.current.set(targetConnectionId, { analyser, interval });
+                    } catch (err) {
+                        console.error('[WebRTC] Analyser oluşturulamadı:', err);
+                    }
+                }
             };
 
             pc.oniceconnectionstatechange = () => {
