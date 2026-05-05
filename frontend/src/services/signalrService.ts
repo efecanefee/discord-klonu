@@ -8,6 +8,7 @@ class SignalRService {
     constructor() {
         this.connection = new signalR.HubConnectionBuilder()
             .withUrl(this.backendUrl, {
+                accessTokenFactory: () => localStorage.getItem('token') || '',
                 // WebSocket'e zorla — negotiate roundtrip'ini atla (~100ms kazanç)
                 skipNegotiation: true,
                 transport: signalR.HttpTransportType.WebSockets,

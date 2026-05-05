@@ -2,13 +2,56 @@ using DiscordClone.Api.Hubs;
 using DiscordClone.Api.Data;
 using DiscordClone.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.UseUrls("http://0.0.0.0:" + (Environment.GetEnvironmentVariable("PORT") ?? "5098"));
 
 builder.Services.AddOpenApi();
+builder.Services.AddControllers(); // REST API Controller'larını ekliyoruz (AuthController için)
 builder.Services.AddSignalR();
+
+// JWT Kimlik Doğrulama Konfigürasyonu
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "VarsayilanCokGizliAnahtarDegistirilmeli123!";
+var key = Encoding.ASCII.GetBytes(jwtKey);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false; // Geliştirme ortamında false, production'da true olmalı
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+
+    // SignalR'ın URL Query parametresinden (access_token) JWT'yi alması için özel event:
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hub/chat"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
 
 // PostgreSQL — Supabase
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
@@ -85,6 +128,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 app.UseCors("AllowFrontend");
+
+app.UseAuthentication(); // Kimlik Doğrulamayı etkinleştir
+app.UseAuthorization();  // Yetkilendirmeyi etkinleştir
+
+app.MapControllers(); // /api/auth/* uç noktalarını eşle
 
 app.MapGet("/api/stats/active-users", () =>
     Results.Ok(new { count = ChatAndSignalingHub.GetActiveUserCount() }))
