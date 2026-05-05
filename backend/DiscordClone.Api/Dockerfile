@@ -14,6 +14,11 @@ RUN dotnet publish "DiscordClone.Api.csproj" -c Release -o /app/publish /p:UseAp
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 
+# Npgsql'nin aradığı Kerberos/GSSAPI kütüphanesini yükle
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Expose port 8080 and enforce the listening URL
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
