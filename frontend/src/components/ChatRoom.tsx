@@ -380,6 +380,44 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
     const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
+    const renderTextWithLinks = (plainText: string, keyPrefix: string) => {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const textParts: React.ReactNode[] = [];
+        let lastIdx = 0;
+        let match;
+
+        while ((match = urlRegex.exec(plainText)) !== null) {
+            if (match.index > lastIdx) {
+                textParts.push(<span key={`${keyPrefix}_t${lastIdx}`}>{plainText.slice(lastIdx, match.index)}</span>);
+            }
+            const url = match[0];
+            const isImage = /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(url);
+            
+            if (isImage) {
+                textParts.push(
+                    <div key={`${keyPrefix}_img${match.index}`} className="my-2 max-w-[280px] sm:max-w-[400px]">
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="block w-fit">
+                            <img src={url} alt="Kullanıcı Eki" className="w-full h-auto max-h-64 rounded-lg border border-border-main object-contain bg-black/20" loading="lazy" />
+                        </a>
+                    </div>
+                );
+            } else {
+                textParts.push(
+                    <a key={`${keyPrefix}_link${match.index}`} href={url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline underline-offset-2 break-all font-medium">
+                        {url}
+                    </a>
+                );
+            }
+            lastIdx = match.index + url.length;
+        }
+
+        if (lastIdx < plainText.length) {
+            textParts.push(<span key={`${keyPrefix}_t${lastIdx}`}>{plainText.slice(lastIdx)}</span>);
+        }
+
+        return textParts.length > 0 ? textParts : plainText;
+    };
+
     // Kod bloğu renderer — `kod` veya ```kod``` formatını parse eder
     const renderMessageText = (text: string) => {
         // Çok satırlı kod bloğu: ```...```
@@ -407,7 +445,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
         segments.forEach((seg, i) => {
             if (seg.start > lastIndex) {
-                parts.push(<span key={`t${i}`}>{text.slice(lastIndex, seg.start)}</span>);
+                parts.push(<React.Fragment key={`text${i}`}>{renderTextWithLinks(text.slice(lastIndex, seg.start), `txt_${i}`)}</React.Fragment>);
             }
             if (seg.inline) {
                 parts.push(
@@ -439,7 +477,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         });
 
         if (lastIndex < text.length) {
-            parts.push(<span key="last">{text.slice(lastIndex)}</span>);
+            parts.push(<React.Fragment key="last">{renderTextWithLinks(text.slice(lastIndex), 'last')}</React.Fragment>);
         }
 
         return parts.length > 0 ? parts : text;
@@ -636,7 +674,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                             <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
                                                             <div className="relative group/msg">
                                                                 <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
-                                                                    <p className="whitespace-pre-wrap break-words">{renderMessageText(msg.text)}</p>
+                                                                    <div className="whitespace-pre-wrap break-words">{renderMessageText(msg.text)}</div>
                                                                 </div>
                                                                 <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
                                                                     <div className="px-2 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap"
@@ -737,7 +775,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                 </span>
                                                                 <div className="relative group/msg">
                                                                     <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
-                                                                        <p className="whitespace-pre-wrap text-[15px] leading-relaxed break-words">{renderMessageText(msg.text)}</p>
+                                                                        <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words">{renderMessageText(msg.text)}</div>
                                                                     </div>
                                                                     {/* Zaman damgası tooltip */}
                                                                     <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
