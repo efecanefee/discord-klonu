@@ -74,18 +74,27 @@ if (rawConnectionString.StartsWith("postgres://", StringComparison.OrdinalIgnore
 
     npgsqlConnectionString =
         $"Host={host};Port={port};Database={database};Username={user};Password={password};" +
-        "sslmode=require;Trust Server Certificate=true;";
+        "sslmode=require;Trust Server Certificate=true;Pooling=false;Max Auto Prepare=0;";
 }
 else
 {
-    // Zaten Key=Value formatındaysa — sadece SSL ekle
+    // Zaten Key=Value formatındaysa — sadece SSL ve Pooling ayarlarını ekle
     npgsqlConnectionString = rawConnectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase)
         ? rawConnectionString
         : rawConnectionString.TrimEnd(';') + ";sslmode=require;Trust Server Certificate=true;";
+    
+    if (!npgsqlConnectionString.Contains("Pooling=false", StringComparison.OrdinalIgnoreCase))
+        npgsqlConnectionString = npgsqlConnectionString.TrimEnd(';') + ";Pooling=false;Max Auto Prepare=0;";
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(npgsqlConnectionString));
+    options.UseNpgsql(npgsqlConnectionString, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorCodesToAdd: null);
+    }));
 
 builder.Services.AddHostedService<MessageCleanupService>();
 
