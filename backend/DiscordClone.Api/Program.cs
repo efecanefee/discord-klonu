@@ -11,16 +11,38 @@ builder.Services.AddOpenApi();
 builder.Services.AddSignalR();
 
 // PostgreSQL — Supabase
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? throw new Exception("DATABASE_URL environment variable eksik!");
 
-// Supabase SSL gerektirir — connection string'e SSL parametresi ekle
-var sslConnectionString = connectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase)
-    ? connectionString
-    : connectionString.TrimEnd(';') + ";sslmode=require;Trust Server Certificate=true";
+// Supabase bazen URI formatında bağlantı dizisi verir (postgresql://user:pass@host:port/db?params)
+// Npgsql bilinmeyen URI parametrelerini (ör. "no ipv6") kaldıramaz, bu yüzden
+// URI'ı manuel ayrıştırıp Npgsql'nin anlayacağı Key=Value formatına çeviriyoruz.
+string npgsqlConnectionString;
+if (rawConnectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+    rawConnectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+{
+    var uri = new Uri(rawConnectionString);
+    var userInfo = uri.UserInfo.Split(':', 2);
+    var host = uri.Host;
+    var port = uri.Port > 0 ? uri.Port : 5432;
+    var database = uri.AbsolutePath.TrimStart('/');
+    var user = Uri.UnescapeDataString(userInfo[0]);
+    var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+
+    npgsqlConnectionString =
+        $"Host={host};Port={port};Database={database};Username={user};Password={password};" +
+        "sslmode=require;Trust Server Certificate=true;";
+}
+else
+{
+    // Zaten Key=Value formatındaysa — sadece SSL ekle
+    npgsqlConnectionString = rawConnectionString.Contains("sslmode", StringComparison.OrdinalIgnoreCase)
+        ? rawConnectionString
+        : rawConnectionString.TrimEnd(';') + ";sslmode=require;Trust Server Certificate=true;";
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(sslConnectionString));
+    options.UseNpgsql(npgsqlConnectionString));
 
 builder.Services.AddHostedService<MessageCleanupService>();
 
@@ -39,6 +61,21 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Supabase'de tablo yoksa otomatik oluştur
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        await db.Database.EnsureCreatedAsync();
+    }
+    catch (Exception ex)
+    {
+        var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        startupLogger.LogError(ex, "[Startup] Veritabanı başlatılamadı.");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
