@@ -96,10 +96,31 @@ export function useWebRTC() {
             setLocalVideoStream(null);
             setIsCameraOn(false);
 
-            // Peer'lardan video track'i kaldır
-            peerConnections.current.forEach(pc => {
+            // Peer'lardan video track'i kaldır ve renegotiate yap
+            peerConnections.current.forEach(async (pc, connId) => {
                 const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                if (sender) pc.removeTrack(sender);
+                if (sender) {
+                    pc.removeTrack(sender);
+                    // Renegotiation — karşı taraf stream'i temizlesin
+                    try {
+                        const offer = await pc.createOffer();
+                        await pc.setLocalDescription(offer);
+                        signalrService.sendSignalToUser(
+                            JSON.stringify({ type: 'offer', sdp: offer }),
+                            connId
+                        );
+                    } catch (e) {
+                        console.error('[WebRTC] Camera stop renegotiation hatası:', e);
+                    }
+                }
+            });
+
+            // Kamera kapandığında karşı tarafa bildir (güvenilir fallback)
+            peerConnections.current.forEach((_, connId) => {
+                signalrService.sendSignalToUser(
+                    JSON.stringify({ type: 'camera-stopped' }),
+                    connId
+                );
             });
         } else {
             try {
@@ -111,10 +132,15 @@ export function useWebRTC() {
                 // Peer'lara video track ekle + renegotiation
                 const videoTrack = videoStream.getVideoTracks()[0];
                 peerConnections.current.forEach(async (pc, connId) => {
-                    if (streamRef.current) {
-                        pc.addTrack(videoTrack, streamRef.current);
+                    const existingSender = pc.getSenders().find(s => s.track?.kind === 'video');
+                    if (existingSender) {
+                        existingSender.replaceTrack(videoTrack);
                     } else {
-                        pc.addTrack(videoTrack, videoStream);
+                        if (streamRef.current) {
+                            pc.addTrack(videoTrack, streamRef.current);
+                        } else {
+                            pc.addTrack(videoTrack, videoStream);
+                        }
                     }
                     try {
                         const offer = await pc.createOffer();
@@ -361,8 +387,8 @@ export function useWebRTC() {
                         await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
                     } else if (signalData.type === 'ice') {
                         await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
-                    } else if (signalData.type === 'screen-stopped') {
-                        // Karşı tarafın ekran paylaşımı durdu, stream'den video track'leri temizle
+                    } else if (signalData.type === 'screen-stopped' || signalData.type === 'camera-stopped') {
+                        // Karşı tarafın ekran/kamera paylaşımı durdu, stream'den video track'leri temizle
                         setRemoteStreams(prev => {
                             const newMap = new Map(prev);
                             const stream = newMap.get(senderConnectionId);
