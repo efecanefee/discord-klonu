@@ -7,9 +7,13 @@ class SignalRService {
 
     constructor() {
         this.connection = new signalR.HubConnectionBuilder()
-            .withUrl(this.backendUrl)
+            .withUrl(this.backendUrl, {
+                // WebSocket'e zorla — negotiate roundtrip'ini atla (~100ms kazanç)
+                skipNegotiation: true,
+                transport: signalR.HttpTransportType.WebSockets,
+            })
             .withAutomaticReconnect()
-            .configureLogging(signalR.LogLevel.Information)
+            .configureLogging(signalR.LogLevel.Warning)
             .build();
     }
 
@@ -114,6 +118,14 @@ class SignalRService {
     }
     public offMessageDeleted(callback: (messageId: number) => void) {
         this.connection?.off('MessageDeleted', callback);
+    }
+
+    // Gerçek DB ID ataması (broadcast-first yaklaşımı için)
+    public onMessageIdAssigned(callback: (timestamp: number, serverId: number) => void) {
+        this.connection?.on('MessageIdAssigned', callback);
+    }
+    public offMessageIdAssigned(callback: (timestamp: number, serverId: number) => void) {
+        this.connection?.off('MessageIdAssigned', callback);
     }
 
     // Senders

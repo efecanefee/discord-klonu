@@ -179,21 +179,29 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                 // Optimistic mesajın pending'ini kaldır, serverId'sini güncelle
                 setMessages(prev => prev.map(msg =>
                     msg.pending && msg.username === username && msg.text === m
-                        ? { ...msg, serverId, timestamp, pending: false }
+                        ? { ...msg, serverId: serverId || undefined, timestamp, pending: false }
                         : msg
                 ));
                 return;
             }
             playReceiveSound();
             setMessages(prev => [...prev, {
-                id: serverId,
-                serverId,
+                id: timestamp, // serverId=0 gelirse timestamp'i geçici ID olarak kullan
+                serverId: serverId || undefined,
                 username: u,
                 text: m,
                 type: 'message',
                 timestamp,
             }]);
             setTypingUsers(prev => { const n = new Set(prev); n.delete(u); return n; });
+        };
+
+        const handleMessageIdAssigned = (timestamp: number, serverId: number) => {
+            if (!isMounted) return;
+            // Geçici timestamp ID'si ile gönderilmiş mesajın gerçek DB ID'sini güncelle
+            setMessages(prev => prev.map(msg =>
+                msg.timestamp === timestamp ? { ...msg, id: serverId, serverId } : msg
+            ));
         };
 
         const handleRoomUsers = (usersDict: Record<string, string>) => {
@@ -223,20 +231,20 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         signalrService.onUserJoined(handleUserJoined);
         signalrService.onUserLeft(handleUserLeft);
         signalrService.onReceiveMessage(handleReceiveMessage);
+        signalrService.onMessageIdAssigned(handleMessageIdAssigned);
         signalrService.onRoomUsers(handleRoomUsers);
         signalrService.onRoomHistory(handleRoomHistory);
         signalrService.onMessageDeleted(handleMessageDeleted);
-        // Yazıyor eventi varsa: signalrService.onTyping?.(handleTyping);
 
         signalrService.startConnection(roomId, username);
 
         return () => {
             isMounted = false;
-            // Odadan temiz çık — bağlantıyı kapatmadan sadece LeaveRoom'u çağır
             signalrService.leaveRoom(roomId, username);
             signalrService.offUserJoined(handleUserJoined);
             signalrService.offUserLeft(handleUserLeft);
             signalrService.offReceiveMessage(handleReceiveMessage);
+            signalrService.offMessageIdAssigned(handleMessageIdAssigned);
             signalrService.offRoomUsers(handleRoomUsers);
             signalrService.offRoomHistory(handleRoomHistory);
             signalrService.offMessageDeleted(handleMessageDeleted);

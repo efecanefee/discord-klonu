@@ -86,17 +86,25 @@ namespace DiscordClone.Api.Hubs
 
         public async Task SendMessage(string roomId, string username, string message)
         {
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            // Önce yayınla — alıcılar DB yazımını beklemeden mesajı görsün
+            await Clients.Group(roomId).SendAsync("ReceiveMessage", username, message, 0L, timestamp);
+
+            // DB'ye kaydet
             var msg = new ChatMessage
             {
                 RoomId = roomId,
                 Username = username,
                 Text = message,
-                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                Timestamp = timestamp
             };
             _db.Messages.Add(msg);
             await _db.SaveChangesAsync();
 
-            await Clients.Group(roomId).SendAsync("ReceiveMessage", username, message, msg.Id, msg.Timestamp);
+            // Gerçek DB ID'sini bildir (silme işlevi için)
+            if (msg.Id > 0)
+                await Clients.Group(roomId).SendAsync("MessageIdAssigned", timestamp, msg.Id);
         }
 
         public async Task DeleteMessage(long messageId)
