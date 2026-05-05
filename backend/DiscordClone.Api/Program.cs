@@ -111,10 +111,10 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        // Önceden oluşturulmuş DB varsa bu komut hiçbir şey yapmaz (atlatır)
+        // Önceden oluşturulmuş DB varsa bu komut hiçbir şey yapmaz
         await db.Database.EnsureCreatedAsync();
 
-        // Mevcut DB'ye yeni tabloları ve kolonları manuel ekle (migration çakışmasını önlemek için)
+        // 1. Users tablosunu oluştur
         await db.Database.ExecuteSqlRawAsync(@"
             CREATE TABLE IF NOT EXISTS users (
                 id text NOT NULL,
@@ -124,30 +124,19 @@ using (var scope = app.Services.CreateScope())
                 created_at timestamp with time zone NOT NULL,
                 CONSTRAINT ""PK_users"" PRIMARY KEY (id)
             );
-
-            -- Sütun eklerken hata vermemesi için
-            ALTER TABLE messages ADD COLUMN IF NOT EXISTS user_id text;
-
-            -- İndeks ve Foreign Key'leri (eğer yoksa) oluşturmak için Do Block (PostgreSQL)
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_messages_users_user_id') THEN
-                    ALTER TABLE messages ADD CONSTRAINT ""FK_messages_users_user_id"" FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL;
-                END IF;
-
-                IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_messages_user_id') THEN
-                    CREATE INDEX ""IX_messages_user_id"" ON messages (user_id);
-                END IF;
-                
-                IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_users_email') THEN
-                    CREATE UNIQUE INDEX ""IX_users_email"" ON users (email);
-                END IF;
-
-                IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'IX_users_username') THEN
-                    CREATE UNIQUE INDEX ""IX_users_username"" ON users (username);
-                END IF;
-            END $$;
         ");
+
+        // 2. user_id kolonunu ekle (Varsa hata verir, atlar)
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN user_id text;"); } catch { }
+
+        // 3. Yabancı anahtarı ekle (Varsa atlar)
+        try { await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE messages ADD CONSTRAINT ""FK_messages_users_user_id"" FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL;"); } catch { }
+
+        // 4. İndeksleri oluştur (Varsa atlar)
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX ""IX_messages_user_id"" ON messages (user_id);"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX ""IX_users_email"" ON users (email);"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX ""IX_users_username"" ON users (username);"); } catch { }
+
     }
     catch (Exception ex)
     {
