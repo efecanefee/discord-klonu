@@ -574,7 +574,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     return (
         <div 
             onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-            className="relative flex flex-col h-screen overflow-hidden font-sans selection:bg-primary-main/30 selection:text-text-main"
+            className="relative flex flex-col h-full w-full overflow-hidden font-sans selection:bg-primary-main/30 selection:text-text-main"
             style={{ background: 'radial-gradient(ellipse at 20% 50%, #0d0a1e 0%, #080b18 40%, #050810 100%)' }}>
             
             <Orb className="w-[600px] h-[600px] bg-violet-600 -top-32 -left-32 animate-[pulse_8s_ease-in-out_infinite]" />
@@ -601,11 +601,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             })}
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible"
-                className="relative z-10 flex flex-col h-full max-w-[1400px] mx-auto w-full p-4 sm:p-6 lg:p-8">
+                className="relative z-10 flex flex-col h-full max-w-[1400px] mx-auto w-full p-4 sm:p-6 lg:p-8 min-h-0">
 
                 {/* ===== HEADER ===== */}
                 <motion.div variants={itemVariants}
-                    className="flex items-center justify-between p-4 mb-4 bg-bg-surface border border-border-main rounded-2xl shadow-card">
+                    className="flex items-center justify-between p-4 mb-4 rounded-2xl"
+                    style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-bg-base rounded-[14px] border border-border-main shadow-sm">
                             <Users className="text-primary-main" size={22} />
@@ -707,7 +708,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 
                 {/* ===== MEDYA MODU ===== */}
                 {isMediaActive ? (
-                    <div className="flex flex-1 overflow-hidden gap-4 mb-4">
+                    <div className="flex flex-1 overflow-hidden gap-4 mb-4 min-h-0">
                         <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden rounded-2xl min-w-0" style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 32px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
                             <div className="relative flex-1 flex flex-col bg-black/40 rounded-2xl overflow-hidden">
                                 <div className={`flex-1 grid gap-2 p-2 ${(() => {
@@ -836,9 +837,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                 ) : (
                     /* ===== NORMAL MOD ===== */
                     <>
-                        <div className="flex flex-1 overflow-hidden gap-6 mb-6">
+                        <div className="flex flex-1 overflow-hidden gap-6 mb-6 min-h-0">
                             {/* Chat alanı */}
-                            <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
+                            <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden rounded-2xl min-w-0" style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 32px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
                                 {/* Arama */}
                                 <div className="flex items-center justify-end px-5 pt-4 pb-0 gap-2">
                                     <AnimatePresence>
@@ -1036,7 +1037,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                             <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileSelect} />
                             <form onSubmit={handleSendMessage}
                                 className="flex flex-row items-center p-2.5 rounded-2xl transition-all duration-200"
-                                style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
                                 <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
                                     <Smile size={22} />
                                 </button>
