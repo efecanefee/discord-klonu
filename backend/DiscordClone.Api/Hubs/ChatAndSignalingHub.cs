@@ -75,7 +75,7 @@ namespace DiscordClone.Api.Hubs
                 .Where(m => m.RoomId == roomId && m.Timestamp >= oneWeekAgo && !m.IsDeleted)
                 .OrderBy(m => m.Timestamp)
                 .Take(100)
-                .Select(m => new { m.Id, m.Username, m.Text, m.Timestamp })
+                .Select(m => new { m.Id, m.Username, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileType })
                 .ToListAsync();
 
             await Clients.Caller.SendAsync("RoomHistory", history);
@@ -96,7 +96,7 @@ namespace DiscordClone.Api.Hubs
             await Clients.Group(roomId).SendAsync("UserLeft", username, Context.ConnectionId);
         }
 
-        public async Task SendMessage(string roomId, string requestedUsername, string message)
+        public async Task SendMessage(string roomId, string requestedUsername, string message, string? fileUrl = null, string? fileType = null)
         {
             var userId = Context.UserIdentifier; // JWT Token'dan (NameIdentifier)
             var username = Context.User?.Identity?.Name ?? requestedUsername;
@@ -104,7 +104,7 @@ namespace DiscordClone.Api.Hubs
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             // Önce yayınla
-            await Clients.Group(roomId).SendAsync("ReceiveMessage", username, message, 0L, timestamp);
+            await Clients.Group(roomId).SendAsync("ReceiveMessage", username, message, 0L, timestamp, false, fileUrl, fileType);
 
             // DB'ye kaydet
             var msg = new ChatMessage
@@ -113,7 +113,9 @@ namespace DiscordClone.Api.Hubs
                 UserId = userId,
                 Username = username,
                 Text = message,
-                Timestamp = timestamp
+                Timestamp = timestamp,
+                FileUrl = fileUrl,
+                FileType = fileType
             };
             _db.Messages.Add(msg);
             await _db.SaveChangesAsync();
@@ -121,6 +123,27 @@ namespace DiscordClone.Api.Hubs
             // Gerçek DB ID'sini bildir
             if (msg.Id > 0)
                 await Clients.Group(roomId).SendAsync("MessageIdAssigned", timestamp, msg.Id);
+        }
+
+        public async Task EditMessage(long messageId, string newText)
+        {
+            var msg = await _db.Messages.FindAsync(messageId);
+            if (msg == null || msg.IsDeleted) return;
+
+            var userId = Context.UserIdentifier;
+            
+            // Sadece mesajı yazan düzenleyebilir
+            if (msg.UserId != userId && msg.Username != Context.User?.Identity?.Name) 
+                return;
+
+            msg.Text = newText;
+            msg.IsEdited = true;
+            await _db.SaveChangesAsync();
+
+            if (_userConnections.TryGetValue(Context.ConnectionId, out var roomId))
+            {
+                await Clients.Group(roomId).SendAsync("MessageEdited", messageId, newText);
+            }
         }
 
         public async Task DeleteMessage(long messageId)

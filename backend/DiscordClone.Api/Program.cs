@@ -136,8 +136,11 @@ using (var scope = app.Services.CreateScope())
             );
         ");
 
-        // 2. user_id kolonunu ekle (Varsa hata verir, atlar)
+        // 2. Yeni kolonları ekle (Varsa hata verir, atlar)
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN user_id text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN \"IsEdited\" boolean NOT NULL DEFAULT false;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN \"FileUrl\" text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN \"FileType\" text;"); } catch { }
 
         // 3. Yabancı anahtarı ekle (Varsa atlar)
         try { await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE messages ADD CONSTRAINT ""FK_messages_users_user_id"" FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL;"); } catch { }
