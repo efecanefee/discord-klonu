@@ -574,7 +574,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     return (
         <div 
             onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-            className="fixed inset-0 flex flex-col overflow-hidden font-sans selection:bg-primary-main/30 selection:text-text-main"
+            className="relative flex flex-col h-full w-full overflow-hidden font-sans selection:bg-primary-main/30 selection:text-text-main"
             style={{ background: 'radial-gradient(ellipse at 20% 50%, #0d0a1e 0%, #080b18 40%, #050810 100%)' }}>
             
             <Orb className="w-[600px] h-[600px] bg-violet-600 -top-32 -left-32 animate-[pulse_8s_ease-in-out_infinite]" />
