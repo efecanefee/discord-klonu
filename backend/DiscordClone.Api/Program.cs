@@ -97,6 +97,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     }));
 
 builder.Services.AddHostedService<MessageCleanupService>();
+builder.Services.AddHostedService<KeepAliveService>();
 
 builder.Services.AddCors(options =>
 {

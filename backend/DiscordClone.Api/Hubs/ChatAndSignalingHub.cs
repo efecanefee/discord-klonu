@@ -62,6 +62,10 @@ namespace DiscordClone.Api.Hubs
             usersInRoom[Context.ConnectionId] = username;
 
             var dictionary = usersInRoom.ToDictionary(k => k.Key, v => v.Value);
+
+            // Odadaki herkese güncel kullanıcı listesini gönder
+            await Clients.Group(roomId).SendAsync("RoomUsers", dictionary);
+            
             await Clients.OthersInGroup(roomId).SendAsync("UserJoined", username, Context.ConnectionId);
             await Clients.Caller.SendAsync("roomusers", dictionary);
 
