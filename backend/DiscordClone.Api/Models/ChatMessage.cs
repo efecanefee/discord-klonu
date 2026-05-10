@@ -9,10 +9,6 @@ namespace DiscordClone.Api.Models
         public long Timestamp { get; set; }
         public bool IsDeleted { get; set; } = false;
 
-        public bool IsEdited { get; set; } = false;
-        public string? FileUrl { get; set; }
-        public string? FileType { get; set; }
-
         public string? UserId { get; set; }
         public User? User { get; set; }
     }

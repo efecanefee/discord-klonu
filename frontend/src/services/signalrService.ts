@@ -78,7 +78,7 @@ class SignalRService {
     public onUserLeft(callback: (username: string, connectionId: string) => void) {
         this.connection?.on('UserLeft', callback);
     }
-    public onReceiveMessage(callback: (username: string, message: string, serverId: number, timestamp: number, isEdited?: boolean, fileUrl?: string, fileType?: string) => void) {
+    public onReceiveMessage(callback: (username: string, message: string, serverId: number, timestamp: number) => void) {
         this.connection?.on('ReceiveMessage', callback);
     }
     public onReceiveSignal(callback: (senderConnectionId: string, signalData: string) => void) {
@@ -98,7 +98,7 @@ class SignalRService {
     public offUserLeft(callback: (username: string, connectionId: string) => void) {
         this.connection?.off('UserLeft', callback);
     }
-    public offReceiveMessage(callback: (username: string, message: string, serverId: number, timestamp: number, isEdited?: boolean, fileUrl?: string, fileType?: string) => void) {
+    public offReceiveMessage(callback: (username: string, message: string, serverId: number, timestamp: number) => void) {
         this.connection?.off('ReceiveMessage', callback);
     }
     public offReceiveSignal(callback: (senderConnectionId: string, signalData: string) => void) {
@@ -106,25 +106,19 @@ class SignalRService {
     }
 
     // Geçmiş mesajlar
-    public onRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileType?: string }[]) => void) {
+    public onRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number }[]) => void) {
         this.connection?.on('RoomHistory', callback);
     }
-    public offRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileType?: string }[]) => void) {
+    public offRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number }[]) => void) {
         this.connection?.off('RoomHistory', callback);
     }
 
-    // Mesaj silindi/düzenlendi
+    // Mesaj silindi
     public onMessageDeleted(callback: (messageId: number) => void) {
         this.connection?.on('MessageDeleted', callback);
     }
     public offMessageDeleted(callback: (messageId: number) => void) {
         this.connection?.off('MessageDeleted', callback);
-    }
-    public onMessageEdited(callback: (messageId: number, newText: string) => void) {
-        this.connection?.on('MessageEdited', callback);
-    }
-    public offMessageEdited(callback: (messageId: number, newText: string) => void) {
-        this.connection?.off('MessageEdited', callback);
     }
 
     // Gerçek DB ID ataması (broadcast-first yaklaşımı için)
@@ -136,9 +130,9 @@ class SignalRService {
     }
 
     // Senders
-    public async sendMessage(roomId: string, username: string, message: string, fileUrl?: string, fileType?: string) {
+    public async sendMessage(roomId: string, username: string, message: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
-            await this.connection.invoke('SendMessage', roomId, username, message, fileUrl, fileType);
+            await this.connection.invoke('SendMessage', roomId, username, message);
         } else {
             console.warn("Mesaj gönderilemedi, bağlantı koptu.");
         }
@@ -146,11 +140,6 @@ class SignalRService {
     public async deleteMessage(messageId: number) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             await this.connection.invoke('DeleteMessage', messageId);
-        }
-    }
-    public async editMessage(messageId: number, newText: string) {
-        if (this.connection.state === signalR.HubConnectionState.Connected) {
-            await this.connection.invoke('EditMessage', messageId, newText);
         }
     }
     public async sendSignalToUser(signalData: string, targetConnectionId: string) {

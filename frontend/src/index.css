@@ -17,11 +17,7 @@
 }
 
 body {
-  @apply bg-bg-base text-text-main font-sans m-0 p-0 antialiased overflow-hidden;
-}
-html, body, #root {
-  height: 100%;
-  width: 100%;
+  @apply bg-bg-base text-text-main font-sans m-0 p-0 antialiased;
 }
 
 /* Base custom styles to ensure consistent overrides */
