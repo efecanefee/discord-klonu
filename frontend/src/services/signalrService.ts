@@ -103,10 +103,10 @@ class SignalRService {
     }
 
     // Geçmiş mesajlar
-    public onRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number }[]) => void) {
+    public onRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => void) {
         this.connection?.on('RoomHistory', callback);
     }
-    public offRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number }[]) => void) {
+    public offRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => void) {
         this.connection?.off('RoomHistory', callback);
     }
 
@@ -126,6 +126,38 @@ class SignalRService {
         this.connection?.off('MessageIdAssigned', callback);
     }
 
+    // Mesaj düzenleme
+    public onMessageEdited(callback: (messageId: number, newText: string) => void) {
+        this.connection?.on('MessageEdited', callback);
+    }
+    public offMessageEdited(callback: (messageId: number, newText: string) => void) {
+        this.connection?.off('MessageEdited', callback);
+    }
+
+    // Dosya mesajı
+    public onReceiveFileMessage(callback: (username: string, fileUrl: string, fileName: string, serverId: number, timestamp: number) => void) {
+        this.connection?.on('ReceiveFileMessage', callback);
+    }
+    public offReceiveFileMessage(callback: (username: string, fileUrl: string, fileName: string, serverId: number, timestamp: number) => void) {
+        this.connection?.off('ReceiveFileMessage', callback);
+    }
+
+    // Mute durumu değişikliği
+    public onUserMuteChanged(callback: (username: string, connectionId: string, isMuted: boolean) => void) {
+        this.connection?.on('UserMuteChanged', callback);
+    }
+    public offUserMuteChanged(callback: (username: string, connectionId: string, isMuted: boolean) => void) {
+        this.connection?.off('UserMuteChanged', callback);
+    }
+
+    // Odadaki mute durumları (ilk bağlandığında)
+    public onRoomMuteStates(callback: (muteStates: Record<string, boolean>) => void) {
+        this.connection?.on('RoomMuteStates', callback);
+    }
+    public offRoomMuteStates(callback: (muteStates: Record<string, boolean>) => void) {
+        this.connection?.off('RoomMuteStates', callback);
+    }
+
     // Senders
     public async sendMessage(roomId: string, username: string, message: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
@@ -134,9 +166,24 @@ class SignalRService {
             console.warn("Mesaj gönderilemedi, bağlantı koptu.");
         }
     }
+    public async sendFileMessage(roomId: string, username: string, fileUrl: string, fileName: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('SendFileMessage', roomId, username, fileUrl, fileName);
+        }
+    }
+    public async editMessage(messageId: number, newText: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('EditMessage', messageId, newText);
+        }
+    }
     public async deleteMessage(messageId: number) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             await this.connection.invoke('DeleteMessage', messageId);
+        }
+    }
+    public async notifyMuteStatus(roomId: string, isMuted: boolean) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('NotifyMuteStatus', roomId, isMuted);
         }
     }
     public async sendSignalToUser(signalData: string, targetConnectionId: string) {

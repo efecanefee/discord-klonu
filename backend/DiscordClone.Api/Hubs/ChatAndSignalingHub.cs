@@ -14,6 +14,8 @@ namespace DiscordClone.Api.Hubs
         private static int _activeUserCount = 0;
         private static readonly ConcurrentDictionary<string, string> _userConnections = new();
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _roomUsers = new();
+        // Mute durumu: connectionId -> isMuted
+        private static readonly ConcurrentDictionary<string, bool> _muteStatus = new();
 
         private readonly AppDbContext _db;
 
@@ -33,6 +35,8 @@ namespace DiscordClone.Api.Hubs
         {
             var count = Interlocked.Decrement(ref _activeUserCount);
             await Clients.All.SendAsync("ActiveUserCountUpdated", count);
+
+            _muteStatus.TryRemove(Context.ConnectionId, out _);
 
             if (_userConnections.TryRemove(Context.ConnectionId, out var roomId))
             {
@@ -63,11 +67,20 @@ namespace DiscordClone.Api.Hubs
 
             var dictionary = usersInRoom.ToDictionary(k => k.Key, v => v.Value);
 
+            // Mute durumlarını da gönder
+            var muteStates = usersInRoom.Keys.ToDictionary(
+                connId => connId,
+                connId => _muteStatus.TryGetValue(connId, out var m) && m
+            );
+
             // Odadaki herkese güncel kullanıcı listesini gönder
             await Clients.Group(roomId).SendAsync("RoomUsers", dictionary);
             
             await Clients.OthersInGroup(roomId).SendAsync("UserJoined", username, Context.ConnectionId);
             await Clients.Caller.SendAsync("RoomUsers", dictionary);
+
+            // Mute durumlarını caller'a gönder
+            await Clients.Caller.SendAsync("RoomMuteStates", muteStates);
 
             // Son 100 mesajı gönder
             var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
@@ -75,7 +88,7 @@ namespace DiscordClone.Api.Hubs
                 .Where(m => m.RoomId == roomId && m.Timestamp >= oneWeekAgo && !m.IsDeleted)
                 .OrderBy(m => m.Timestamp)
                 .Take(100)
-                .Select(m => new { m.Id, m.Username, m.Text, m.Timestamp })
+                .Select(m => new { m.Id, m.Username, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName })
                 .ToListAsync();
 
             await Clients.Caller.SendAsync("RoomHistory", history);
@@ -92,6 +105,8 @@ namespace DiscordClone.Api.Hubs
                 if (_roomUsers.TryGetValue(roomId, out var usersInRoom))
                     usersInRoom.TryRemove(Context.ConnectionId, out _);
             }
+
+            _muteStatus.TryRemove(Context.ConnectionId, out _);
 
             await Clients.Group(roomId).SendAsync("UserLeft", username, Context.ConnectionId);
         }
@@ -123,6 +138,56 @@ namespace DiscordClone.Api.Hubs
                 await Clients.Group(roomId).SendAsync("MessageIdAssigned", timestamp, msg.Id);
         }
 
+        // Dosya/resim mesajı gönder
+        public async Task SendFileMessage(string roomId, string requestedUsername, string fileUrl, string fileName)
+        {
+            var userId = Context.UserIdentifier;
+            var username = Context.User?.Identity?.Name ?? requestedUsername;
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            // Önce yayınla
+            await Clients.Group(roomId).SendAsync("ReceiveFileMessage", username, fileUrl, fileName, 0L, timestamp);
+
+            // DB'ye kaydet
+            var msg = new ChatMessage
+            {
+                RoomId = roomId,
+                UserId = userId,
+                Username = username,
+                Text = $"[Dosya: {fileName}]",
+                FileUrl = fileUrl,
+                FileName = fileName,
+                Timestamp = timestamp
+            };
+            _db.Messages.Add(msg);
+            await _db.SaveChangesAsync();
+
+            if (msg.Id > 0)
+                await Clients.Group(roomId).SendAsync("MessageIdAssigned", timestamp, msg.Id);
+        }
+
+        // Mesaj düzenleme
+        public async Task EditMessage(long messageId, string newText)
+        {
+            var msg = await _db.Messages.FindAsync(messageId);
+            if (msg == null) return;
+
+            var userId = Context.UserIdentifier;
+            
+            // Sadece mesajı yazan düzenleyebilir
+            if (msg.UserId != userId && msg.Username != Context.User?.Identity?.Name) 
+                return;
+
+            msg.Text = newText;
+            msg.IsEdited = true;
+            await _db.SaveChangesAsync();
+
+            if (_userConnections.TryGetValue(Context.ConnectionId, out var roomId))
+            {
+                await Clients.Group(roomId).SendAsync("MessageEdited", messageId, newText);
+            }
+        }
+
         public async Task DeleteMessage(long messageId)
         {
             var msg = await _db.Messages.FindAsync(messageId);
@@ -143,6 +208,15 @@ namespace DiscordClone.Api.Hubs
             }
         }
 
+        // Mute durumu bildir
+        public async Task NotifyMuteStatus(string roomId, bool isMuted)
+        {
+            var username = Context.User?.Identity?.Name ?? "";
+            _muteStatus[Context.ConnectionId] = isMuted;
+
+            await Clients.OthersInGroup(roomId).SendAsync("UserMuteChanged", username, Context.ConnectionId, isMuted);
+        }
+
         public async Task SendSignal(string signalData, string roomId)
         {
             await Clients.GroupExcept(roomId, Context.ConnectionId)
@@ -156,4 +230,5 @@ namespace DiscordClone.Api.Hubs
         }
     }
 }
+
 

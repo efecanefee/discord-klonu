@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Send, Users, LogOut, Mic, MicOff, VolumeX, Volume1, Volume2, Camera, CameraOff, Monitor, MonitorOff, Settings, Search, X, Code } from 'lucide-react';
+import { Send, Users, LogOut, Mic, MicOff, VolumeX, Volume1, Volume2, Camera, CameraOff, Monitor, MonitorOff, Settings, Search, X, Code, Smile, Paperclip, Pencil, FileText } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
+import EmojiPicker from './EmojiPicker';
 
 interface ChatRoomProps {
     username: string;
@@ -20,6 +21,9 @@ interface Message {
     type: 'message' | 'system';
     pending?: boolean;
     timestamp: number;
+    isEdited?: boolean;
+    fileUrl?: string;
+    fileName?: string;
 }
 
 type UserStatus = 'online' | 'away' | 'busy' | 'music';
@@ -110,6 +114,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const messageIdCounter = useRef(0);
+    // Emoji picker
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    // Mesaj düzenleme
+    const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+    const [editText, setEditText] = useState('');
+    // Dosya yükleme
+    const [isDragging, setIsDragging] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    // Diğer kullanıcıların mute durumu
+    const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
     const {
         remoteStreams, isMuted, toggleMute, isReady,
@@ -209,7 +225,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             setUsersInRoom(Object.entries(usersDict).map(([connId, uName]) => ({ connectionId: connId, username: uName })));
         };
 
-        const handleRoomHistory = (history: { id: number; username: string; text: string; timestamp: number }[]) => {
+        const handleRoomHistory = (history: { id: number; username: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => {
             if (!isMounted) return;
             setMessages(history.map(m => ({
                 id: m.id,
@@ -218,12 +234,55 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                 text: m.text,
                 type: 'message' as const,
                 timestamp: m.timestamp,
+                isEdited: m.isEdited,
+                fileUrl: m.fileUrl ?? undefined,
+                fileName: m.fileName ?? undefined,
             })));
         };
 
         const handleMessageDeleted = (messageId: number) => {
             if (!isMounted) return;
             setMessages(prev => prev.filter(m => m.serverId !== messageId));
+        };
+
+        const handleMessageEdited = (messageId: number, newText: string) => {
+            if (!isMounted) return;
+            setMessages(prev => prev.map(m =>
+                m.serverId === messageId ? { ...m, text: newText, isEdited: true } : m
+            ));
+        };
+
+        const handleReceiveFileMessage = (u: string, fileUrl: string, fileName: string, serverId: number, timestamp: number) => {
+            if (!isMounted) return;
+            if (u === username) {
+                setMessages(prev => prev.map(msg =>
+                    msg.pending && msg.username === username && msg.fileUrl === fileUrl
+                        ? { ...msg, serverId: serverId || undefined, timestamp, pending: false }
+                        : msg
+                ));
+                return;
+            }
+            playReceiveSound();
+            setMessages(prev => [...prev, {
+                id: timestamp,
+                serverId: serverId || undefined,
+                username: u,
+                text: `[Dosya: ${fileName}]`,
+                type: 'message',
+                timestamp,
+                fileUrl,
+                fileName,
+            }]);
+        };
+
+        const handleUserMuteChanged = (_u: string, connectionId: string, muted: boolean) => {
+            if (!isMounted) return;
+            setMutedUsers(prev => ({ ...prev, [connectionId]: muted }));
+        };
+
+        const handleRoomMuteStates = (muteStates: Record<string, boolean>) => {
+            if (!isMounted) return;
+            setMutedUsers(muteStates);
         };
 
         // signalrService.onTyping?.(handleTyping);
@@ -235,6 +294,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         signalrService.onRoomUsers(handleRoomUsers);
         signalrService.onRoomHistory(handleRoomHistory);
         signalrService.onMessageDeleted(handleMessageDeleted);
+        signalrService.onMessageEdited(handleMessageEdited);
+        signalrService.onReceiveFileMessage(handleReceiveFileMessage);
+        signalrService.onUserMuteChanged(handleUserMuteChanged);
+        signalrService.onRoomMuteStates(handleRoomMuteStates);
 
         signalrService.startConnection(roomId, username);
 
@@ -248,6 +311,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             signalrService.offRoomUsers(handleRoomUsers);
             signalrService.offRoomHistory(handleRoomHistory);
             signalrService.offMessageDeleted(handleMessageDeleted);
+            signalrService.offMessageEdited(handleMessageEdited);
+            signalrService.offReceiveFileMessage(handleReceiveFileMessage);
+            signalrService.offUserMuteChanged(handleUserMuteChanged);
+            signalrService.offRoomMuteStates(handleRoomMuteStates);
         };
     }, [roomId, username, isReady, playJoinSound, playLeaveSound, playReceiveSound]);
 
@@ -357,6 +424,107 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: false } : m));
         }, 500);
     };
+
+    // Dosya yükleme
+    const handleFileUpload = useCallback(async (file: File) => {
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Dosya boyutu 10MB\'ı geçemez.');
+            return;
+        }
+        setIsUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch(`${API_BASE_URL}/api/upload`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                body: formData,
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+
+            // Optimistic
+            const tempId = ++messageIdCounter.current;
+            const isImage = /\.(jpeg|jpg|gif|png|webp)$/i.test(file.name);
+            setMessages(prev => [...prev, {
+                id: tempId,
+                username,
+                text: isImage ? '' : `[Dosya: ${file.name}]`,
+                type: 'message',
+                pending: true,
+                timestamp: Date.now(),
+                fileUrl: data.url,
+                fileName: file.name,
+            }]);
+            playSendSound();
+
+            // Backend'e gönder
+            signalrService.sendFileMessage(roomId, username, data.url, file.name);
+            setTimeout(() => {
+                setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: false } : m));
+            }, 500);
+        } catch (err) {
+            console.error('Dosya yükleme hatası:', err);
+            alert('Dosya yüklenemedi.');
+        }
+        setIsUploading(false);
+    }, [roomId, username, playSendSound, API_BASE_URL]);
+
+    // Drag & drop
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    }, []);
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    }, []);
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) handleFileUpload(files[0]);
+    }, [handleFileUpload]);
+    const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) handleFileUpload(file);
+        e.target.value = '';
+    }, [handleFileUpload]);
+
+    // Mesaj düzenleme
+    const handleStartEdit = useCallback((msg: Message) => {
+        if (msg.serverId) {
+            setEditingMessageId(msg.serverId);
+            setEditText(msg.text);
+        }
+    }, []);
+    const handleSaveEdit = useCallback(() => {
+        if (editingMessageId && editText.trim()) {
+            signalrService.editMessage(editingMessageId, editText.trim());
+            setMessages(prev => prev.map(m =>
+                m.serverId === editingMessageId ? { ...m, text: editText.trim(), isEdited: true } : m
+            ));
+        }
+        setEditingMessageId(null);
+        setEditText('');
+    }, [editingMessageId, editText]);
+    const handleCancelEdit = useCallback(() => {
+        setEditingMessageId(null);
+        setEditText('');
+    }, []);
+
+    // Emoji seçimi
+    const handleEmojiSelect = useCallback((emoji: string) => {
+        setMessageInput(prev => prev + emoji);
+    }, []);
+
+    // Mute değişince diğerlerine bildir
+    const handleToggleMute = useCallback(() => {
+        const newMuted = !isMuted;
+        toggleMute();
+        if (newMuted) playMuteSound(); else playUnmuteSound();
+        signalrService.notifyMuteStatus(roomId, newMuted);
+    }, [isMuted, toggleMute, playMuteSound, playUnmuteSound, roomId]);
 
     const hasRemoteVideo = Array.from(remoteStreams.values()).some(s => s.getVideoTracks().length > 0);
     const isMediaActive = isCameraOn || isScreenSharing || hasRemoteVideo;
@@ -484,7 +652,23 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     };
 
     return (
-        <div className="relative flex flex-col h-screen overflow-hidden bg-bg-base font-sans selection:bg-primary-main/30 selection:text-text-main">
+        <div 
+            className="relative flex flex-col h-screen overflow-hidden bg-bg-base font-sans selection:bg-primary-main/30 selection:text-text-main"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+        >
+            {isDragging && (
+                <div className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center border-4 border-dashed border-primary-main/50 m-4 rounded-3xl pointer-events-none">
+                    <div className="flex flex-col items-center gap-4 text-white">
+                        <div className="w-20 h-20 bg-primary-main/20 rounded-full flex items-center justify-center">
+                            <FileText size={40} className="text-primary-main animate-bounce" />
+                        </div>
+                        <h2 className="text-3xl font-bold">Dosyaları Buraya Bırak</h2>
+                        <p className="text-white/70">10MB'a kadar resim veya belge yükleyebilirsin</p>
+                    </div>
+                </div>
+            )}
             {/* Audio streams */}
             {Array.from(remoteStreams.entries()).map(([connId, stream], idx) => {
                 const userObj = usersInRoom.find(u => u.connectionId === connId);
@@ -582,7 +766,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                         </button>
 
                         {/* Mikrofon */}
-                        <button onClick={() => { isMuted ? playUnmuteSound() : playMuteSound(); toggleMute(); }}
+                        <button onClick={handleToggleMute}
                             className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer transition-colors ${isMuted ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-bg-base border-border-main text-text-main hover:text-primary-main'}`}>
                             {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
                         </button>
@@ -680,17 +864,19 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                     <div className="px-2 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap"
                                                                         style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', color: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
                                                                         {new Date(msg.timestamp).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                                        {msg.isEdited && ' (Düzenlendi)'}
                                                                         {msg.pending && ' · gönderiliyor...'}
                                                                     </div>
                                                                 </div>
                                                                 {isMine && msg.serverId && !msg.pending && (
-                                                                    <button
-                                                                        onClick={() => signalrService.deleteMessage(msg.serverId!)}
-                                                                        className="absolute -top-2 -left-6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 w-5 h-5 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer z-20"
-                                                                        title="Mesajı sil"
-                                                                    >
-                                                                        <X size={10} className="text-white" />
-                                                                    </button>
+                                                                    <div className="absolute -top-3 -left-10 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 flex gap-1 z-20">
+                                                                        <button onClick={() => handleStartEdit(msg)} className="w-6 h-6 rounded-full bg-blue-500/80 hover:bg-blue-500 flex items-center justify-center cursor-pointer" title="Düzenle">
+                                                                            <Pencil size={11} className="text-white" />
+                                                                        </button>
+                                                                        <button onClick={() => signalrService.deleteMessage(msg.serverId!)} className="w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer" title="Sil">
+                                                                            <X size={11} className="text-white" />
+                                                                        </button>
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </div>
@@ -713,15 +899,27 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                     <div ref={messagesEndRef} className="h-1" />
                                 </div>
                             </div>
-                            <div className="p-2 border-t border-border-main">
-                                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                                    <input type="text" value={messageInput} onChange={handleInputChange} placeholder="Mesaj yaz..."
-                                        className="flex-1 bg-bg-surface border border-border-main rounded-xl px-3 py-2 text-[13px] text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
-                                    <button type="submit" disabled={!messageInput.trim()}
-                                        className="p-2.5 rounded-xl bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer">
-                                        <Send size={14} />
-                                    </button>
+                            <div className="p-2 border-t border-border-main relative">
+                                <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
+                                    {editingMessageId && (
+                                        <div className="flex items-center justify-between bg-bg-surface px-3 py-1.5 rounded-lg border border-primary-main/30 text-xs">
+                                            <span className="text-primary-main flex items-center gap-1.5"><Pencil size={12} /> Mesajı düzenliyorsun</span>
+                                            <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main"><X size={12} /></button>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-1">
+                                        <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-2 text-text-muted hover:text-text-main cursor-pointer"><Smile size={16} /></button>
+                                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-text-muted hover:text-text-main cursor-pointer"><Paperclip size={16} /></button>
+                                        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
+                                        <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)} placeholder={isUploading ? "Yükleniyor..." : "Mesaj yaz..."} disabled={isUploading}
+                                            className="flex-1 bg-bg-surface border border-border-main rounded-xl px-2 py-2 text-[13px] text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
+                                        <button type="button" onClick={editingMessageId ? handleSaveEdit : handleSendMessage} disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
+                                            className="p-2.5 rounded-xl bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer ml-1">
+                                            {editingMessageId ? <Pencil size={14} /> : <Send size={14} />}
+                                        </button>
+                                    </div>
                                 </form>
+                                <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
                             </div>
                         </motion.div>
                     </div>
@@ -871,8 +1069,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                 <div className={`absolute -bottom-1 -right-1 w-3 h-3 ${STATUS_COLORS[u.username === username ? myStatus : 'online']} rounded-full border-[2.5px] border-bg-card z-20`} />
                                                             </div>
                                                             <div>
-                                                                <span className="font-semibold text-[14px] text-text-main truncate max-w-[110px] block">
+                                                                <span className="font-semibold text-[14px] text-text-main truncate max-w-[110px] flex items-center gap-1">
                                                                     {u.username} {u.username === username && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
+                                                                    {mutedUsers[u.connectionId] && <span title="Mikrofonu kapalı" className="flex items-center justify-center"><MicOff size={12} className="text-red-500 flex-shrink-0" /></span>}
                                                                 </span>
                                                                 <span className="text-[11px] text-text-muted">{u.username === username ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}</span>
                                                             </div>
@@ -896,17 +1095,36 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                         </div>
 
                         {/* Mesaj input */}
-                        <motion.div variants={itemVariants}>
-                            <form onSubmit={handleSendMessage}
-                                className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200">
-                                <input type="text" value={messageInput} onChange={handleInputChange}
-                                    placeholder="Sohbete mesajını yaz..."
-                                    className="w-full bg-transparent px-5 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
-                                <button type="submit" disabled={!messageInput.trim()}
+                        <motion.div variants={itemVariants} className="relative">
+                            {editingMessageId && (
+                                <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
+                                    <span className="text-primary-main flex items-center gap-2 font-medium"><Pencil size={14} /> Mesajı düzenliyorsun</span>
+                                    <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
+                                </div>
+                            )}
+                            <form onSubmit={editingMessageId ? handleSaveEdit : handleSendMessage}
+                                className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
+                                
+                                <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
+                                    <Smile size={20} />
+                                </button>
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
+                                    <Paperclip size={20} />
+                                </button>
+                                
+                                <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
+                                    placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
+                                    className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
+                                
+                                <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
                                     className="flex items-center justify-center px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer">
-                                    <Send size={18} className="mr-2" /><span className="hidden sm:inline">Gönder</span>
+                                    {editingMessageId ? <Pencil size={18} className="mr-0 sm:mr-2" /> : <Send size={18} className="mr-0 sm:mr-2" />}
+                                    <span className="hidden sm:inline">{editingMessageId ? 'Kaydet' : 'Gönder'}</span>
                                 </button>
                             </form>
+                            <div className="absolute bottom-full mb-2 left-0 z-50">
+                                <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                            </div>
                         </motion.div>
                     </>
                 )}

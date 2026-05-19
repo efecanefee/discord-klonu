@@ -11,5 +11,12 @@ namespace DiscordClone.Api.Models
 
         public string? UserId { get; set; }
         public User? User { get; set; }
+
+        // Mesaj düzenleme
+        public bool IsEdited { get; set; } = false;
+
+        // Dosya/resim ekleri
+        public string? FileUrl { get; set; }
+        public string? FileName { get; set; }
     }
 }

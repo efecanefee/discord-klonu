@@ -147,6 +147,11 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX ""IX_users_email"" ON users (email);"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX ""IX_users_username"" ON users (username);"); } catch { }
 
+        // 5. Yeni kolonlar — mesaj düzenleme ve dosya ekleri (Varsa atlar)
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN is_edited boolean NOT NULL DEFAULT false;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_url text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_name text;"); } catch { }
+
     }
     catch (Exception ex)
     {
@@ -163,6 +168,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseRouting();
 app.UseCors("AllowFrontend");
+app.UseStaticFiles(); // uploads klasörü için
 
 app.UseAuthentication(); // Kimlik Doğrulamayı etkinleştir
 app.UseAuthorization();  // Yetkilendirmeyi etkinleştir

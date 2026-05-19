@@ -29,6 +29,12 @@ namespace DiscordClone.Api.Data
                 .Property(m => m.IsDeleted).HasColumnName("is_deleted");
             modelBuilder.Entity<ChatMessage>()
                 .Property(m => m.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.IsEdited).HasColumnName("is_edited");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.FileUrl).HasColumnName("file_url");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.FileName).HasColumnName("file_name");
 
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(m => m.User)
