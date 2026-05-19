@@ -29,6 +29,7 @@ export function useWebRTC() {
     const [selectedOutputId, setSelectedOutputId] = useState<string>('');
 
     const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
+    const iceCandidateQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
     const streamRef = useRef<MediaStream | null>(null);
     const videoStreamRef = useRef<MediaStream | null>(null);
     const screenStreamRef = useRef<MediaStream | null>(null);
@@ -103,7 +104,7 @@ export function useWebRTC() {
                     pc.removeTrack(sender);
                     // Renegotiation — karşı taraf stream'i temizlesin
                     try {
-                        const offer = await pc.createOffer();
+                        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                         await pc.setLocalDescription(offer);
                         signalrService.sendSignalToUser(
                             JSON.stringify({ type: 'offer', sdp: offer }),
@@ -143,7 +144,7 @@ export function useWebRTC() {
                         }
                     }
                     try {
-                        const offer = await pc.createOffer();
+                        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                         await pc.setLocalDescription(offer);
                         signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
                     } catch (e) {
@@ -172,7 +173,7 @@ export function useWebRTC() {
                     pc.removeTrack(sender);
                     // Renegotiation — karşı taraf stream'i temizlesin
                     try {
-                        const offer = await pc.createOffer();
+                        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                         await pc.setLocalDescription(offer);
                         signalrService.sendSignalToUser(
                             JSON.stringify({ type: 'offer', sdp: offer }),
@@ -223,7 +224,7 @@ export function useWebRTC() {
                         }
                     }
                     try {
-                        const offer = await pc.createOffer();
+                        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                         await pc.setLocalDescription(offer);
                         signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
                     } catch (e) {
@@ -241,6 +242,7 @@ export function useWebRTC() {
 
         const createPeerConnection = (targetConnectionId: string) => {
             const pc = new RTCPeerConnection(STUN_SERVERS);
+            iceCandidateQueues.current.set(targetConnectionId, []);
 
             // Audio track ekle
             if (streamRef.current) {
@@ -340,7 +342,7 @@ export function useWebRTC() {
                 const pc = createPeerConnection(connectionId);
                 peerConnections.current.set(connectionId, pc);
                 try {
-                    const offer = await pc.createOffer();
+                    const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                     await pc.setLocalDescription(offer);
                     signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connectionId);
                 } catch (e) {
@@ -351,6 +353,7 @@ export function useWebRTC() {
             const handleUserLeft = (_: string, connectionId: string) => {
                 peerConnections.current.get(connectionId)?.close();
                 peerConnections.current.delete(connectionId);
+                iceCandidateQueues.current.delete(connectionId);
                 
                 const analyserData = analyserRefs.current.get(connectionId);
                 if (analyserData) {
@@ -380,13 +383,32 @@ export function useWebRTC() {
                 try {
                     if (signalData.type === 'offer') {
                         await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
+                        
+                        const queue = iceCandidateQueues.current.get(senderConnectionId);
+                        if (queue && queue.length > 0) {
+                            for (const candidate of queue) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                            iceCandidateQueues.current.set(senderConnectionId, []);
+                        }
+
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
                         signalrService.sendSignalToUser(JSON.stringify({ type: 'answer', sdp: answer }), senderConnectionId);
                     } else if (signalData.type === 'answer') {
                         await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
+
+                        const queue = iceCandidateQueues.current.get(senderConnectionId);
+                        if (queue && queue.length > 0) {
+                            for (const candidate of queue) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                            iceCandidateQueues.current.set(senderConnectionId, []);
+                        }
                     } else if (signalData.type === 'ice') {
-                        await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+                        if (pc.remoteDescription) {
+                            await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+                        } else {
+                            const queue = iceCandidateQueues.current.get(senderConnectionId) || [];
+                            queue.push(signalData.candidate);
+                            iceCandidateQueues.current.set(senderConnectionId, queue);
+                        }
                     } else if (signalData.type === 'screen-stopped' || signalData.type === 'camera-stopped') {
                         // Karşı tarafın ekran/kamera paylaşımı durdu, stream'den video track'leri temizle
                         setRemoteStreams(prev => {

@@ -67,7 +67,7 @@ class SignalRService {
 
     // ON Listeners
     public onRoomUsers(callback: (usersDict: Record<string, string>) => void) {
-        this.connection.on('roomusers', callback);
+        this.connection.on('RoomUsers', callback);
     }
     public onActiveUserCountUpdated(callback: (count: number) => void) {
         this.connection.on('ActiveUserCountUpdated', callback);
@@ -87,7 +87,7 @@ class SignalRService {
 
     // OFF Listeners (To prevent multiple event fire bugs in React StrictMode/re-renders)
     public offRoomUsers(callback: (usersDict: Record<string, string>) => void) {
-        this.connection.off('roomusers', callback);
+        this.connection.off('RoomUsers', callback);
     }
     public offActiveUserCountUpdated(callback: (count: number) => void) {
         this.connection.off('ActiveUserCountUpdated', callback);

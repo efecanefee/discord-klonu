@@ -67,7 +67,7 @@ namespace DiscordClone.Api.Hubs
             await Clients.Group(roomId).SendAsync("RoomUsers", dictionary);
             
             await Clients.OthersInGroup(roomId).SendAsync("UserJoined", username, Context.ConnectionId);
-            await Clients.Caller.SendAsync("roomusers", dictionary);
+            await Clients.Caller.SendAsync("RoomUsers", dictionary);
 
             // Son 100 mesajı gönder
             var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
