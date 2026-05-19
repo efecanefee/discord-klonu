@@ -76,7 +76,9 @@ const RemoteVideoPlayer: React.FC<{ stream: MediaStream; label: string }> = ({ s
     return (
         <div className="relative rounded-xl overflow-hidden border border-border-main bg-black">
             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain" />
-            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm">{label}</div>
+            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm flex items-center gap-1.5">
+                {label}
+            </div>
         </div>
     );
 };
@@ -800,12 +802,24 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                     {isCameraOn && !isScreenSharing && (
                                         <div className="relative rounded-xl overflow-hidden border border-border-main bg-black">
                                             <video ref={localVideoRef} autoPlay muted className="w-full h-full object-contain" />
-                                            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg">{username} (Sen)</div>
+                                            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg flex items-center gap-1.5 backdrop-blur-sm">
+                                                {username} (Sen)
+                                                {isMuted && <span title="Mikrofonun kapalı"><MicOff size={12} className="text-red-500" /></span>}
+                                            </div>
                                         </div>
                                     )}
                                     {Array.from(remoteStreams.entries()).map(([connId, stream]) => {
                                         const uName = usersInRoom.find(u => u.connectionId === connId)?.username ?? 'Bilinmeyen';
-                                        return <RemoteVideoPlayer key={connId} stream={stream} label={uName} />;
+                                        return (
+                                            <div key={connId} className="relative">
+                                                <RemoteVideoPlayer stream={stream} label={uName} />
+                                                {mutedUsers[connId] && (
+                                                    <div className="absolute bottom-2 right-2 px-1.5 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm" title="Mikrofonu kapalı">
+                                                        <MicOff size={14} className="text-red-500" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
                                     })}
                                 </div>
                                 {isCameraOn && isScreenSharing && (
@@ -1070,14 +1084,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                             </div>
                                                             <div>
                                                                 <span className="font-semibold text-[14px] text-text-main truncate max-w-[110px] flex items-center gap-1">
-                                                                    {u.username} {u.username === username && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
-                                                                    {(u.username === username ? isMuted : mutedUsers[u.connectionId]) && (
+                                                                    {u.username} {u.connectionId === signalrService.connectionId && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
+                                                                    {(u.connectionId === signalrService.connectionId ? isMuted : mutedUsers[u.connectionId]) && (
                                                                         <span title="Mikrofonu kapalı" className="flex items-center justify-center">
                                                                             <MicOff size={12} className="text-red-500 flex-shrink-0" />
                                                                         </span>
                                                                     )}
                                                                 </span>
-                                                                <span className="text-[11px] text-text-muted">{u.username === username ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}</span>
+                                                                <span className="text-[11px] text-text-muted">{u.connectionId === signalrService.connectionId ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}</span>
                                                             </div>
                                                         </div>
                                                     </div>
