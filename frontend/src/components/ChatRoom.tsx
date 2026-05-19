@@ -1071,7 +1071,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                             <div>
                                                                 <span className="font-semibold text-[14px] text-text-main truncate max-w-[110px] flex items-center gap-1">
                                                                     {u.username} {u.username === username && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
-                                                                    {mutedUsers[u.connectionId] && <span title="Mikrofonu kapalı" className="flex items-center justify-center"><MicOff size={12} className="text-red-500 flex-shrink-0" /></span>}
+                                                                    {(u.username === username ? isMuted : mutedUsers[u.connectionId]) && (
+                                                                        <span title="Mikrofonu kapalı" className="flex items-center justify-center">
+                                                                            <MicOff size={12} className="text-red-500 flex-shrink-0" />
+                                                                        </span>
+                                                                    )}
                                                                 </span>
                                                                 <span className="text-[11px] text-text-muted">{u.username === username ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}</span>
                                                             </div>
@@ -1111,6 +1115,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
                                     <Paperclip size={20} />
                                 </button>
+                                <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
                                 
                                 <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
                                     placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
