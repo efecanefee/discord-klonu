@@ -165,15 +165,15 @@ function App() {
   };
 
   const rooms = [
-    { id: 'Ana Salon', label: 'Ana Salon', sub: 'Sohbet Odası', icon: Users, color: '#6C7BFF', glow: 'rgba(108,123,255,0.3)' },
+    { id: 'Ana Salon', label: 'Ana Salon', sub: 'Sohbet Odası', icon: Users, color: '#7C3AED', glow: 'rgba(124,58,237,0.3)' },
     { id: 'Müzik Odası', label: 'Müzik Odası', sub: 'Dinleme Odası', icon: Music, color: '#10b981', glow: 'rgba(16,185,129,0.3)' },
   ];
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-gradient-to-br from-[#0f0c29] via-[#1a1744] to-[#24243e]">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-[#0F172A]">
 
       {/* Bokeh / Soft Light Beams */}
-      <Orb className="w-[600px] h-[600px] bg-[#6C7BFF] blur-[150px] opacity-40 -top-32 -left-32 animate-[pulse_8s_ease-in-out_infinite]" />
+      <Orb className="w-[600px] h-[600px] bg-[#7C3AED] blur-[150px] opacity-40 -top-32 -left-32 animate-[pulse_8s_ease-in-out_infinite]" />
       <Orb className="w-[500px] h-[500px] bg-[#8B5CF6] blur-[140px] opacity-40 top-1/2 -right-48 animate-[pulse_10s_ease-in-out_infinite_2s]" />
       <Orb className="w-[450px] h-[450px] bg-[#3B82F6] blur-[160px] opacity-30 bottom-[-100px] left-1/4 animate-[pulse_12s_ease-in-out_infinite_4s]" />
 
@@ -197,11 +197,11 @@ function App() {
         <motion.div variants={itemVariants} className="text-center mb-10">
           <div className="relative mb-5 group cursor-pointer inline-block">
             <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl"
-              style={{ background: 'radial-gradient(circle, rgba(108,123,255,0.4) 0%, transparent 70%)' }} />
+              style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.4) 0%, transparent 70%)' }} />
             <div className="relative w-24 h-24 rounded-3xl overflow-hidden transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-1"
               style={{
-                boxShadow: '0 8px 32px rgba(108,123,255,0.3), 0 0 0 1px rgba(255,255,255,0.08)',
-                filter: 'drop-shadow(0 0 20px rgba(108,123,255,0.3))',
+                boxShadow: '0 8px 32px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.08)',
+                filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.3))',
               }}>
               <img src="/logo.png" alt="SandalyeciMetin" className="w-full h-full object-cover transition-all duration-500 group-hover:brightness-110" />
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
@@ -210,7 +210,7 @@ function App() {
             <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105" />
           </div>
           <h1 className="text-[28px] font-bold text-white mb-2 tracking-tight"
-            style={{ textShadow: '0 0 40px rgba(108,123,255,0.4)' }}>
+            style={{ textShadow: '0 0 40px rgba(124,58,237,0.4)' }}>
             SandalyeciMetin
           </h1>
           <p className="text-[14px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
@@ -242,8 +242,8 @@ function App() {
                     placeholder="Kullanıcı Adı"
                     className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                     style={{
-                      background: focused === 'username' ? 'rgba(108,123,255,0.08)' : 'rgba(255,255,255,0.04)',
-                      border: focused === 'username' ? '1px solid rgba(108,123,255,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                      background: focused === 'username' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
+                      border: focused === 'username' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
                     }}
                   />
                 </div>
@@ -260,8 +260,8 @@ function App() {
                   placeholder="E-posta Adresi"
                   className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                   style={{
-                    background: focused === 'email' ? 'rgba(108,123,255,0.08)' : 'rgba(255,255,255,0.04)',
-                    border: focused === 'email' ? '1px solid rgba(108,123,255,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                    background: focused === 'email' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
+                    border: focused === 'email' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
                   }}
                 />
               </div>
@@ -277,8 +277,8 @@ function App() {
                   placeholder="Şifre"
                   className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                   style={{
-                    background: focused === 'password' ? 'rgba(108,123,255,0.08)' : 'rgba(255,255,255,0.04)',
-                    border: focused === 'password' ? '1px solid rgba(108,123,255,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                    background: focused === 'password' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
+                    border: focused === 'password' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
                   }}
                 />
               </div>
@@ -289,7 +289,7 @@ function App() {
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.97 }}
                 className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, #6C7BFF 0%, #8B5CF6 50%, #7C3AED 100%)', boxShadow: '0 8px 32px rgba(108,123,255,0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)', boxShadow: '0 8px 32px rgba(124,58,237,0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                 <span className="relative flex items-center justify-center gap-2">
                   <Sparkles size={16} />
                   {isLoading ? 'Bekleniyor...' : (authState === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
@@ -302,7 +302,7 @@ function App() {
                 </span>
                 <button type="button" onClick={() => { setAuthState(authState === 'login' ? 'register' : 'login'); setErrorMsg(''); }}
                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
-                  style={{ color: 'rgba(108,123,255,0.8)' }}>
+                  style={{ color: 'rgba(124,58,237,0.8)' }}>
                   {authState === 'login' ? 'Kayıt Ol' : 'Giriş Yap'}
                 </button>
               </div>
@@ -336,7 +336,7 @@ function App() {
                   whileTap={{ scale: 0.98 }}
                   className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative overflow-hidden"
                   style={{
-                    background: hoveredRoom === room.id ? `rgba(${room.id === 'Ana Salon' ? '108,123,255' : '16,185,129'},0.08)` : 'rgba(255,255,255,0.03)',
+                    background: hoveredRoom === room.id ? `rgba(${room.id === 'Ana Salon' ? '124,58,237' : '16,185,129'},0.08)` : 'rgba(255,255,255,0.03)',
                     border: hoveredRoom === room.id ? `1px solid ${room.color}40` : '1px solid rgba(255,255,255,0.06)',
                     boxShadow: hoveredRoom === room.id ? `0 8px 32px ${room.glow}` : 'none',
                   }}>
@@ -379,7 +379,7 @@ function App() {
                 <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Yeni bir oda mı açmak istiyorsun? </span>
                 <button onClick={handleCustomRoom}
                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
-                  style={{ color: 'rgba(108,123,255,0.8)' }}>
+                  style={{ color: 'rgba(124,58,237,0.8)' }}>
                   Tıkla
                 </button>
               </div>
@@ -393,7 +393,7 @@ function App() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
         className="absolute bottom-8 flex items-center gap-2">
         <div className="w-4 h-4 rounded-sm"
-          style={{ background: 'linear-gradient(135deg, rgba(108,123,255,0.6), rgba(139,92,246,0.6))' }} />
+          style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.6), rgba(139,92,246,0.6))' }} />
         <span className="text-[11px] font-bold tracking-[0.25em] uppercase"
           style={{ color: 'rgba(255,255,255,0.2)' }}>SandalyeciMetin</span>
       </motion.div>
@@ -402,7 +402,7 @@ function App() {
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
         className="fixed bottom-5 right-5 flex flex-col gap-3 z-50">
         <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer" 
-           className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(108,123,255,0.6)] backdrop-blur-md transition-all duration-300">
+           className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] backdrop-blur-md transition-all duration-300">
           <Github size={20} />
         </a>
         <a href="https://www.linkedin.com/in/efecanefee/" target="_blank" rel="noopener noreferrer" 
@@ -419,3 +419,4 @@ function App() {
 }
 
 export default App;
+

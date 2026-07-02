@@ -941,7 +941,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                             <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
                                                             <div className="relative group/msg">
-                                                                <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                                <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
                                                                     <div className="whitespace-pre-wrap break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
                                                                 </div>
                                                                 <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
@@ -998,7 +998,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                         <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)} placeholder={isUploading ? "Yükleniyor..." : "Mesaj yaz..."} disabled={isUploading}
                                             className="flex-1 bg-bg-surface border border-border-main rounded-xl px-2 py-2 text-[13px] text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
                                         <button type="button" onClick={editingMessageId ? handleSaveEdit : handleSendMessage} disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
-                                            className="p-2.5 rounded-xl bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer ml-1">
+                                            className="p-2.5 rounded-xl bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer ml-1">
                                             {editingMessageId ? <Pencil size={14} /> : <Send size={14} />}
                                         </button>
                                     </div>
@@ -1056,7 +1056,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                     {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}
                                                                 </span>
                                                                 <div className="relative group/msg">
-                                                                    <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                                    <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
                                                                         <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
                                                                     </div>
                                                                     {/* Zaman damgası tooltip */}
@@ -1206,7 +1206,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                     className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
                                 
                                 <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
-                                    className="flex items-center justify-center px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer">
+                                    className="flex items-center justify-center px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer">
                                     {editingMessageId ? <Pencil size={18} className="mr-0 sm:mr-2" /> : <Send size={18} className="mr-0 sm:mr-2" />}
                                     <span className="hidden sm:inline">{editingMessageId ? 'Kaydet' : 'Gönder'}</span>
                                 </button>
@@ -1223,3 +1223,4 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
 };
 
 export default ChatRoom;
+
