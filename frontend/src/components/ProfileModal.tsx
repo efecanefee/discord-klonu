@@ -136,14 +136,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   <button
                     key={avatar.id}
                     onClick={() => setAvatarId(avatar.id)}
-                    className={`relative p-2 rounded-xl flex flex-col items-center gap-2 transition-all ${
+                    className={`relative rounded-xl flex items-center justify-center transition-all overflow-hidden aspect-square ${
                       avatarId === avatar.id
-                        ? 'bg-[#7C3AED]/20 border border-[#7C3AED] shadow-[0_0_15px_rgba(124,58,237,0.3)]'
-                        : 'bg-white/5 border border-transparent hover:bg-white/10'
+                        ? 'border-2 border-[#7C3AED] shadow-[0_0_20px_rgba(124,58,237,0.5)] scale-[1.02] z-10'
+                        : 'border-2 border-transparent hover:border-[#7C3AED]/50 hover:scale-[1.02]'
                     }`}
                   >
-                    <img src={avatar.url} alt={avatar.name} className="w-12 h-12 rounded-full" />
-                    <span className="text-[10px] text-white/70">{avatar.name}</span>
+                    <img src={avatar.url} alt={avatar.id} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
