@@ -159,8 +159,6 @@ namespace DiscordClone.Api.Hubs
                 Text = message,
                 Timestamp = timestamp
             };
-                Timestamp = timestamp
-            };
             _db.Messages.Add(msg);
             await _db.SaveChangesAsync();
 
