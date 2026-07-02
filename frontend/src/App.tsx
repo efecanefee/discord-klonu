@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import ChatRoom from './components/ChatRoom';
-import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User } from 'lucide-react';
+import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
@@ -170,12 +170,12 @@ function App() {
   ];
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans"
-      style={{ background: 'radial-gradient(ellipse at 20% 50%, #0d0a1e 0%, #080b18 40%, #050810 100%)' }}>
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-gradient-to-br from-[#0f0c29] via-[#1a1744] to-[#24243e]">
 
-      <Orb className="w-[600px] h-[600px] bg-violet-600 -top-32 -left-32 animate-[pulse_8s_ease-in-out_infinite]" />
-      <Orb className="w-[500px] h-[500px] bg-blue-700 top-1/2 -right-48 animate-[pulse_10s_ease-in-out_infinite_2s]" />
-      <Orb className="w-[400px] h-[400px] bg-indigo-800 bottom-0 left-1/3 animate-[pulse_12s_ease-in-out_infinite_4s]" />
+      {/* Bokeh / Soft Light Beams */}
+      <Orb className="w-[600px] h-[600px] bg-[#6C7BFF] blur-[150px] opacity-40 -top-32 -left-32 animate-[pulse_8s_ease-in-out_infinite]" />
+      <Orb className="w-[500px] h-[500px] bg-[#8B5CF6] blur-[140px] opacity-40 top-1/2 -right-48 animate-[pulse_10s_ease-in-out_infinite_2s]" />
+      <Orb className="w-[450px] h-[450px] bg-[#3B82F6] blur-[160px] opacity-30 bottom-[-100px] left-1/4 animate-[pulse_12s_ease-in-out_infinite_4s]" />
 
       <div className="absolute inset-0 opacity-[0.03]"
         style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
@@ -396,6 +396,23 @@ function App() {
           style={{ background: 'linear-gradient(135deg, rgba(108,123,255,0.6), rgba(139,92,246,0.6))' }} />
         <span className="text-[11px] font-bold tracking-[0.25em] uppercase"
           style={{ color: 'rgba(255,255,255,0.2)' }}>SandalyeciMetin</span>
+      </motion.div>
+
+      {/* Sabit Sosyal Medya İkonları */}
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
+        className="fixed bottom-5 right-5 flex flex-col gap-3 z-50">
+        <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer" 
+           className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(108,123,255,0.6)] backdrop-blur-md transition-all duration-300">
+          <Github size={20} />
+        </a>
+        <a href="https://www.linkedin.com/in/efecanefee/" target="_blank" rel="noopener noreferrer" 
+           className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-[#0a66c2]/50 hover:shadow-[0_0_15px_rgba(10,102,194,0.6)] backdrop-blur-md transition-all duration-300">
+          <Linkedin size={20} />
+        </a>
+        <a href="https://www.instagram.com/efecan.efeee/" target="_blank" rel="noopener noreferrer" 
+           className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-[#e1306c]/50 hover:shadow-[0_0_15px_rgba(225,48,108,0.6)] backdrop-blur-md transition-all duration-300">
+          <Instagram size={20} />
+        </a>
       </motion.div>
     </div>
   );
