@@ -122,19 +122,21 @@ using (var scope = app.Services.CreateScope())
     try
     {
         // Önceden oluşturulmuş DB varsa bu komut hiçbir şey yapmaz
-        await db.Database.EnsureCreatedAsync();
+        try { await db.Database.EnsureCreatedAsync(); } catch { }
 
         // 1. Users tablosunu oluştur
-        await db.Database.ExecuteSqlRawAsync(@"
-            CREATE TABLE IF NOT EXISTS users (
-                id text NOT NULL,
-                username text NOT NULL,
-                email text NOT NULL,
-                password_hash text NOT NULL,
-                created_at timestamp with time zone NOT NULL,
-                CONSTRAINT ""PK_users"" PRIMARY KEY (id)
-            );
-        ");
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS users (
+                    id text NOT NULL,
+                    username text NOT NULL,
+                    email text NOT NULL,
+                    password_hash text NOT NULL,
+                    created_at timestamp with time zone NOT NULL,
+                    CONSTRAINT ""PK_users"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
 
         // Profile fields for Users
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN first_name text DEFAULT '';"); } catch { }
