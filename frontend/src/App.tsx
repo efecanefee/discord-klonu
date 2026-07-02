@@ -285,7 +285,7 @@ function App() {
             </div>
             <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105" />
           </div>
-          <h1 className="text-[28px] font-bold text-white mb-2 tracking-tight"
+          <h1 className="text-[28px] font-[700] text-white mb-2 tracking-tight"
             style={{ textShadow: '0 0 40px rgba(124,58,237,0.4)' }}>
             SandalyeciMetin
           </h1>
@@ -470,8 +470,8 @@ function App() {
         className="absolute bottom-8 flex items-center gap-2">
         <div className="w-4 h-4 rounded-sm"
           style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.6), rgba(139,92,246,0.6))' }} />
-        <span className="text-[11px] font-bold tracking-[0.25em] uppercase"
-          style={{ color: 'rgba(255,255,255,0.2)' }}>SandalyeciMetin</span>
+        <span className="text-[11px] font-[500] tracking-[0.2em] uppercase"
+          style={{ color: 'rgba(255,255,255,0.2)' }}>SANDALYECIMETIN</span>
       </motion.div>
 
       {/* Sabit Sosyal Medya İkonları */}
