@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, User, UserCircle } from 'lucide-react';
-import { AVATARS, getAvatarUrl } from '../constants/avatars';
+import { AVATARS, getAvatarEmoji } from '../constants/avatars';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -157,13 +157,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   <button
                     key={avatar.id}
                     onClick={() => setAvatarId(avatar.id)}
-                    className={`relative rounded-xl flex items-center justify-center transition-all overflow-hidden aspect-square ${
+                    className={`relative rounded-xl flex items-center justify-center transition-all overflow-hidden aspect-square text-4xl bg-[#1E293B] ${
                       avatarId === avatar.id
                         ? 'border-2 border-[#7C3AED] shadow-[0_0_20px_rgba(124,58,237,0.5)] scale-[1.02] z-10'
                         : 'border-2 border-transparent hover:border-[#7C3AED]/50 hover:scale-[1.02]'
                     }`}
                   >
-                    <img src={avatar.url} alt={avatar.id} className="w-full h-full object-cover" />
+                    {avatar.emoji}
                   </button>
                 ))}
               </div>
@@ -189,16 +189,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     Merhaba, bu yeni profilim!
                   </div>
                 </div>
-                <div className="w-8 h-8 rounded-full border border-[#7C3AED] overflow-hidden bg-[#1E293B] shrink-0">
-                  <img src={getAvatarUrl(avatarId)} alt="preview" className="w-full h-full object-cover" />
+                <div className="w-8 h-8 rounded-full border border-[#7C3AED] overflow-hidden bg-[#1E293B] shrink-0 flex items-center justify-center text-sm">
+                  {getAvatarEmoji(avatarId)}
                 </div>
               </div>
             </div>
 
             {/* Aktif Kullanıcı Listesi Önizlemesi */}
             <div className="w-full bg-[#1E293B]/50 border border-[#334155] rounded-xl p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border-2 border-[#7C3AED] overflow-hidden shrink-0">
-                 <img src={getAvatarUrl(avatarId)} alt="preview" className="w-full h-full object-cover" />
+              <div className="w-10 h-10 rounded-full border-2 border-[#7C3AED] overflow-hidden shrink-0 flex items-center justify-center text-xl bg-[#1E293B]">
+                 {getAvatarEmoji(avatarId)}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-semibold text-white truncate w-full">

@@ -6,7 +6,7 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
-import { getAvatarUrl } from '../constants/avatars';
+import { getAvatarEmoji } from '../constants/avatars';
 
 interface ChatRoomProps {
     username: string;
@@ -942,8 +942,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 <motion.div initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} key={msg.id}
                                                     className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                     <div className={`flex max-w-[90%] gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                        <div className="w-7 h-7 mt-0.5 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_8px_rgba(124,58,237,0.2)] overflow-hidden">
-                                                            <img src={getAvatarUrl(msg.avatarId || (isMine ? avatarId : 'default'))} alt="Avatar" className="w-full h-full object-cover" />
+                                                        <div className="w-7 h-7 mt-0.5 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_8px_rgba(124,58,237,0.2)] overflow-hidden text-sm">
+                                                            {getAvatarEmoji(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                         </div>
                                                         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                             <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
@@ -1055,8 +1055,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                     <motion.div initial={{ opacity: 0, scale: 0.98, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.2 }} key={msg.id}
                                                         className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`flex max-w-[85%] sm:max-w-[75%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                            <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.2)] overflow-hidden">
-                                                                <img src={getAvatarUrl(msg.avatarId || (isMine ? avatarId : 'default'))} alt="Avatar" className="w-full h-full object-cover" />
+                                                            <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.2)] overflow-hidden text-xl">
+                                                                {getAvatarEmoji(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                             </div>
                                                             <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                                 <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
@@ -1154,8 +1154,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         </>
                                                                     )}
                                                                 </AnimatePresence>
-                                                                <div className={`relative z-10 w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-150 ${isSpeaking ? 'border-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]' : 'border-[#7C3AED]'}`}>
-                                                                    <img src={getAvatarUrl(u.avatarId || 'default')} alt="Avatar" className="w-full h-full object-cover" />
+                                                                <div className={`relative z-10 w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-150 text-xl ${isSpeaking ? 'border-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]' : 'border-[#7C3AED]'}`}>
+                                                                    {getAvatarEmoji(u.avatarId || 'default')}
                                                                 </div>
                                                                 <div className={`absolute -bottom-1 -right-1 w-3 h-3 ${STATUS_COLORS[u.username === username ? myStatus : 'online']} rounded-full border-[2.5px] border-bg-card z-20`} />
                                                             </div>

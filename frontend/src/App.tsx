@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ChatRoom from './components/ChatRoom';
 import ProfileModal from './components/ProfileModal';
-import { getAvatarUrl } from './constants/avatars';
+import { getAvatarEmoji } from './constants/avatars';
 import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -235,8 +235,8 @@ function App() {
             onClick={() => setIsProfileModalOpen(true)}
             className="flex items-center gap-3 p-2 pr-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#7C3AED]/50 transition-all group backdrop-blur-md"
           >
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B]">
-              <img src={getAvatarUrl(avatarId)} alt="Avatar" className="w-full h-full object-cover" />
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B] flex items-center justify-center text-xl">
+              {getAvatarEmoji(avatarId)}
             </div>
             <div className="flex flex-col items-start">
               <span className="text-sm font-bold text-white group-hover:text-[#7C3AED] transition-colors">{username}</span>
