@@ -174,7 +174,14 @@ namespace DiscordClone.Api.Controllers
             user.LastName = request.LastName;
             user.AvatarId = request.AvatarId;
 
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"DB Error: {ex.Message} | Inner: {ex.InnerException?.Message}");
+            }
 
             // Yeni JWT üret (Username değiştiği için claimlerin güncellenmesi gerekir)
             var tokenHandler = new JwtSecurityTokenHandler();
