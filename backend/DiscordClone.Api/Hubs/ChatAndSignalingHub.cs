@@ -54,15 +54,35 @@ namespace DiscordClone.Api.Hubs
 
         public static int GetActiveUserCount() => _activeUserCount;
 
+        public static object GetUsersInRoom(string roomId)
+        {
+            if (_roomUsers.TryGetValue(roomId, out var usersInRoom))
+            {
+                return usersInRoom.Values.Distinct().Select(u => new { username = u }).ToList();
+            }
+            return new List<object>();
+        }
+
         public async Task JoinRoom(string roomId, string requestedUsername)
         {
             // Kullanıcı adını JWT token'ından al
             var username = Context.User?.Identity?.Name ?? requestedUsername;
 
+            var usersInRoom = _roomUsers.GetOrAdd(roomId, _ => new ConcurrentDictionary<string, string>());
+
+            // Çift giriş engelleme: Aynı username zaten odadaysa eski bağlantıyı düşür
+            var existingConnection = usersInRoom.FirstOrDefault(x => x.Value == username).Key;
+            if (existingConnection != null && existingConnection != Context.ConnectionId)
+            {
+                await Clients.Client(existingConnection).SendAsync("ForceDisconnect", "Hesabınıza başka bir cihaz veya sekmeden giriş yapıldı.");
+                await Groups.RemoveFromGroupAsync(existingConnection, roomId);
+                usersInRoom.TryRemove(existingConnection, out _);
+                _userConnections.TryRemove(existingConnection, out _);
+            }
+
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
             _userConnections[Context.ConnectionId] = roomId;
 
-            var usersInRoom = _roomUsers.GetOrAdd(roomId, _ => new ConcurrentDictionary<string, string>());
             usersInRoom[Context.ConnectionId] = username;
 
             var dictionary = usersInRoom.ToDictionary(k => k.Key, v => v.Value);
@@ -214,7 +234,7 @@ namespace DiscordClone.Api.Hubs
             var username = Context.User?.Identity?.Name ?? "";
             _muteStatus[Context.ConnectionId] = isMuted;
 
-            await Clients.OthersInGroup(roomId).SendAsync("UserMuteChanged", username, Context.ConnectionId, isMuted);
+            await Clients.Group(roomId).SendAsync("UserMuteChanged", username, Context.ConnectionId, isMuted);
         }
 
         public async Task SendSignal(string signalData, string roomId)

@@ -127,10 +127,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     // Diğer kullanıcıların mute durumu
     const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
+    const [isTalking, setIsTalking] = useState(false);
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
     const {
-        remoteStreams, isMuted, toggleMute, isReady,
+        localStream, remoteStreams, isMuted, toggleMute, isReady,
         localVideoStream, screenStream,
         isCameraOn, isScreenSharing,
         toggleCamera, toggleScreenShare,
@@ -277,8 +278,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             }]);
         };
 
-        const handleUserMuteChanged = (_u: string, connectionId: string, muted: boolean) => {
+        const handleUserMuteChanged = (uName: string, connectionId: string, muted: boolean) => {
             if (!isMounted) return;
+            console.log(`[WebRTC] UserMuteChanged alındı: ${uName} (${connectionId}) -> ${muted ? 'Muted' : 'Unmuted'}`);
             setMutedUsers(prev => ({ ...prev, [connectionId]: muted }));
         };
 
@@ -288,6 +290,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         };
 
         // signalrService.onTyping?.(handleTyping);
+
+        const handleForceDisconnect = (message: string) => {
+            alert(message);
+            onLeave();
+            window.location.reload();
+        };
+        signalrService.onForceDisconnect(handleForceDisconnect);
 
         signalrService.onUserJoined(handleUserJoined);
         signalrService.onUserLeft(handleUserLeft);
@@ -306,6 +315,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         return () => {
             isMounted = false;
             signalrService.leaveRoom(roomId, username);
+            signalrService.offForceDisconnect(handleForceDisconnect);
             signalrService.offUserJoined(handleUserJoined);
             signalrService.offUserLeft(handleUserLeft);
             signalrService.offReceiveMessage(handleReceiveMessage);
@@ -324,6 +334,63 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
     useEffect(() => {
         if (localVideoRef.current && localVideoStream) localVideoRef.current.srcObject = localVideoStream;
     }, [localVideoStream]);
+
+    // Mikrofon görselleştirme
+    useEffect(() => {
+        if (!localStream || isMuted) {
+            setIsTalking(false);
+            return;
+        }
+        let animationId: number;
+        try {
+            const audioCtx = new window.AudioContext();
+            const source = audioCtx.createMediaStreamSource(localStream);
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            const checkAudioLevel = () => {
+                analyser.getByteFrequencyData(dataArray);
+                const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+                setIsTalking(avg > 10);
+                animationId = requestAnimationFrame(checkAudioLevel);
+            };
+            checkAudioLevel();
+        } catch (err) {
+            console.error('[WebRTC] Analyser hatası:', err);
+        }
+        return () => { if (animationId) cancelAnimationFrame(animationId); };
+    }, [localStream, isMuted]);
+
+    // Mesaj kopyalama
+    const handleCopyMessage = async (text: string, e: React.MouseEvent) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            const target = e.currentTarget as HTMLElement;
+            target.classList.add('ring-2', 'ring-green-500', 'bg-green-500/10');
+            setTimeout(() => {
+                target.classList.remove('ring-2', 'ring-green-500', 'bg-green-500/10');
+            }, 2000);
+        } catch (err) {}
+    };
+
+    // Ses testi
+    const handleAudioTest = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const testAudio = new Audio();
+            testAudio.srcObject = stream;
+            testAudio.play();
+            alert("Ses testi başladı. 5 saniye boyunca kendi sesinizi duyacaksınız.");
+            setTimeout(() => {
+                stream.getTracks().forEach(t => t.stop());
+                alert("Ses testi bitti.");
+            }, 5000);
+        } catch(err) {
+            alert("Mikrofona erişilemedi.");
+        }
+    };
 
     // Sayfa görünürlüğü + tab title + bildirim izni
     useEffect(() => {
@@ -708,7 +775,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                         {/* Kullanıcı adı + durum */}
                         <div className="relative">
                             <button onClick={() => setShowStatusMenu(p => !p)}
-                                className="hidden sm:flex items-center gap-2 px-3 py-2 bg-bg-base rounded-xl border border-border-main cursor-pointer hover:border-primary-main/40 transition-colors">
+                                className={`hidden sm:flex items-center gap-2 px-3 py-2 bg-bg-base rounded-xl border cursor-pointer transition-all duration-300 ${isTalking ? 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)] scale-105' : 'border-border-main hover:border-primary-main/40'}`}>
                                 <div className={`w-2 h-2 rounded-full ${STATUS_COLORS[myStatus]} shadow-[0_0_6px_rgba(16,185,129,0.5)]`} />
                                 <span className="text-sm text-text-main font-medium">{username}</span>
                             </button>
@@ -749,6 +816,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                             </select>
                                         </div>
                                     )}
+                                    <button onClick={handleAudioTest} className="w-full py-2 bg-primary-main/20 text-primary-main hover:bg-primary-main/30 rounded-xl text-xs font-semibold transition-colors cursor-pointer mb-2">
+                                        Sesimi Test Et
+                                    </button>
                                     <button onClick={() => setShowDeviceMenu(false)}
                                         className="w-full py-2 text-xs text-text-muted hover:text-text-main transition-colors cursor-pointer">Kapat</button>
                                 </div>
@@ -872,7 +942,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                             <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
                                                             <div className="relative group/msg">
                                                                 <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
-                                                                    <div className="whitespace-pre-wrap break-words">{renderMessageText(msg.text)}</div>
+                                                                    <div className="whitespace-pre-wrap break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
                                                                 </div>
                                                                 <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
                                                                     <div className="px-2 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap"
@@ -987,7 +1057,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                 </span>
                                                                 <div className="relative group/msg">
                                                                     <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#6C7BFF,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
-                                                                        <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words">{renderMessageText(msg.text)}</div>
+                                                                        <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
                                                                     </div>
                                                                     {/* Zaman damgası tooltip */}
                                                                     <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
