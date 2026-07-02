@@ -29,6 +29,19 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [debouncedUsername, setDebouncedUsername] = useState(currentUsername);
+  const [debouncedFirstName, setDebouncedFirstName] = useState(currentFirstName);
+  const [debouncedLastName, setDebouncedLastName] = useState(currentLastName);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedUsername(username);
+      setDebouncedFirstName(firstName);
+      setDebouncedLastName(lastName);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [username, firstName, lastName]);
+
   useEffect(() => {
     if (isOpen) {
       setUsername(currentUsername);
@@ -42,6 +55,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const handleSave = async () => {
     if (!username.trim()) {
       setError('Kullanıcı adı boş olamaz.');
+      return;
+    }
+    if (username.includes(' ')) {
+      setError('Kullanıcı adı boşluk içeremez.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
+      setError('Kullanıcı adı sadece harf, rakam, nokta, tire ve alt çizgi içerebilir.');
       return;
     }
     setIsLoading(true);
@@ -162,7 +183,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
               <div className="flex gap-3 items-end justify-end mb-2">
                 <div className="flex flex-col items-end max-w-[85%]">
                   <span className="text-[11px] font-medium text-white/40 mb-1 max-w-full truncate">
-                    {firstName || lastName ? `${firstName} ${lastName}`.trim() : username}
+                    {debouncedFirstName || debouncedLastName ? `${debouncedFirstName} ${debouncedLastName}`.trim() : debouncedUsername}
                   </span>
                   <div className="px-4 py-2.5 rounded-2xl shadow-sm text-[13px] bg-gradient-to-br from-[#7C3AED] to-[#8B5CF6] text-white rounded-tr-sm">
                     Merhaba, bu yeni profilim!
@@ -181,7 +202,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-semibold text-white truncate w-full">
-                  {username || 'kullanici_adi'}
+                  {debouncedUsername || 'kullanici_adi'}
                 </span>
                 <span className="text-[10px] text-white/40 truncate w-full">
                   Sohbet Odasında
