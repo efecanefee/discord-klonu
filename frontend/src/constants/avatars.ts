@@ -1,16 +1,16 @@
 export const AVATARS = [
-  { id: 'default', url: '/avatars/default.png' },
-  { id: 'admin', url: '/avatars/admin.png' },
-  { id: 'robot', url: '/avatars/robot.png' },
-  { id: 'rider', url: '/avatars/rider.png' },
-  { id: 'cowboy', url: '/avatars/cowboy.png' },
-  { id: 'gangsta', url: '/avatars/gangsta.png' },
-  { id: 'cyberpunk', url: '/avatars/cyberpunk.png' },
-  { id: 'racer', url: '/avatars/racer.png' },
-  { id: 'footballer', url: '/avatars/footballer.png' }
+  { id: 'default', emoji: '👤' },
+  { id: 'admin', emoji: '👔' },
+  { id: 'robot', emoji: '🤖' },
+  { id: 'rider', emoji: '🏍️' },
+  { id: 'cowboy', emoji: '🤠' },
+  { id: 'gangsta', emoji: '😎' },
+  { id: 'cyberpunk', emoji: '👾' },
+  { id: 'racer', emoji: '🏎️' },
+  { id: 'footballer', emoji: '⚽' }
 ];
 
-export const getAvatarUrl = (id: string) => {
+export const getAvatarEmoji = (id: string) => {
   const avatar = AVATARS.find(a => a.id === id);
-  return avatar ? avatar.url : AVATARS[0].url;
+  return avatar ? avatar.emoji : AVATARS[0].emoji;
 };
