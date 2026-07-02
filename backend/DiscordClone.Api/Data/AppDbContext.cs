@@ -35,6 +35,8 @@ namespace DiscordClone.Api.Data
                 .Property(m => m.FileUrl).HasColumnName("file_url");
             modelBuilder.Entity<ChatMessage>()
                 .Property(m => m.FileName).HasColumnName("file_name");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.AvatarId).HasColumnName("avatar_id");
 
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(m => m.User)
@@ -55,6 +57,18 @@ namespace DiscordClone.Api.Data
                 .Property(u => u.PasswordHash).HasColumnName("password_hash");
             modelBuilder.Entity<User>()
                 .Property(u => u.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<User>()
+                .Property(u => u.FirstName).HasColumnName("first_name");
+            modelBuilder.Entity<User>()
+                .Property(u => u.LastName).HasColumnName("last_name");
+            modelBuilder.Entity<User>()
+                .Property(u => u.AvatarId).HasColumnName("avatar_id");
+            modelBuilder.Entity<User>()
+                .Property(u => u.IsVerified).HasColumnName("is_verified");
+            modelBuilder.Entity<User>()
+                .Property(u => u.VerificationToken).HasColumnName("verification_token");
+            modelBuilder.Entity<User>()
+                .Property(u => u.ResetPasswordToken).HasColumnName("reset_password_token");
 
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email).IsUnique();
