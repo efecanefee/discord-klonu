@@ -63,7 +63,7 @@ class SignalRService {
     }
 
     // ON Listeners
-    public onRoomUsers(callback: (usersDict: Record<string, string>) => void) {
+    public onRoomUsers(callback: (usersDict: Record<string, { username: string; avatarId: string }>) => void) {
         this.connection.on('RoomUsers', callback);
     }
     public onActiveUserCountUpdated(callback: (count: number) => void) {
@@ -75,7 +75,7 @@ class SignalRService {
     public onUserLeft(callback: (username: string, connectionId: string) => void) {
         this.connection?.on('UserLeft', callback);
     }
-    public onReceiveMessage(callback: (username: string, message: string, serverId: number, timestamp: number) => void) {
+    public onReceiveMessage(callback: (username: string, avatarId: string, message: string, serverId: number, timestamp: number) => void) {
         this.connection?.on('ReceiveMessage', callback);
     }
     public onReceiveSignal(callback: (senderConnectionId: string, signalData: string) => void) {
@@ -83,7 +83,7 @@ class SignalRService {
     }
 
     // OFF Listeners (To prevent multiple event fire bugs in React StrictMode/re-renders)
-    public offRoomUsers(callback: (usersDict: Record<string, string>) => void) {
+    public offRoomUsers(callback: (usersDict: Record<string, { username: string; avatarId: string }>) => void) {
         this.connection.off('RoomUsers', callback);
     }
     public offActiveUserCountUpdated(callback: (count: number) => void) {
@@ -95,7 +95,7 @@ class SignalRService {
     public offUserLeft(callback: (username: string, connectionId: string) => void) {
         this.connection?.off('UserLeft', callback);
     }
-    public offReceiveMessage(callback: (username: string, message: string, serverId: number, timestamp: number) => void) {
+    public offReceiveMessage(callback: (username: string, avatarId: string, message: string, serverId: number, timestamp: number) => void) {
         this.connection?.off('ReceiveMessage', callback);
     }
     public offReceiveSignal(callback: (senderConnectionId: string, signalData: string) => void) {
@@ -103,10 +103,10 @@ class SignalRService {
     }
 
     // Geçmiş mesajlar
-    public onRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => void) {
+    public onRoomHistory(callback: (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => void) {
         this.connection?.on('RoomHistory', callback);
     }
-    public offRoomHistory(callback: (history: { id: number; username: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => void) {
+    public offRoomHistory(callback: (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => void) {
         this.connection?.off('RoomHistory', callback);
     }
 

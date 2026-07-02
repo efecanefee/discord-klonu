@@ -136,8 +136,14 @@ using (var scope = app.Services.CreateScope())
             );
         ");
 
+        // Profile fields for Users
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN first_name text DEFAULT '';"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN last_name text DEFAULT '';"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN avatar_id text DEFAULT 'default';"); } catch { }
+
         // 2. user_id kolonunu ekle (Varsa hata verir, atlar)
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN user_id text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN avatar_id text DEFAULT 'default';"); } catch { }
 
         // 3. Yabancı anahtarı ekle (Varsa atlar)
         try { await db.Database.ExecuteSqlRawAsync(@"ALTER TABLE messages ADD CONSTRAINT ""FK_messages_users_user_id"" FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL;"); } catch { }

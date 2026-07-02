@@ -83,7 +83,10 @@ namespace DiscordClone.Api.Controllers
                     Subject = new ClaimsIdentity(new[]
                     {
                         new Claim(ClaimTypes.NameIdentifier, user.Id),
-                        new Claim(ClaimTypes.Name, user.Username)
+                        new Claim(ClaimTypes.Name, user.Username),
+                        new Claim("AvatarId", user.AvatarId ?? "default"),
+                        new Claim("FirstName", user.FirstName ?? ""),
+                        new Claim("LastName", user.LastName ?? "")
                     }),
                     Expires = DateTime.UtcNow.AddDays(7),
                     SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -93,7 +96,10 @@ namespace DiscordClone.Api.Controllers
 
                 return Ok(new { 
                     token = tokenHandler.WriteToken(token), 
-                    username = user.Username 
+                    username = user.Username,
+                    avatarId = user.AvatarId ?? "default",
+                    firstName = user.FirstName ?? "",
+                    lastName = user.LastName ?? ""
                 });
             }
             catch (Exception ex)
@@ -147,6 +153,57 @@ namespace DiscordClone.Api.Controllers
 
             return Ok(new { message = "Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz." });
         }
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto request)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return Unauthorized("Kullanıcı kimliği bulunamadı.");
+
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null) return NotFound("Kullanıcı bulunamadı.");
+
+            // Check if username is taken by another user
+            if (user.Username != request.Username && await _db.Users.AnyAsync(u => u.Username == request.Username))
+            {
+                return BadRequest("Bu kullanıcı adı zaten alınmış.");
+            }
+
+            user.Username = request.Username;
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
+            user.AvatarId = request.AvatarId;
+
+            await _db.SaveChangesAsync();
+
+            // Yeni JWT üret (Username değiştiği için claimlerin güncellenmesi gerekir)
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var jwtKey = _configuration["Jwt:Key"] ?? "VarsayilanCokGizliAnahtarDegistirilmeli123!";
+            var key = Encoding.ASCII.GetBytes(jwtKey);
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim("AvatarId", user.AvatarId ?? "default"),
+                    new Claim("FirstName", user.FirstName ?? ""),
+                    new Claim("LastName", user.LastName ?? "")
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+
+            return Ok(new { 
+                message = "Profil güncellendi.",
+                token = tokenHandler.WriteToken(token),
+                username = user.Username,
+                firstName = user.FirstName,
+                lastName = user.LastName,
+                avatarId = user.AvatarId
+            });
+        }
     }
 
     public class ForgotPasswordDto
@@ -159,5 +216,13 @@ namespace DiscordClone.Api.Controllers
         public string UserId { get; set; } = string.Empty;
         public string Token { get; set; } = string.Empty;
         public string NewPassword { get; set; } = string.Empty;
+    }
+
+    public class UpdateProfileDto
+    {
+        public string Username { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string AvatarId { get; set; } = "default";
     }
 }
