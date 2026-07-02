@@ -158,6 +158,14 @@ class SignalRService {
         this.connection?.off('RoomMuteStates', callback);
     }
 
+    // Çift Giriş - Force Disconnect
+    public onForceDisconnect(callback: (message: string) => void) {
+        this.connection?.on('ForceDisconnect', callback);
+    }
+    public offForceDisconnect(callback: (message: string) => void) {
+        this.connection?.off('ForceDisconnect', callback);
+    }
+
     // Senders
     public async sendMessage(roomId: string, username: string, message: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ChatRoom from './components/ChatRoom';
 import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -19,8 +19,33 @@ function App() {
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   const [focused, setFocused] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
+  const [roomUsers, setRoomUsers] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const hoverTimeoutRef = useRef<number | null>(null);
+
+  const handleRoomHover = (roomId: string) => {
+    setHoveredRoom(roomId);
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    
+    hoverTimeoutRef.current = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/users`);
+        if (res.ok) {
+           const users = await res.json();
+           setRoomUsers(users);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 400);
+  };
+
+  const handleRoomLeave = () => {
+    setHoveredRoom(null);
+    setRoomUsers([]);
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+  };
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
@@ -305,8 +330,8 @@ function App() {
                 <motion.button
                   key={room.id}
                   onClick={() => handleJoinRoom(room.id)}
-                  onHoverStart={() => setHoveredRoom(room.id)}
-                  onHoverEnd={() => setHoveredRoom(null)}
+                  onMouseEnter={() => handleRoomHover(room.id)}
+                  onMouseLeave={handleRoomLeave}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative overflow-hidden"
@@ -334,6 +359,13 @@ function App() {
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
                         <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{room.sub}</span>
                       </div>
+                      {hoveredRoom === room.id && roomUsers.length > 0 && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 text-xs flex flex-wrap gap-1">
+                           {roomUsers.map((u, i) => (
+                             <span key={i} className="bg-white/10 px-2 py-0.5 rounded text-white/80">{u.username}</span>
+                           ))}
+                        </motion.div>
+                      )}
                     </div>
                   </div>
 

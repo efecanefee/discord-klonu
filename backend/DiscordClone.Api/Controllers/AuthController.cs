@@ -33,17 +33,22 @@ namespace DiscordClone.Api.Controllers
                 if (await _db.Users.AnyAsync(u => u.Username == request.Username))
                     return BadRequest("Bu kullanıcı adı zaten alınmış.");
 
+                var token = Guid.NewGuid().ToString();
                 var user = new User
                 {
                     Username = request.Username,
                     Email = request.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                    IsVerified = false,
+                    VerificationToken = token
                 };
 
                 _db.Users.Add(user);
                 await _db.SaveChangesAsync();
 
-                return Ok(new { message = "Kayıt başarılı." });
+                Console.WriteLine($"\n[EMAIL MOCK] Lütfen e-postanızı doğrulayın. Doğrulama Linki: /api/auth/verify-email?userId={user.Id}&token={token}\n");
+
+                return Ok(new { message = "Kayıt başarılı. Lütfen e-posta adresinize gönderilen link ile hesabınızı doğrulayın." });
             }
             catch (Exception ex)
             {
@@ -65,6 +70,9 @@ namespace DiscordClone.Api.Controllers
 
                 if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                     return Unauthorized("Geçersiz e-posta veya şifre.");
+
+                if (!user.IsVerified)
+                    return Unauthorized("E-posta adresiniz henüz doğrulanmamış. Lütfen e-postanızı kontrol edin.");
 
                 var tokenHandler = new JwtSecurityTokenHandler();
                 var jwtKey = _configuration["Jwt:Key"] ?? "VarsayilanCokGizliAnahtarDegistirilmeli123!";
@@ -96,5 +104,60 @@ namespace DiscordClone.Api.Controllers
                 });
             }
         }
+
+        [HttpGet("verify-email")]
+        public async Task<IActionResult> VerifyEmail([FromQuery] string userId, [FromQuery] string token)
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null || user.VerificationToken != token)
+                return BadRequest("Geçersiz doğrulama linki.");
+
+            user.IsVerified = true;
+            user.VerificationToken = null;
+            await _db.SaveChangesAsync();
+
+            return Ok("E-posta başarıyla doğrulandı. Artık giriş yapabilirsiniz.");
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (user != null)
+            {
+                var token = Guid.NewGuid().ToString();
+                user.ResetPasswordToken = token;
+                await _db.SaveChangesAsync();
+
+                Console.WriteLine($"\n[EMAIL MOCK] Şifre sıfırlama talebi. Link: /api/auth/reset-password (POST) Body: {{ \"userId\": \"{user.Id}\", \"token\": \"{token}\", \"newPassword\": \"...\" }}\n");
+            }
+            return Ok(new { message = "Eğer e-posta sistemimizde kayıtlıysa, şifre sıfırlama bağlantısı gönderildi." });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+            if (user == null || user.ResetPasswordToken != request.Token)
+                return BadRequest("Geçersiz veya süresi dolmuş sıfırlama linki.");
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.ResetPasswordToken = null;
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz." });
+        }
+    }
+
+    public class ForgotPasswordDto
+    {
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ResetPasswordDto
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
     }
 }

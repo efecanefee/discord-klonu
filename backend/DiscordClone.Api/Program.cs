@@ -152,6 +152,11 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_url text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_name text;"); } catch { }
 
+        // 6. User için yeni kolonlar (Varsa atlar)
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN is_verified boolean NOT NULL DEFAULT false;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN verification_token text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN reset_password_token text;"); } catch { }
+
     }
     catch (Exception ex)
     {
@@ -177,6 +182,10 @@ app.MapControllers(); // /api/auth/* uç noktalarını eşle
 
 app.MapGet("/api/stats/active-users", () =>
     Results.Ok(new { count = ChatAndSignalingHub.GetActiveUserCount() }))
+   .RequireCors("AllowFrontend");
+
+app.MapGet("/api/rooms/{roomId}/users", (string roomId) =>
+    Results.Ok(ChatAndSignalingHub.GetUsersInRoom(roomId)))
    .RequireCors("AllowFrontend");
 
 app.MapHub<ChatAndSignalingHub>("/hub/chat");
