@@ -6,9 +6,11 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import { getAvatarUrl } from '../constants/avatars';
 
 interface ChatRoomProps {
     username: string;
+    avatarId?: string;
     roomId: string;
     onLeave: () => void;
 }
@@ -17,6 +19,7 @@ interface Message {
     id: number;
     serverId?: number;
     username: string;
+    avatarId?: string;
     text: string;
     type: 'message' | 'system';
     pending?: boolean;
@@ -91,9 +94,9 @@ const THEMES: { id: Theme; label: string }[] = [
     { id: 'oled', label: 'OLED' },
 ];
 
-const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
+const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roomId, onLeave }) => {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string }[]>([]);
+    const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string }[]>([]);
     const [messageInput, setMessageInput] = useState('');
     const [masterVolume, setMasterVolume] = useState(1.0);
     const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
@@ -192,7 +195,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             setTypingUsers(prev => { const n = new Set(prev); n.delete(u); return n; });
         };
 
-        const handleReceiveMessage = (u: string, m: string, serverId: number, timestamp: number) => {
+        const handleReceiveMessage = (u: string, senderAvatarId: string, m: string, serverId: number, timestamp: number) => {
             if (!isMounted) return;
             if (u === username) {
                 // Optimistic mesajın pending'ini kaldır, serverId'sini güncelle
@@ -208,6 +211,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                 id: timestamp, // serverId=0 gelirse timestamp'i geçici ID olarak kullan
                 serverId: serverId || undefined,
                 username: u,
+                avatarId: senderAvatarId,
                 text: m,
                 type: 'message',
                 timestamp,
@@ -223,17 +227,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             ));
         };
 
-        const handleRoomUsers = (usersDict: Record<string, string>) => {
+        const handleRoomUsers = (usersDict: Record<string, { username: string; avatarId: string }>) => {
             if (!isMounted) return;
-            setUsersInRoom(Object.entries(usersDict).map(([connId, uName]) => ({ connectionId: connId, username: uName })));
+            setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId })));
         };
 
-        const handleRoomHistory = (history: { id: number; username: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => {
+        const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => {
             if (!isMounted) return;
             setMessages(history.map(m => ({
                 id: m.id,
                 serverId: m.id,
                 username: m.username,
+                avatarId: m.avatarId,
                 text: m.text,
                 type: 'message' as const,
                 timestamp: m.timestamp,
@@ -475,6 +480,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
         setMessages(prev => [...prev, {
             id: tempId,
             username,
+            avatarId,
             text,
             type: 'message',
             pending: true,
@@ -518,6 +524,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
             setMessages(prev => [...prev, {
                 id: tempId,
                 username,
+                avatarId,
                 text: isImage ? '' : `[Dosya: ${file.name}]`,
                 type: 'message',
                 pending: true,
@@ -935,8 +942,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                 <motion.div initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} key={msg.id}
                                                     className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                     <div className={`flex max-w-[90%] gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                        <div className="w-7 h-7 mt-0.5 rounded-lg bg-bg-surface flex flex-shrink-0 items-center justify-center font-bold text-[11px] text-primary-main border border-border-main">
-                                                            {msg.username.charAt(0).toUpperCase()}
+                                                        <div className="w-7 h-7 mt-0.5 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_8px_rgba(124,58,237,0.2)] overflow-hidden">
+                                                            <img src={getAvatarUrl(msg.avatarId || (isMine ? avatarId : 'default'))} alt="Avatar" className="w-full h-full object-cover" />
                                                         </div>
                                                         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                             <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
@@ -1048,8 +1055,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                     <motion.div initial={{ opacity: 0, scale: 0.98, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.2 }} key={msg.id}
                                                         className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`flex max-w-[85%] sm:max-w-[75%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                            <div className="w-10 h-10 mt-1 rounded-[14px] bg-bg-surface flex flex-shrink-0 items-center justify-center font-bold text-[14px] text-primary-main border border-border-main shadow-sm">
-                                                                {msg.username.charAt(0).toUpperCase()}
+                                                            <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.2)] overflow-hidden">
+                                                                <img src={getAvatarUrl(msg.avatarId || (isMine ? avatarId : 'default'))} alt="Avatar" className="w-full h-full object-cover" />
                                                             </div>
                                                             <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                                 <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
@@ -1147,8 +1154,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, roomId, onLeave }) => {
                                                                         </>
                                                                     )}
                                                                 </AnimatePresence>
-                                                                <div className={`relative z-10 w-10 h-10 rounded-[12px] bg-bg-surface flex items-center justify-center font-semibold text-text-main border text-[14px] shadow-sm transition-all duration-150 ${isSpeaking ? 'border-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]' : 'border-border-main'}`}>
-                                                                    {u.username.charAt(0).toUpperCase()}
+                                                                <div className={`relative z-10 w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-150 ${isSpeaking ? 'border-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]' : 'border-[#7C3AED]'}`}>
+                                                                    <img src={getAvatarUrl(u.avatarId || 'default')} alt="Avatar" className="w-full h-full object-cover" />
                                                                 </div>
                                                                 <div className={`absolute -bottom-1 -right-1 w-3 h-3 ${STATUS_COLORS[u.username === username ? myStatus : 'online']} rounded-full border-[2.5px] border-bg-card z-20`} />
                                                             </div>

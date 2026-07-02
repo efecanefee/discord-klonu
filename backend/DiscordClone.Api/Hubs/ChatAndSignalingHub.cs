@@ -13,7 +13,7 @@ namespace DiscordClone.Api.Hubs
     {
         private static int _activeUserCount = 0;
         private static readonly ConcurrentDictionary<string, string> _userConnections = new();
-        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _roomUsers = new();
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, RoomUserDto>> _roomUsers = new();
         // Mute durumu: connectionId -> isMuted
         private static readonly ConcurrentDictionary<string, bool> _muteStatus = new();
 
@@ -58,20 +58,27 @@ namespace DiscordClone.Api.Hubs
         {
             if (_roomUsers.TryGetValue(roomId, out var usersInRoom))
             {
-                return usersInRoom.Values.Distinct().Select(u => new { username = u }).ToList();
+                return usersInRoom.Values.DistinctBy(u => u.Username).Select(u => new { username = u.Username, avatarId = u.AvatarId }).ToList();
             }
             return new List<object>();
+        }
+
+        public class RoomUserDto
+        {
+            public string Username { get; set; } = string.Empty;
+            public string AvatarId { get; set; } = "default";
         }
 
         public async Task JoinRoom(string roomId, string requestedUsername)
         {
             // Kullanıcı adını JWT token'ından al
             var username = Context.User?.Identity?.Name ?? requestedUsername;
+            var avatarId = Context.User?.FindFirst("AvatarId")?.Value ?? "default";
 
-            var usersInRoom = _roomUsers.GetOrAdd(roomId, _ => new ConcurrentDictionary<string, string>());
+            var usersInRoom = _roomUsers.GetOrAdd(roomId, _ => new ConcurrentDictionary<string, RoomUserDto>());
 
             // Çift giriş engelleme: Aynı username zaten odadaysa eski bağlantıyı düşür
-            var existingConnection = usersInRoom.FirstOrDefault(x => x.Value == username).Key;
+            var existingConnection = usersInRoom.FirstOrDefault(x => x.Value.Username == username).Key;
             if (existingConnection != null && existingConnection != Context.ConnectionId)
             {
                 await Clients.Client(existingConnection).SendAsync("ForceDisconnect", "Hesabınıza başka bir cihaz veya sekmeden giriş yapıldı.");
@@ -83,7 +90,7 @@ namespace DiscordClone.Api.Hubs
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
             _userConnections[Context.ConnectionId] = roomId;
 
-            usersInRoom[Context.ConnectionId] = username;
+            usersInRoom[Context.ConnectionId] = new RoomUserDto { Username = username, AvatarId = avatarId };
 
             var dictionary = usersInRoom.ToDictionary(k => k.Key, v => v.Value);
 
@@ -108,7 +115,7 @@ namespace DiscordClone.Api.Hubs
                 .Where(m => m.RoomId == roomId && m.Timestamp >= oneWeekAgo && !m.IsDeleted)
                 .OrderBy(m => m.Timestamp)
                 .Take(100)
-                .Select(m => new { m.Id, m.Username, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName })
+                .Select(m => new { m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName })
                 .ToListAsync();
 
             await Clients.Caller.SendAsync("RoomHistory", history);
@@ -135,11 +142,12 @@ namespace DiscordClone.Api.Hubs
         {
             var userId = Context.UserIdentifier; // JWT Token'dan (NameIdentifier)
             var username = Context.User?.Identity?.Name ?? requestedUsername;
+            var avatarId = Context.User?.FindFirst("AvatarId")?.Value ?? "default";
             
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             // Önce yayınla
-            await Clients.Group(roomId).SendAsync("ReceiveMessage", username, message, 0L, timestamp);
+            await Clients.Group(roomId).SendAsync("ReceiveMessage", username, avatarId, message, 0L, timestamp);
 
             // DB'ye kaydet
             var msg = new ChatMessage
@@ -147,7 +155,10 @@ namespace DiscordClone.Api.Hubs
                 RoomId = roomId,
                 UserId = userId,
                 Username = username,
+                AvatarId = avatarId,
                 Text = message,
+                Timestamp = timestamp
+            };
                 Timestamp = timestamp
             };
             _db.Messages.Add(msg);

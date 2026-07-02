@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ChatRoom from './components/ChatRoom';
+import ProfileModal from './components/ProfileModal';
+import { getAvatarUrl } from './constants/avatars';
 import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -15,6 +17,10 @@ function App() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [avatarId, setAvatarId] = useState('default');
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [roomId, setRoomId] = useState('');
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   const [focused, setFocused] = useState<string | null>(null);
@@ -53,8 +59,14 @@ function App() {
     // Check if token exists on load
     const token = localStorage.getItem('token');
     const savedUsername = localStorage.getItem('username');
+    const savedFirstName = localStorage.getItem('firstName') || '';
+    const savedLastName = localStorage.getItem('lastName') || '';
+    const savedAvatarId = localStorage.getItem('avatarId') || 'default';
     if (token && savedUsername) {
       setUsername(savedUsername);
+      setFirstName(savedFirstName);
+      setLastName(savedLastName);
+      setAvatarId(savedAvatarId);
       setAuthState('rooms');
       connectSignalR();
     }
@@ -93,7 +105,13 @@ function App() {
         const data = await res.json();
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', data.username);
+        localStorage.setItem('firstName', data.firstName || '');
+        localStorage.setItem('lastName', data.lastName || '');
+        localStorage.setItem('avatarId', data.avatarId || 'default');
         setUsername(data.username);
+        setFirstName(data.firstName || '');
+        setLastName(data.lastName || '');
+        setAvatarId(data.avatarId || 'default');
         setAuthState('rooms');
         connectSignalR();
       } else {
@@ -135,7 +153,13 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('firstName');
+    localStorage.removeItem('lastName');
+    localStorage.removeItem('avatarId');
     setUsername('');
+    setFirstName('');
+    setLastName('');
+    setAvatarId('default');
     setEmail('');
     setPassword('');
     setAuthState('login');
@@ -153,7 +177,31 @@ function App() {
     if (custom?.trim()) { setRoomId(custom.trim()); setInRoom(true); }
   };
 
-  if (inRoom) return <ChatRoom username={username} roomId={roomId} onLeave={() => { setInRoom(false); setRoomId(''); }} />;
+  const handleProfileSave = async (data: { username: string; firstName: string; lastName: string; avatarId: string }) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Profil güncellenemedi.');
+    }
+    const result = await res.json();
+    localStorage.setItem('token', result.token);
+    localStorage.setItem('username', result.username);
+    localStorage.setItem('firstName', result.firstName || '');
+    localStorage.setItem('lastName', result.lastName || '');
+    localStorage.setItem('avatarId', result.avatarId || 'default');
+    
+    setUsername(result.username);
+    setFirstName(result.firstName || '');
+    setLastName(result.lastName || '');
+    setAvatarId(result.avatarId || 'default');
+  };
+
+  if (inRoom) return <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={() => { setInRoom(false); setRoomId(''); }} />;
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -179,6 +227,34 @@ function App() {
 
       <div className="absolute inset-0 opacity-[0.03]"
         style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+
+      {authState === 'rooms' && (
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
+          className="absolute top-5 left-5 z-50">
+          <button 
+            onClick={() => setIsProfileModalOpen(true)}
+            className="flex items-center gap-3 p-2 pr-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#7C3AED]/50 transition-all group backdrop-blur-md"
+          >
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B]">
+              <img src={getAvatarUrl(avatarId)} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-bold text-white group-hover:text-[#7C3AED] transition-colors">{username}</span>
+              <span className="text-[10px] text-white/50">Profili Düzenle</span>
+            </div>
+          </button>
+        </motion.div>
+      )}
+
+      <ProfileModal 
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUsername={username}
+        currentFirstName={firstName}
+        currentLastName={lastName}
+        currentAvatarId={avatarId}
+        onSave={handleProfileSave}
+      />
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
         className="relative z-10 w-full max-w-[440px] mx-4"
