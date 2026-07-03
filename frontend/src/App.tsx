@@ -12,7 +12,10 @@ const Orb = ({ className }: { className: string }) => (
 );
 
 function App() {
-  const [authState, setAuthState] = useState<'login' | 'register' | 'rooms'>('login');
+  const [authState, setAuthState] = useState<'login' | 'register' | 'rooms' | 'forgot' | 'reset'>('login');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [resetUserId, setResetUserId] = useState('');
   const [inRoom, setInRoom] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -58,6 +61,35 @@ function App() {
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
   useEffect(() => {
+    // Check URL parameters for email verification or password reset
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const tokenParam = params.get('token');
+    const userIdParam = params.get('userId');
+
+    if (action === 'verify' && tokenParam && userIdParam) {
+      setIsLoading(true);
+      fetch(`${API_BASE_URL}/api/auth/verify-email?userId=${userIdParam}&token=${tokenParam}`)
+        .then(async res => {
+          if (res.ok) {
+             const data = await res.json();
+             setSuccessMsg(data.message || 'E-posta doğrulandı! Giriş yapabilirsiniz.');
+          } else {
+             const text = await res.text();
+             setErrorMsg(text || 'Doğrulama başarısız.');
+          }
+        })
+        .catch(() => setErrorMsg('Bağlantı hatası.'))
+        .finally(() => setIsLoading(false));
+      
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (action === 'reset' && tokenParam && userIdParam) {
+      setResetToken(tokenParam);
+      setResetUserId(userIdParam);
+      setAuthState('reset');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     // Check if token exists on load
     const token = localStorage.getItem('token');
     const savedUsername = localStorage.getItem('username');
@@ -97,6 +129,7 @@ function App() {
     }
     setIsLoading(true);
     setErrorMsg('');
+    setSuccessMsg('');
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
@@ -117,7 +150,8 @@ function App() {
         setAuthState('rooms');
         connectSignalR();
       } else {
-        setErrorMsg('Giriş başarısız, e-posta veya şifre hatalı.');
+        const errText = await res.text();
+        setErrorMsg(errText || 'Giriş başarısız, e-posta veya şifre hatalı.');
       }
     } catch (err) {
       setErrorMsg('Bağlantı hatası.');
@@ -133,6 +167,7 @@ function App() {
     }
     setIsLoading(true);
     setErrorMsg('');
+    setSuccessMsg('');
     try {
       const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
@@ -145,6 +180,64 @@ function App() {
       } else {
         const text = await res.text();
         setErrorMsg(text || 'Kayıt başarısız.');
+      }
+    } catch (err) {
+      setErrorMsg('Bağlantı hatası.');
+    }
+    setIsLoading(false);
+  };
+
+  const handleForgotPassword = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!email) {
+      setErrorMsg('Lütfen e-posta adresinizi girin.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuccessMsg(data.message || 'Şifre sıfırlama bağlantısı gönderildi.');
+      } else {
+        const text = await res.text();
+        setErrorMsg(text || 'İşlem başarısız.');
+      }
+    } catch (err) {
+      setErrorMsg('Bağlantı hatası.');
+    }
+    setIsLoading(false);
+  };
+
+  const handleResetPassword = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!password) {
+      setErrorMsg('Lütfen yeni şifrenizi girin.');
+      return;
+    }
+    setIsLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: resetUserId, token: resetToken, newPassword: password })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuccessMsg(data.message || 'Şifreniz güncellendi. Giriş yapabilirsiniz.');
+        setAuthState('login');
+        setPassword('');
+      } else {
+        const text = await res.text();
+        setErrorMsg(text || 'Sıfırlama başarısız.');
       }
     } catch (err) {
       setErrorMsg('Bağlantı hatası.');
@@ -340,8 +433,78 @@ function App() {
               {errorMsg}
             </motion.div>
           )}
+          {successMsg && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} 
+              className="p-3 rounded-lg text-sm text-center" 
+              style={{ background: 'rgba(52,211,153,0.1)', color: '#6ee7b7', border: '1px solid rgba(52,211,153,0.2)' }}>
+              {successMsg}
+            </motion.div>
+          )}
 
-          {authState !== 'rooms' ? (
+          {authState === 'forgot' ? (
+             <form onSubmit={handleForgotPassword} className="space-y-4">
+               <div className="relative">
+                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                 <input
+                   type="email"
+                   value={email}
+                   onChange={e => setEmail(e.target.value)}
+                   onFocus={() => setFocused('email')}
+                   onBlur={() => setFocused(null)}
+                   placeholder="E-posta Adresi"
+                   className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                   style={{
+                     background: focused === 'email' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
+                     border: focused === 'email' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                   }}
+                 />
+               </div>
+               <motion.button
+                 type="submit"
+                 disabled={isLoading}
+                 whileHover={{ scale: 1.02, y: -2 }}
+                 whileTap={{ scale: 0.97 }}
+                 className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
+                 style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)', boxShadow: '0 8px 32px rgba(124,58,237,0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                 {isLoading ? 'Gönderiliyor...' : 'Şifre Sıfırlama Linki Gönder'}
+               </motion.button>
+               <div className="text-center pt-3">
+                 <button type="button" onClick={() => { setAuthState('login'); setErrorMsg(''); setSuccessMsg(''); }}
+                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
+                   style={{ color: 'rgba(124,58,237,0.8)' }}>
+                   Giriş Ekranına Dön
+                 </button>
+               </div>
+             </form>
+          ) : authState === 'reset' ? (
+             <form onSubmit={handleResetPassword} className="space-y-4">
+               <div className="relative">
+                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                 <input
+                   type="password"
+                   value={password}
+                   onChange={e => setPassword(e.target.value)}
+                   onFocus={() => setFocused('password')}
+                   onBlur={() => setFocused(null)}
+                   placeholder="Yeni Şifre"
+                   className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                   style={{
+                     background: focused === 'password' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
+                     border: focused === 'password' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                   }}
+                 />
+               </div>
+               <motion.button
+                 type="submit"
+                 disabled={isLoading}
+                 whileHover={{ scale: 1.02, y: -2 }}
+                 whileTap={{ scale: 0.97 }}
+                 className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
+                 style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)', boxShadow: '0 8px 32px rgba(124,58,237,0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                 {isLoading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
+               </motion.button>
+             </form>
+          ) : authState !== 'rooms' ? (
             <form onSubmit={authState === 'login' ? handleLogin : handleRegister} className="space-y-4">
               
               {authState === 'register' && (
@@ -411,10 +574,19 @@ function App() {
               </motion.button>
 
               <div className="text-center pt-3">
+                {authState === 'login' && (
+                  <div className="mb-2">
+                    <button type="button" onClick={() => { setAuthState('forgot'); setErrorMsg(''); setSuccessMsg(''); }}
+                      className="text-[13px] transition-colors duration-200 hover:text-white"
+                      style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Şifremi Unuttum
+                    </button>
+                  </div>
+                )}
                 <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
                   {authState === 'login' ? 'Hesabın yok mu? ' : 'Zaten hesabın var mı? '}
                 </span>
-                <button type="button" onClick={() => { setAuthState(authState === 'login' ? 'register' : 'login'); setErrorMsg(''); }}
+                <button type="button" onClick={() => { setAuthState(authState === 'login' ? 'register' : 'login'); setErrorMsg(''); setSuccessMsg(''); }}
                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
                   style={{ color: 'rgba(124,58,237,0.8)' }}>
                   {authState === 'login' ? 'Kayıt Ol' : 'Giriş Yap'}

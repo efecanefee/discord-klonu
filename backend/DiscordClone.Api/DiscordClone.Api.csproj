@@ -16,6 +16,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.OpenApi" Version="2.1.2" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+    <PackageReference Include="Resend" Version="0.5.1" />
   </ItemGroup>
 
 </Project>

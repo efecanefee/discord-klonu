@@ -14,7 +14,9 @@ namespace DiscordClone.Api.Models
         // Auth & Security Fields
         public bool IsVerified { get; set; } = false;
         public string? VerificationToken { get; set; }
+        public DateTime? VerificationExpires { get; set; }
         public string? ResetPasswordToken { get; set; }
+        public DateTime? ResetPasswordExpires { get; set; }
 
         // Navigation property
         public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
