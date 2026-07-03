@@ -43,7 +43,7 @@ namespace DiscordClone.Api.Controllers
                     Username = request.Username,
                     Email = request.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                    IsVerified = false,
+                    IsVerified = true, // TODO: Domain alındığında bunu 'false' yapın.
                     VerificationToken = BCrypt.Net.BCrypt.HashPassword(token),
                     VerificationExpires = DateTime.UtcNow.AddHours(24)
                 };
@@ -51,9 +51,10 @@ namespace DiscordClone.Api.Controllers
                 _db.Users.Add(user);
                 await _db.SaveChangesAsync();
 
+                // Mail gönderimi altyapısı hazır, çalışmaya devam eder (Opsiyonel olarak bu satırı da yorum satırı yapabilirsiniz)
                 await _emailService.SendVerificationEmailAsync(user.Email, token, user.Id);
 
-                return Ok(new { message = "Kayıt başarılı. Lütfen e-posta adresinize gönderilen link ile hesabınızı doğrulayın." });
+                return Ok(new { message = "Kayıt başarılı. Giriş yapabilirsiniz." });
             }
             catch (Exception ex)
             {
@@ -76,8 +77,9 @@ namespace DiscordClone.Api.Controllers
                 if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                     return Unauthorized("Geçersiz e-posta veya şifre.");
 
-                if (!user.IsVerified)
-                    return Unauthorized("E-posta adresiniz henüz doğrulanmamış. Lütfen e-postanızı kontrol edin.");
+                // TODO: Domain alındığında aşağıdaki iki satırın başındaki yorum işaretlerini (//) kaldırın.
+                // if (!user.IsVerified)
+                //     return Unauthorized("E-posta adresiniz henüz doğrulanmamış. Lütfen e-postanızı kontrol edin.");
 
                 var tokenHandler = new JwtSecurityTokenHandler();
                 var jwtKey = _configuration["Jwt:Key"] ?? "VarsayilanCokGizliAnahtarDegistirilmeli123!";
