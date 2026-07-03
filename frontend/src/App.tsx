@@ -175,8 +175,9 @@ function App() {
         body: JSON.stringify({ username, email, password })
       });
       if (res.ok) {
+        const data = await res.json();
         setAuthState('login');
-        setErrorMsg('Kayıt başarılı, lütfen giriş yapın.');
+        setSuccessMsg(data.message || 'Kayıt başarılı. Lütfen e-posta adresinize gönderilen link ile hesabınızı doğrulayın.');
       } else {
         const text = await res.text();
         setErrorMsg(text || 'Kayıt başarısız.');
