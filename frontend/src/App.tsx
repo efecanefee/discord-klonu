@@ -29,6 +29,7 @@ function App() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLogoFlipped, setIsLogoFlipped] = useState(false);
+  const [isMainLogoFlipped, setIsMainLogoFlipped] = useState(false);
   const hoverTimeoutRef = useRef<number | null>(null);
 
   const handleRoomHover = (roomId: string) => {
@@ -272,18 +273,55 @@ function App() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
         <motion.div variants={itemVariants} className="text-center mb-10">
-          <div className="relative mb-5 group cursor-pointer inline-block">
+          <div className="relative mb-5 group inline-block">
             <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl"
               style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.4) 0%, transparent 70%)' }} />
-            <div className="relative w-24 h-24 rounded-3xl overflow-hidden transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-1"
-              style={{
-                boxShadow: '0 8px 32px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.08)',
-                filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.3))',
-              }}>
-              <img src="/logo.png" alt="SandalyeciMetin" className="w-full h-full object-cover transition-all duration-500 group-hover:brightness-110" />
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%)' }} />
+            
+            {/* 3D Flip Logo */}
+            <div 
+              className="relative w-24 h-24 cursor-pointer"
+              style={{ perspective: '1000px' }}
+              onClick={() => setIsMainLogoFlipped(!isMainLogoFlipped)}
+            >
+              <div 
+                className="relative w-full h-full"
+                style={{
+                  transformStyle: 'preserve-3d',
+                  transform: isMainLogoFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  transition: 'transform 0.7s cubic-bezier(0.4, 0.2, 0.2, 1)',
+                }}
+              >
+                {/* Ön Yüz - Sandalye Logosu */}
+                <div 
+                  className="absolute inset-0 rounded-3xl overflow-hidden transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-1"
+                  style={{
+                    backfaceVisibility: 'hidden',
+                    boxShadow: '0 8px 32px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.08)',
+                    filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.3))',
+                  }}
+                >
+                  <img src="/logo.png" alt="SandalyeciMetin" className="w-full h-full object-cover transition-all duration-500 group-hover:brightness-110" />
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                    style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 60%)' }} />
+                </div>
+
+                {/* Arka Yüz - SM Logosu */}
+                <div 
+                  className="absolute inset-0 rounded-3xl overflow-hidden flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-1"
+                  style={{
+                    backfaceVisibility: 'hidden',
+                    transform: 'rotateY(180deg)',
+                    boxShadow: '0 8px 32px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.08)',
+                    filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.3))',
+                  }}
+                >
+                  <img src="/sm-logo.jpg" alt="SM" className="w-full h-full object-contain mix-blend-screen transition-all duration-500 group-hover:brightness-125" />
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                    style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, transparent 60%)' }} />
+                </div>
+              </div>
             </div>
+
             <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105" />
           </div>
           <h1 className="text-[28px] font-[700] text-white mb-2 tracking-tight"
