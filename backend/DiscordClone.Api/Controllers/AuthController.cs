@@ -7,6 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
+using DiscordClone.Api.Services;
 
 namespace DiscordClone.Api.Controllers
 {
@@ -16,11 +17,13 @@ namespace DiscordClone.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _configuration;
+        private readonly IEmailService _emailService;
 
-        public AuthController(AppDbContext db, IConfiguration configuration)
+        public AuthController(AppDbContext db, IConfiguration configuration, IEmailService emailService)
         {
             _db = db;
             _configuration = configuration;
+            _emailService = emailService;
         }
 
         [HttpPost("register")]
@@ -34,20 +37,21 @@ namespace DiscordClone.Api.Controllers
                 if (await _db.Users.AnyAsync(u => u.Username == request.Username))
                     return BadRequest("Bu kullanıcı adı zaten alınmış.");
 
-                var token = Guid.NewGuid().ToString();
+                var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
                 var user = new User
                 {
                     Username = request.Username,
                     Email = request.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                     IsVerified = false,
-                    VerificationToken = token
+                    VerificationToken = BCrypt.Net.BCrypt.HashPassword(token),
+                    VerificationExpires = DateTime.UtcNow.AddHours(24)
                 };
 
                 _db.Users.Add(user);
                 await _db.SaveChangesAsync();
 
-                Console.WriteLine($"\n[EMAIL MOCK] Lütfen e-postanızı doğrulayın. Doğrulama Linki: /api/auth/verify-email?userId={user.Id}&token={token}\n");
+                await _emailService.SendVerificationEmailAsync(user.Email, token, user.Id);
 
                 return Ok(new { message = "Kayıt başarılı. Lütfen e-posta adresinize gönderilen link ile hesabınızı doğrulayın." });
             }
@@ -116,14 +120,18 @@ namespace DiscordClone.Api.Controllers
         public async Task<IActionResult> VerifyEmail([FromQuery] string userId, [FromQuery] string token)
         {
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-            if (user == null || user.VerificationToken != token)
+            if (user == null || user.VerificationToken == null || !BCrypt.Net.BCrypt.Verify(token, user.VerificationToken))
                 return BadRequest("Geçersiz doğrulama linki.");
+
+            if (user.VerificationExpires < DateTime.UtcNow)
+                return BadRequest("Doğrulama linkinin süresi dolmuş.");
 
             user.IsVerified = true;
             user.VerificationToken = null;
+            user.VerificationExpires = null;
             await _db.SaveChangesAsync();
 
-            return Ok("E-posta başarıyla doğrulandı. Artık giriş yapabilirsiniz.");
+            return Ok(new { message = "E-posta başarıyla doğrulandı. Artık giriş yapabilirsiniz." });
         }
 
         [HttpPost("forgot-password")]
@@ -132,11 +140,12 @@ namespace DiscordClone.Api.Controllers
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
             if (user != null)
             {
-                var token = Guid.NewGuid().ToString();
-                user.ResetPasswordToken = token;
+                var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+                user.ResetPasswordToken = BCrypt.Net.BCrypt.HashPassword(token);
+                user.ResetPasswordExpires = DateTime.UtcNow.AddMinutes(15);
                 await _db.SaveChangesAsync();
 
-                Console.WriteLine($"\n[EMAIL MOCK] Şifre sıfırlama talebi. Link: /api/auth/reset-password (POST) Body: {{ \"userId\": \"{user.Id}\", \"token\": \"{token}\", \"newPassword\": \"...\" }}\n");
+                await _emailService.SendPasswordResetEmailAsync(user.Email, token, user.Id);
             }
             return Ok(new { message = "Eğer e-posta sistemimizde kayıtlıysa, şifre sıfırlama bağlantısı gönderildi." });
         }
@@ -145,11 +154,15 @@ namespace DiscordClone.Api.Controllers
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
         {
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
-            if (user == null || user.ResetPasswordToken != request.Token)
+            if (user == null || user.ResetPasswordToken == null || !BCrypt.Net.BCrypt.Verify(request.Token, user.ResetPasswordToken))
                 return BadRequest("Geçersiz veya süresi dolmuş sıfırlama linki.");
+
+            if (user.ResetPasswordExpires < DateTime.UtcNow)
+                return BadRequest("Şifre sıfırlama linkinin süresi dolmuş.");
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
             user.ResetPasswordToken = null;
+            user.ResetPasswordExpires = null;
             await _db.SaveChangesAsync();
 
             return Ok(new { message = "Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz." });

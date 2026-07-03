@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Resend;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +15,13 @@ builder.WebHost.UseUrls("http://0.0.0.0:" + (Environment.GetEnvironmentVariable(
 builder.Services.AddOpenApi();
 builder.Services.AddControllers(); // REST API Controller'larını ekliyoruz (AuthController için)
 builder.Services.AddSignalR();
+
+// Email & Resend
+builder.Services.AddResend(options =>
+{
+    options.ApiToken = builder.Configuration["Resend:ApiKey"] ?? "re_fallback";
+});
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // JWT Kimlik Doğrulama Konfigürasyonu
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "VarsayilanCokGizliAnahtarDegistirilmeli123!";
@@ -163,7 +172,9 @@ using (var scope = app.Services.CreateScope())
         // 6. User için yeni kolonlar (Varsa atlar)
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN is_verified boolean NOT NULL DEFAULT false;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN verification_token text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN verification_expires timestamp with time zone;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN reset_password_token text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN reset_password_expires timestamp with time zone;"); } catch { }
 
     }
     catch (Exception ex)
