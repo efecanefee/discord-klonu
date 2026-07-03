@@ -273,15 +273,14 @@ function App() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
         <motion.div variants={itemVariants} className="text-center mb-10">
-          <div className="relative mb-5 group inline-block">
-            <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl"
+          <div className="relative mb-5 group inline-block cursor-pointer" onClick={() => setIsMainLogoFlipped(!isMainLogoFlipped)}>
+            <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl pointer-events-none"
               style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.4) 0%, transparent 70%)' }} />
             
             {/* 3D Flip Logo */}
             <div 
-              className="relative w-24 h-24 cursor-pointer"
+              className="relative w-24 h-24"
               style={{ perspective: '1000px' }}
-              onClick={() => setIsMainLogoFlipped(!isMainLogoFlipped)}
             >
               <div 
                 className="relative w-full h-full"
@@ -322,7 +321,7 @@ function App() {
               </div>
             </div>
 
-            <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105" />
+            <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105 pointer-events-none" />
           </div>
           <h1 className="text-[28px] font-[700] text-white mb-2 tracking-tight"
             style={{ textShadow: '0 0 40px rgba(124,58,237,0.4)' }}>
