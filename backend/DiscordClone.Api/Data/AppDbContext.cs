@@ -68,7 +68,11 @@ namespace DiscordClone.Api.Data
             modelBuilder.Entity<User>()
                 .Property(u => u.VerificationToken).HasColumnName("verification_token");
             modelBuilder.Entity<User>()
+                .Property(u => u.VerificationExpires).HasColumnName("verification_expires");
+            modelBuilder.Entity<User>()
                 .Property(u => u.ResetPasswordToken).HasColumnName("reset_password_token");
+            modelBuilder.Entity<User>()
+                .Property(u => u.ResetPasswordExpires).HasColumnName("reset_password_expires");
 
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email).IsUnique();
