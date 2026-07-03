@@ -176,6 +176,9 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN reset_password_token text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN reset_password_expires timestamp with time zone;"); } catch { }
 
+        // Eski kullanıcıları mağdur etmemek için, verification_token'ı olmayanları otomatik onaylanmış say
+        try { await db.Database.ExecuteSqlRawAsync("UPDATE users SET is_verified = true WHERE verification_token IS NULL;"); } catch { }
+
     }
     catch (Exception ex)
     {
