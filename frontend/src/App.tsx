@@ -468,8 +468,7 @@ function App() {
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
         className="absolute bottom-8 flex items-center gap-2">
-        <div className="w-4 h-4 rounded-sm"
-          style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.6), rgba(139,92,246,0.6))' }} />
+        <img src="/sm-logo.png" alt="SM" className="w-6 h-6 object-contain mix-blend-screen opacity-90" />
         <span className="text-[11px] font-[500] tracking-[0.2em] uppercase"
           style={{ color: 'rgba(255,255,255,0.2)' }}>SANDALYECIMETIN</span>
       </motion.div>
