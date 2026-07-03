@@ -227,8 +227,8 @@ function App() {
       <Orb className="w-[500px] h-[500px] bg-[#8B5CF6] blur-[140px] opacity-40 top-1/2 -right-48 animate-[pulse_10s_ease-in-out_infinite_2s]" />
       <Orb className="w-[450px] h-[450px] bg-[#3B82F6] blur-[160px] opacity-30 bottom-[-100px] left-1/4 animate-[pulse_12s_ease-in-out_infinite_4s]" />
 
-      <div className="absolute inset-0 opacity-[0.03]"
-        style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+
+
 
       {authState === 'rooms' && (
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
