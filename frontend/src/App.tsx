@@ -497,7 +497,7 @@ function App() {
               className="absolute inset-0 flex items-center justify-center"
               style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
             >
-              <img src="/sm-logo.png" alt="SM" className="w-full h-full object-contain mix-blend-screen transition-all duration-300 hover:drop-shadow-[0_0_15px_rgba(124,58,237,0.8)] opacity-90 hover:opacity-100" />
+              <img src="/sm-logo.jpg" alt="SM" className="w-full h-full object-contain mix-blend-screen transition-all duration-300 hover:drop-shadow-[0_0_15px_rgba(124,58,237,0.8)] opacity-90 hover:opacity-100" />
             </div>
           </div>
         </div>
