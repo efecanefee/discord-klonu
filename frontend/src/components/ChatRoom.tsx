@@ -757,7 +757,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                 {/* ===== HEADER ===== */}
                 <motion.div variants={itemVariants}
-                    className="flex items-center justify-between p-4 mb-4 bg-bg-surface border border-border-main rounded-2xl shadow-card">
+                    className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 mb-4 bg-bg-surface border border-border-main rounded-2xl shadow-card">
                     <div className="flex items-center gap-3">
                         <div className="p-2.5 bg-bg-base rounded-[14px] border border-border-main shadow-sm">
                             <Users className="text-primary-main" size={22} />
@@ -768,7 +768,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {/* Tema seçici */}
                         <div className="hidden sm:flex items-center gap-1 p-1 bg-bg-base rounded-xl border border-border-main">
                             {THEMES.map(t => (
@@ -862,7 +862,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                 {/* ===== MEDYA MODU ===== */}
                 {isMediaActive ? (
-                    <div className="flex flex-1 overflow-hidden gap-4 mb-4">
+                    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-4 mb-4">
                         <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
                             <div className="relative flex-1 flex flex-col bg-black/40 rounded-2xl overflow-hidden">
                                 <div className={`flex-1 grid gap-2 p-2 ${(() => {
@@ -908,7 +908,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                         </motion.div>
 
                         {/* Kompakt Chat */}
-                        <motion.div variants={itemVariants} className="w-80 lg:w-96 flex flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
+                        <motion.div variants={itemVariants} className="w-full lg:w-96 h-80 lg:h-auto flex flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
                             <div className="p-3 border-b border-border-main bg-bg-surface/30 flex items-center justify-between">
                                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Sohbet</span>
                                 <div className="flex items-center gap-2">
