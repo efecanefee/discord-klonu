@@ -52,7 +52,8 @@ namespace DiscordClone.Api.Controllers
                 await _db.SaveChangesAsync();
 
                 // Mail gönderimi altyapısı hazır, çalışmaya devam eder (Opsiyonel olarak bu satırı da yorum satırı yapabilirsiniz)
-                await _emailService.SendVerificationEmailAsync(user.Email, token, user.Id);
+                // TODO: Domain alındığında bu satırın yorum işaretini kaldırın.
+                // await _emailService.SendVerificationEmailAsync(user.Email, token, user.Id);
 
                 return Ok(new { message = "Kayıt başarılı. Giriş yapabilirsiniz." });
             }
