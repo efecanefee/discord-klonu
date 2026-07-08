@@ -33,8 +33,9 @@ function App() {
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
   const [roomId, setRoomId] = useState('');
   const [inDMRoom, setInDMRoom] = useState(false);
-  const [activeDMUser, setActiveDMUser] = useState<ModalUserData | null>(null);
   const [activeDMs, setActiveDMs] = useState<ModalUserData[]>([]);
+  const [activeDMUser, setActiveDMUser] = useState<ModalUserData | null>(null);
+  const [onlineUserList, setOnlineUserList] = useState<string[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   const [focused, setFocused] = useState<string | null>(null);
@@ -243,6 +244,22 @@ function App() {
     };
   }, [userId, inDMRoom]);
 
+  const fetchRecentDMs = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/directmessages/recent`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveDMs(data);
+      }
+    } catch (e) {
+      console.error('Son konuşulanlar yüklenemedi:', e);
+    }
+  }, [API_BASE_URL]);
+
   useEffect(() => {
     if (authState === 'rooms') {
       fetch(`${API_BASE_URL}/api/stats/active-users`)
@@ -251,8 +268,9 @@ function App() {
         .catch(console.error);
       // Odaları yükle
       fetchRooms();
+      fetchRecentDMs();
     }
-  }, [authState, fetchRooms]);
+  }, [authState, fetchRooms, fetchRecentDMs]);
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -834,8 +852,28 @@ function App() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.8)' }} />
-                    <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                    <span 
+                      className="text-[11px] group relative cursor-help" 
+                      style={{ color: 'rgba(255,255,255,0.3)' }}
+                      onMouseEnter={async () => {
+                        try {
+                          const token = localStorage.getItem('token');
+                          const res = await fetch(`${API_BASE_URL}/api/users/online`, { headers: { Authorization: `Bearer ${token}` } });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setOnlineUserList(data);
+                          }
+                        } catch(e) {}
+                      }}
+                    >
                       {globalActiveUsers} online
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 flex flex-col gap-1 text-[12px] font-medium text-white/90 max-h-48 overflow-y-auto">
+                        {onlineUserList.length > 0 ? (
+                          onlineUserList.map(name => <span key={name} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>{name}</span>)
+                        ) : (
+                          <span className="text-white/50">Yükleniyor...</span>
+                        )}
+                      </div>
                     </span>
                   </div>
                   <button onClick={handleLogout} className="text-[11px] text-red-400 hover:text-red-300 transition uppercase tracking-wider font-bold">

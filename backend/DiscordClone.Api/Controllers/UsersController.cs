@@ -43,5 +43,20 @@ namespace DiscordClone.Api.Controllers
 
             return Ok(users);
         }
+
+        /// <summary>
+        /// Sadece şu an online olan doğrulanmış kullanıcıların isimlerini getirir (Tooltip için)
+        /// </summary>
+        [HttpGet("online")]
+        public async Task<IActionResult> GetOnlineUsers()
+        {
+            var onlineUsers = await _db.Users
+                .Where(u => u.IsVerified && u.CustomStatus == "online")
+                .OrderBy(u => u.Username)
+                .Select(u => u.Username)
+                .ToListAsync();
+
+            return Ok(onlineUsers);
+        }
     }
 }
