@@ -40,7 +40,7 @@ namespace DiscordClone.Api.Hubs
                     await _db.SaveChangesAsync();
                     
                     // Herkese bu kullanıcının online olduğunu bildir
-                    await Clients.All.SendAsync("UserStatusChanged", new { userId = user.Id, status = "online", lastSeen = user.LastSeen });
+                    await Clients.All.SendAsync("UserStatusChanged", user.Id, "online", user.LastSeen);
                 }
             }
             
@@ -62,7 +62,7 @@ namespace DiscordClone.Api.Hubs
                     user.LastSeen = DateTime.UtcNow;
                     await _db.SaveChangesAsync();
                     
-                    await Clients.All.SendAsync("UserStatusChanged", new { userId = user.Id, status = "offline", lastSeen = user.LastSeen });
+                    await Clients.All.SendAsync("UserStatusChanged", user.Id, "offline", user.LastSeen);
                 }
             }
 
