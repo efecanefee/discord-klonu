@@ -166,6 +166,14 @@ class SignalRService {
         this.connection?.off('ForceDisconnect', callback);
     }
 
+    // Yeni oda oluşturuldu
+    public onRoomCreated(callback: (room: { id: number; name: string; type: string; description?: string; createdBy: string; createdAt: string }) => void) {
+        this.connection?.on('RoomCreated', callback);
+    }
+    public offRoomCreated(callback: (room: { id: number; name: string; type: string; description?: string; createdBy: string; createdAt: string }) => void) {
+        this.connection?.off('RoomCreated', callback);
+    }
+
     // Senders
     public async sendMessage(roomId: string, username: string, message: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
