@@ -104,6 +104,7 @@ namespace DiscordClone.Api.Controllers
 
                 return Ok(new { 
                     token = tokenHandler.WriteToken(token), 
+                    userId = user.Id,
                     username = user.Username,
                     avatarId = user.AvatarId ?? "default",
                     firstName = user.FirstName ?? "",

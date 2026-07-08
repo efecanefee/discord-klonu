@@ -18,6 +18,10 @@ namespace DiscordClone.Api.Models
         public string? ResetPasswordToken { get; set; }
         public DateTime? ResetPasswordExpires { get; set; }
 
+        // DM & Online Status Fields
+        public DateTime LastSeen { get; set; } = DateTime.UtcNow;
+        public string CustomStatus { get; set; } = "offline"; // "online", "idle", "dnd", "offline"
+
         // Navigation property
         public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
     }

@@ -201,6 +201,33 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Ana Salon', 'text', 'Sohbet Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Müzik Odası', 'text', 'Dinleme Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
 
+        // 8. Users tablosuna Faz 1 DM alanlarını ekle (last_seen ve custom_status)
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen timestamp with time zone NOT NULL DEFAULT now();"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_status text NOT NULL DEFAULT 'offline';"); } catch { }
+
+        // 9. Direct Messages tablosunu oluştur
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS direct_messages (
+                    id bigserial NOT NULL,
+                    sender_id text NOT NULL,
+                    receiver_id text NOT NULL,
+                    content text NOT NULL,
+                    created_at timestamp with time zone NOT NULL DEFAULT now(),
+                    is_read boolean NOT NULL DEFAULT false,
+                    is_edited boolean NOT NULL DEFAULT false,
+                    is_deleted boolean NOT NULL DEFAULT false,
+                    reply_to_id bigint NULL,
+                    file_url text NULL,
+                    file_name text NULL,
+                    CONSTRAINT ""PK_direct_messages"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+        // Performans için indeksler
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_direct_messages_sender_id"" ON direct_messages (sender_id);"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_direct_messages_receiver_id"" ON direct_messages (receiver_id);"); } catch { }
+
     }
     catch (Exception ex)
     {
