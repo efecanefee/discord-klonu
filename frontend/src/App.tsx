@@ -3,7 +3,7 @@ import ChatRoom from './components/ChatRoom';
 import DMChatRoom from './components/DMChatRoom';
 import ProfileModal from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
-import NewMessageModal, { UserData as ModalUserData } from './components/NewMessageModal';
+import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
 import { getAvatarEmoji } from './constants/avatars';
 import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram, Hash, Volume2, MessageSquare, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
