@@ -305,23 +305,20 @@ namespace DiscordClone.Api.Hubs
             await _context.SaveChangesAsync();
 
             var dmData = new {
-                Id = directMessage.Id,
-                SenderId = senderId,
-                ReceiverId = receiverId,
-                Content = content,
-                CreatedAt = directMessage.CreatedAt,
-                IsRead = directMessage.IsRead,
-                IsEdited = directMessage.IsEdited,
-                SenderUsername = sender?.Username,
-                SenderAvatarId = sender?.AvatarId,
-                SenderCustomStatus = sender?.CustomStatus
+                id = directMessage.Id,
+                senderId = senderId,
+                receiverId = receiverId,
+                content = content,
+                createdAt = directMessage.CreatedAt,
+                isRead = directMessage.IsRead,
+                isEdited = directMessage.IsEdited,
+                senderUsername = sender?.Username,
+                senderAvatarId = sender?.AvatarId,
+                senderCustomStatus = sender?.CustomStatus
             };
 
-            // Alıcıya mesajı gönder (Eğer online ise)
-            await Clients.User(receiverId).SendAsync("ReceiveDirectMessage", dmData);
-            
-            // Gönderene de (diğer sekmeleri için vb.) mesajın başarıyla gittiğini bildir
-            await Clients.User(senderId).SendAsync("ReceiveDirectMessage", dmData);
+            // Alıcıya ve gönderene mesajı gönder (Eğer online iseler)
+            await Clients.Users(new[] { senderId, receiverId }).SendAsync("ReceiveDirectMessage", dmData);
         }
 
         public async Task SendUserTyping(string receiverId)
