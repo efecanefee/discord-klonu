@@ -700,11 +700,14 @@ function App() {
               {rooms
                 .slice()
                 .sort((a, b) => {
-                  const isPinned = (name: string) => name === 'Ana Salon' || name === 'Genel Oda' || name === 'Müzik Odası';
-                  const aPinned = isPinned(a.name);
-                  const bPinned = isPinned(b.name);
-                  if (aPinned && !bPinned) return -1;
-                  if (!aPinned && bPinned) return 1;
+                  const getOrder = (name: string) => {
+                    if (name === 'Ana Salon' || name === 'Genel Oda') return 1;
+                    if (name === 'Müzik Odası') return 2;
+                    return 3;
+                  };
+                  const aOrder = getOrder(a.name);
+                  const bOrder = getOrder(b.name);
+                  if (aOrder !== bOrder) return aOrder - bOrder;
                   return a.id - b.id;
                 })
                 .map((room) => {
