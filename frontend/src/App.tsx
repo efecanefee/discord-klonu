@@ -230,8 +230,18 @@ function App() {
       }
     };
 
+    const handleUserStatusChanged = (id: string, status: string, lastSeen: string) => {
+      setActiveDMs(prev => prev.map(u => u.id === id ? { ...u, customStatus: status, lastSeen } : u));
+      setActiveDMUser(prev => prev?.id === id ? { ...prev, customStatus: status, lastSeen } : prev);
+    };
+
     signalrService.onReceiveDirectMessage(handleReceiveDM);
-    return () => signalrService.offReceiveDirectMessage(handleReceiveDM);
+    signalrService.onUserStatusChanged(handleUserStatusChanged);
+
+    return () => {
+      signalrService.offReceiveDirectMessage(handleReceiveDM);
+      signalrService.offUserStatusChanged(handleUserStatusChanged);
+    };
   }, [userId, inDMRoom]);
 
   useEffect(() => {
