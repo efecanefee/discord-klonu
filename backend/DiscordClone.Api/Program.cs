@@ -170,14 +170,14 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_name text;"); } catch { }
 
         // 6. User için yeni kolonlar (Varsa atlar)
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN is_verified boolean NOT NULL DEFAULT false;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN is_verified boolean NOT NULL DEFAULT true;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN verification_token text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN verification_expires timestamp with time zone;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN reset_password_token text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN reset_password_expires timestamp with time zone;"); } catch { }
 
-        // Eski kullanıcıları mağdur etmemek için, verification_token'ı olmayanları otomatik onaylanmış say
-        try { await db.Database.ExecuteSqlRawAsync("UPDATE users SET is_verified = true WHERE verification_token IS NULL;"); } catch { }
+        // Şimdilik tüm kullanıcıları sorgusuz sualsiz doğrulanmış (verified) yap
+        try { await db.Database.ExecuteSqlRawAsync("UPDATE users SET is_verified = true;"); } catch { }
 
         // 7. Rooms tablosunu oluştur
         try {
