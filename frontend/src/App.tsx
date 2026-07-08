@@ -46,7 +46,12 @@ function App() {
     createdBy: string;
     createdAt: string;
   };
-  const [rooms, setRooms] = useState<RoomData[]>([]);
+  const defaultRooms: RoomData[] = [
+    { id: -1, name: 'Ana Salon', type: 'text', description: 'Sohbet Odası', createdBy: 'system', createdAt: new Date().toISOString() },
+    { id: -2, name: 'Müzik Odası', type: 'text', description: 'Dinleme Odası', createdBy: 'system', createdAt: new Date().toISOString() }
+  ];
+
+  const [rooms, setRooms] = useState<RoomData[]>(defaultRooms);
 
   // Oda için ikon ve renk mapping
   const getRoomVisuals = (room: RoomData) => {
@@ -73,7 +78,15 @@ function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setRooms(data);
+        setRooms(() => {
+          const merged = [...defaultRooms];
+          data.forEach((room: RoomData) => {
+            if (!merged.some(r => r.name === room.name)) {
+              merged.push(room);
+            }
+          });
+          return merged;
+        });
       }
     } catch (err) {
       console.error('Odalar yüklenemedi:', err);
