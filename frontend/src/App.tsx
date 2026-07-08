@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ChatRoom from './components/ChatRoom';
+import DMChatRoom from './components/DMChatRoom';
 import ProfileModal from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
+import NewMessageModal, { UserData as ModalUserData } from './components/NewMessageModal';
 import { getAvatarEmoji } from './constants/avatars';
-import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram, Hash, Volume2 } from 'lucide-react';
+import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram, Hash, Volume2, MessageSquare, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
@@ -24,9 +26,14 @@ function App() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [avatarId, setAvatarId] = useState('default');
+  const [userId, setUserId] = useState(localStorage.getItem('userId') || '');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
+  const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
   const [roomId, setRoomId] = useState('');
+  const [inDMRoom, setInDMRoom] = useState(false);
+  const [activeDMUser, setActiveDMUser] = useState<ModalUserData | null>(null);
+  const [activeDMs, setActiveDMs] = useState<ModalUserData[]>([]);
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   const [focused, setFocused] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
@@ -150,11 +157,13 @@ function App() {
 
     // Check if token exists on load
     const token = localStorage.getItem('token');
+    const savedUserId = localStorage.getItem('userId');
     const savedUsername = localStorage.getItem('username');
     const savedFirstName = localStorage.getItem('firstName') || '';
     const savedLastName = localStorage.getItem('lastName') || '';
     const savedAvatarId = localStorage.getItem('avatarId') || 'default';
-    if (token && savedUsername) {
+    if (token && savedUsername && savedUserId) {
+      setUserId(savedUserId);
       setUsername(savedUsername);
       setFirstName(savedFirstName);
       setLastName(savedLastName);
@@ -209,10 +218,12 @@ function App() {
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.userId);
         localStorage.setItem('username', data.username);
         localStorage.setItem('firstName', data.firstName || '');
         localStorage.setItem('lastName', data.lastName || '');
         localStorage.setItem('avatarId', data.avatarId || 'default');
+        setUserId(data.userId);
         setUsername(data.username);
         setFirstName(data.firstName || '');
         setLastName(data.lastName || '');
@@ -354,6 +365,18 @@ function App() {
     }
   };
 
+  const handleStartDM = (user: ModalUserData) => {
+    setActiveDMUser(user);
+    setInDMRoom(true);
+    setInRoom(false);
+    setRoomId('');
+    
+    if (!activeDMs.some(u => u.id === user.id)) {
+      setActiveDMs(prev => [user, ...prev]);
+    }
+    setIsNewMessageModalOpen(false);
+  };
+
   const handleProfileSave = async (data: { username: string; firstName: string; lastName: string; avatarId: string }) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`${API_BASE_URL}/api/auth/profile`, {
@@ -379,6 +402,7 @@ function App() {
   };
 
   if (inRoom) return <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={() => { setInRoom(false); setRoomId(''); }} />;
+  if (inDMRoom && activeDMUser) return <DMChatRoom currentUser={{ id: userId, username }} targetUser={activeDMUser} API_BASE_URL={API_BASE_URL} onLeave={() => { setInDMRoom(false); setActiveDMUser(null); }} />;
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -404,10 +428,11 @@ function App() {
 
       {authState === 'rooms' && (
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
-          className="absolute top-5 left-5 z-50">
+          className="absolute top-5 left-5 z-50 flex flex-col gap-6 max-h-[calc(100vh-40px)] w-64">
+          
           <button 
             onClick={() => setIsProfileModalOpen(true)}
-            className="flex items-center gap-3 p-2 pr-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#7C3AED]/50 transition-all group backdrop-blur-md"
+            className="flex items-center gap-3 p-2 pr-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#7C3AED]/50 transition-all group backdrop-blur-md shrink-0 w-max"
           >
             <div className="w-10 h-10 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B] flex items-center justify-center text-xl">
               {getAvatarEmoji(avatarId)}
@@ -417,6 +442,56 @@ function App() {
               <span className="text-[10px] text-white/50">Profili Düzenle</span>
             </div>
           </button>
+
+          {/* Özel Mesajlar (DM) Bölümü */}
+          <div className="flex flex-col flex-1 min-h-0 bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-4 px-1">
+              <div className="flex items-center gap-2">
+                <MessageSquare size={16} className="text-[#7C3AED]" />
+                <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Özel Mesajlar</h3>
+              </div>
+            </div>
+
+            {/* DM Listesi */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-2">
+              {activeDMs.length === 0 ? (
+                <div className="text-center py-6 text-white/30 text-[11px] px-2">
+                  Henüz özel mesaj yok. Yeni bir mesaj başlat!
+                </div>
+              ) : (
+                activeDMs.map(user => (
+                  <button
+                    key={user.id}
+                    onClick={() => handleStartDM(user)}
+                    className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
+                      activeDMUser?.id === user.id ? 'bg-[#7C3AED]/20 border border-[#7C3AED]/30' : 'hover:bg-white/5 border border-transparent'
+                    }`}
+                  >
+                    <div className="relative">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-[#1E293B] border border-[#334155]">
+                        {getAvatarEmoji(user.avatarId)}
+                      </div>
+                      <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#0F172A] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                    </div>
+                    <div className="flex flex-col items-start truncate flex-1">
+                      <span className={`text-sm font-semibold truncate ${activeDMUser?.id === user.id ? 'text-white' : 'text-white/80'}`}>
+                        {user.username}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+
+            {/* Yeni Mesaj Butonu */}
+            <button
+              onClick={() => setIsNewMessageModalOpen(true)}
+              className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED] hover:text-white transition-all font-semibold text-sm border border-[#7C3AED]/30 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] shrink-0"
+            >
+              <Plus size={16} />
+              Yeni Mesaj
+            </button>
+          </div>
         </motion.div>
       )}
 
@@ -428,6 +503,13 @@ function App() {
         currentLastName={lastName}
         currentAvatarId={avatarId}
         onSave={handleProfileSave}
+      />
+
+      <NewMessageModal
+        isOpen={isNewMessageModalOpen}
+        onClose={() => setIsNewMessageModalOpen(false)}
+        onSelectUser={handleStartDM}
+        API_BASE_URL={API_BASE_URL}
       />
 
       <CreateRoomModal

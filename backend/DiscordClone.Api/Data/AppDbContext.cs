@@ -10,6 +10,7 @@ namespace DiscordClone.Api.Data
         public DbSet<ChatMessage> Messages { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Room> Rooms { get; set; }
+        public DbSet<DirectMessage> DirectMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -96,6 +97,31 @@ namespace DiscordClone.Api.Data
                 .Property(r => r.CreatedAt).HasColumnName("created_at");
             modelBuilder.Entity<Room>()
                 .HasIndex(r => r.Name).IsUnique();
+
+            modelBuilder.Entity<DirectMessage>()
+                .ToTable("direct_messages");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.Id).HasColumnName("id");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.SenderId).HasColumnName("sender_id");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.ReceiverId).HasColumnName("receiver_id");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.Content).HasColumnName("content");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.IsRead).HasColumnName("is_read");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.IsEdited).HasColumnName("is_edited");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.IsDeleted).HasColumnName("is_deleted");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.ReplyToId).HasColumnName("reply_to_id");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.FileUrl).HasColumnName("file_url");
+            modelBuilder.Entity<DirectMessage>()
+                .Property(m => m.FileName).HasColumnName("file_name");
         }
     }
 }

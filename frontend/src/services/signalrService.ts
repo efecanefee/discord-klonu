@@ -174,6 +174,48 @@ class SignalRService {
         this.connection?.off('RoomCreated', callback);
     }
 
+    // ==========================================
+    // ÖZEL MESAJLAR (DIRECT MESSAGES) - FAZ 1
+    // ==========================================
+    
+    // Kullanıcı durum değişimi (Online, Offline)
+    public onUserStatusChanged(callback: (data: { userId: string; status: string; lastSeen: string }) => void) {
+        this.connection?.on('UserStatusChanged', callback);
+    }
+    public offUserStatusChanged(callback: (data: { userId: string; status: string; lastSeen: string }) => void) {
+        this.connection?.off('UserStatusChanged', callback);
+    }
+
+    // Yeni özel mesaj geldi
+    public onReceiveDirectMessage(callback: (dm: { id: number; senderId: string; receiverId: string; content: string; createdAt: string; isRead: boolean }) => void) {
+        this.connection?.on('ReceiveDirectMessage', callback);
+    }
+    public offReceiveDirectMessage(callback: (dm: { id: number; senderId: string; receiverId: string; content: string; createdAt: string; isRead: boolean }) => void) {
+        this.connection?.off('ReceiveDirectMessage', callback);
+    }
+
+    // DM Gönderme
+    public async sendDirectMessage(receiverId: string, content: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('SendDirectMessage', receiverId, content);
+        } else {
+            console.warn('Cannot send DM, SignalR disconnected.');
+        }
+    }
+
+    // Yazıyor... Bildirimi
+    public onUserTyping(callback: (userId: string) => void) {
+        this.connection?.on('UserTyping', callback);
+    }
+    public offUserTyping(callback: (userId: string) => void) {
+        this.connection?.off('UserTyping', callback);
+    }
+    public async sendUserTyping(receiverId: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('SendUserTyping', receiverId);
+        }
+    }
+
     // Senders
     public async sendMessage(roomId: string, username: string, message: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {

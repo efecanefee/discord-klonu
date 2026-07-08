@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@microsoft/signalr": "^10.0.0",
+    "@supabase/supabase-js": "^2.110.1",
     "emoji-picker-react": "^4.19.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.577.0",
