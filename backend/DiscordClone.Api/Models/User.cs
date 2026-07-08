@@ -12,7 +12,7 @@ namespace DiscordClone.Api.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Auth & Security Fields
-        public bool IsVerified { get; set; } = false;
+        public bool IsVerified { get; set; } = true;
         public string? VerificationToken { get; set; }
         public DateTime? VerificationExpires { get; set; }
         public string? ResetPasswordToken { get; set; }
