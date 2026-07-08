@@ -861,15 +861,30 @@ function App() {
                           const res = await fetch(`${API_BASE_URL}/api/users/online`, { headers: { Authorization: `Bearer ${token}` } });
                           if (res.ok) {
                             const data = await res.json();
-                            setOnlineUserList(data);
+                            if (data.length === 0) {
+                              setOnlineUserList(['[Kimse Yok]']);
+                            } else {
+                              setOnlineUserList(data);
+                            }
+                          } else {
+                            setOnlineUserList(['[Hata: Yüklenemedi]']);
                           }
-                        } catch(e) {}
+                        } catch(e) {
+                          setOnlineUserList(['[Hata: Bağlantı Yok]']);
+                        }
                       }}
+                      onMouseLeave={() => setOnlineUserList([])}
                     >
                       {globalActiveUsers} online
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 flex flex-col gap-1 text-[12px] font-medium text-white/90 max-h-48 overflow-y-auto">
                         {onlineUserList.length > 0 ? (
-                          onlineUserList.map(name => <span key={name} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>{name}</span>)
+                          onlineUserList[0].startsWith('[Hata') ? (
+                            <span className="text-red-400">{onlineUserList[0]}</span>
+                          ) : onlineUserList[0].startsWith('[Kimse') ? (
+                            <span className="text-white/50">{onlineUserList[0]}</span>
+                          ) : (
+                            onlineUserList.map(name => <span key={name} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>{name}</span>)
+                          )
                         ) : (
                           <span className="text-white/50">Yükleniyor...</span>
                         )}
