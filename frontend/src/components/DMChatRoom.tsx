@@ -156,7 +156,13 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
               {targetUser.username}
             </h2>
             <p className="text-sm text-white/50">
-              {targetUser.customStatus === 'online' ? 'Çevrimiçi' : `Son görülme: ${new Date(targetUser.lastSeen).toLocaleDateString()}`}
+              {targetUser.customStatus === 'online' ? 'Çevrimiçi' : `Son görülme: ${(() => {
+                const date = new Date(targetUser.lastSeen);
+                const now = new Date();
+                const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return isToday ? `Bugün ${timeStr}` : `${date.toLocaleDateString()} ${timeStr}`;
+              })()}`}
             </p>
           </div>
         </div>
