@@ -179,10 +179,10 @@ class SignalRService {
     // ==========================================
     
     // Kullanıcı durum değişimi (Online, Offline)
-    public onUserStatusChanged(callback: (data: { userId: string; status: string; lastSeen: string }) => void) {
+    public onUserStatusChanged(callback: (userId: string, status: string, lastSeen: string) => void) {
         this.connection?.on('UserStatusChanged', callback);
     }
-    public offUserStatusChanged(callback: (data: { userId: string; status: string; lastSeen: string }) => void) {
+    public offUserStatusChanged(callback: (userId: string, status: string, lastSeen: string) => void) {
         this.connection?.off('UserStatusChanged', callback);
     }
 
