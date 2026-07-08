@@ -684,7 +684,17 @@ function App() {
                 </div>
               </div>
 
-              {rooms.map((room) => {
+              {rooms
+                .slice()
+                .sort((a, b) => {
+                  const isPinned = (name: string) => name === 'Ana Salon' || name === 'Genel Oda' || name === 'Müzik Odası';
+                  const aPinned = isPinned(a.name);
+                  const bPinned = isPinned(b.name);
+                  if (aPinned && !bPinned) return -1;
+                  if (!aPinned && bPinned) return 1;
+                  return a.id - b.id;
+                })
+                .map((room) => {
                 const visuals = getRoomVisuals(room);
                 const RoomIcon = visuals.icon;
                 return (
