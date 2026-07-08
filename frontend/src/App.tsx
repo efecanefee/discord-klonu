@@ -874,7 +874,7 @@ function App() {
                               setOnlineUserList(data);
                             }
                           } else {
-                            setOnlineUserList(['[Hata: Yüklenemedi]']);
+                            setOnlineUserList([`[Hata: Yüklenemedi (${res.status})]`]);
                           }
                         } catch(e) {
                           setOnlineUserList(['[Hata: Bağlantı Yok]']);
