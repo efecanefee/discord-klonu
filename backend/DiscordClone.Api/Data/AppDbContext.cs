@@ -9,6 +9,7 @@ namespace DiscordClone.Api.Data
 
         public DbSet<ChatMessage> Messages { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<Room> Rooms { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -78,6 +79,23 @@ namespace DiscordClone.Api.Data
                 .HasIndex(u => u.Email).IsUnique();
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Username).IsUnique();
+
+            modelBuilder.Entity<Room>()
+                .ToTable("rooms");
+            modelBuilder.Entity<Room>()
+                .Property(r => r.Id).HasColumnName("id");
+            modelBuilder.Entity<Room>()
+                .Property(r => r.Name).HasColumnName("name");
+            modelBuilder.Entity<Room>()
+                .Property(r => r.Type).HasColumnName("type");
+            modelBuilder.Entity<Room>()
+                .Property(r => r.Description).HasColumnName("description");
+            modelBuilder.Entity<Room>()
+                .Property(r => r.CreatedBy).HasColumnName("created_by");
+            modelBuilder.Entity<Room>()
+                .Property(r => r.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<Room>()
+                .HasIndex(r => r.Name).IsUnique();
         }
     }
 }

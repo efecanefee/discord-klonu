@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import ChatRoom from './components/ChatRoom';
 import ProfileModal from './components/ProfileModal';
+import CreateRoomModal from './components/CreateRoomModal';
 import { getAvatarEmoji } from './constants/avatars';
-import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram } from 'lucide-react';
+import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram, Hash, Volume2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
@@ -24,6 +25,7 @@ function App() {
   const [lastName, setLastName] = useState('');
   const [avatarId, setAvatarId] = useState('default');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
   const [roomId, setRoomId] = useState('');
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   const [focused, setFocused] = useState<string | null>(null);
@@ -34,6 +36,49 @@ function App() {
   const [isLogoFlipped, setIsLogoFlipped] = useState(false);
   const [isMainLogoFlipped, setIsMainLogoFlipped] = useState(false);
   const hoverTimeoutRef = useRef<number | null>(null);
+
+  // Dinamik oda listesi
+  type RoomData = {
+    id: number;
+    name: string;
+    type: string;
+    description?: string;
+    createdBy: string;
+    createdAt: string;
+  };
+  const [rooms, setRooms] = useState<RoomData[]>([]);
+
+  // Oda için ikon ve renk mapping
+  const getRoomVisuals = (room: RoomData) => {
+    if (room.type === 'voice') {
+      return { icon: Volume2, color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: room.description || 'Sesli Sohbet' };
+    }
+    // Özel odalar için özel renkler
+    if (room.name === 'Ana Salon') {
+      return { icon: Users, color: '#7C3AED', glow: 'rgba(124,58,237,0.3)', sub: room.description || 'Sohbet Odası' };
+    }
+    if (room.name === 'Müzik Odası') {
+      return { icon: Music, color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: room.description || 'Dinleme Odası' };
+    }
+    // Varsayılan text odası
+    return { icon: Hash, color: '#3B82F6', glow: 'rgba(59,130,246,0.3)', sub: room.description || 'Yazı Kanalı' };
+  };
+
+  // Odaları API'den çek
+  const fetchRooms = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/rooms`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRooms(data);
+      }
+    } catch (err) {
+      console.error('Odalar yüklenemedi:', err);
+    }
+  }, []);
 
   const handleRoomHover = (roomId: string) => {
     setHoveredRoom(roomId);
@@ -110,6 +155,16 @@ function App() {
     signalrService.startConnection();
     const handleCountUpdate = (count: number) => setGlobalActiveUsers(count);
     signalrService.onActiveUserCountUpdated(handleCountUpdate);
+
+    // Yeni oda oluşturulduğunda dinle
+    const handleRoomCreated = (room: RoomData) => {
+      setRooms(prev => {
+        // Zaten listede varsa ekleme
+        if (prev.some(r => r.id === room.id)) return prev;
+        return [...prev, room];
+      });
+    };
+    signalrService.onRoomCreated(handleRoomCreated);
   };
 
   useEffect(() => {
@@ -118,8 +173,10 @@ function App() {
         .then(res => res.json())
         .then(data => setGlobalActiveUsers(data.count))
         .catch(console.error);
+      // Odaları yükle
+      fetchRooms();
     }
-  }, [authState]);
+  }, [authState, fetchRooms]);
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -268,9 +325,20 @@ function App() {
     setInRoom(true);
   };
 
-  const handleCustomRoom = () => {
-    const custom = prompt('Katılmak istediğiniz oda adını giriniz:');
-    if (custom?.trim()) { setRoomId(custom.trim()); setInRoom(true); }
+  const handleCreateRoom = async (data: { name: string; type: string; description?: string }) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_BASE_URL}/api/rooms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Oda oluşturulamadı.');
+    }
   };
 
   const handleProfileSave = async (data: { username: string; firstName: string; lastName: string; avatarId: string }) => {
@@ -308,10 +376,7 @@ function App() {
     visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } },
   };
 
-  const rooms = [
-    { id: 'Ana Salon', label: 'Ana Salon', sub: 'Sohbet Odası', icon: Users, color: '#7C3AED', glow: 'rgba(124,58,237,0.3)' },
-    { id: 'Müzik Odası', label: 'Müzik Odası', sub: 'Dinleme Odası', icon: Music, color: '#10b981', glow: 'rgba(16,185,129,0.3)' },
-  ];
+  // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-[#0F172A]">
@@ -350,6 +415,12 @@ function App() {
         currentLastName={lastName}
         currentAvatarId={avatarId}
         onSave={handleProfileSave}
+      />
+
+      <CreateRoomModal
+        isOpen={isCreateRoomModalOpen}
+        onClose={() => setIsCreateRoomModalOpen(false)}
+        onCreateRoom={handleCreateRoom}
       />
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
@@ -613,40 +684,43 @@ function App() {
                 </div>
               </div>
 
-              {rooms.map((room) => (
+              {rooms.map((room) => {
+                const visuals = getRoomVisuals(room);
+                const RoomIcon = visuals.icon;
+                return (
                 <motion.button
                   key={room.id}
-                  onClick={() => handleJoinRoom(room.id)}
-                  onMouseEnter={() => handleRoomHover(room.id)}
+                  onClick={() => handleJoinRoom(room.name)}
+                  onMouseEnter={() => handleRoomHover(room.name)}
                   onMouseLeave={handleRoomLeave}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative overflow-hidden"
                   style={{
-                    background: hoveredRoom === room.id ? `rgba(${room.id === 'Ana Salon' ? '124,58,237' : '16,185,129'},0.08)` : 'rgba(255,255,255,0.03)',
-                    border: hoveredRoom === room.id ? `1px solid ${room.color}40` : '1px solid rgba(255,255,255,0.06)',
-                    boxShadow: hoveredRoom === room.id ? `0 8px 32px ${room.glow}` : 'none',
+                    background: hoveredRoom === room.name ? `${visuals.color}14` : 'rgba(255,255,255,0.03)',
+                    border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: hoveredRoom === room.name ? `0 8px 32px ${visuals.glow}` : 'none',
                   }}>
 
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{ background: `radial-gradient(circle at 20% 50%, ${room.glow} 0%, transparent 60%)` }} />
+                    style={{ background: `radial-gradient(circle at 20% 50%, ${visuals.glow} 0%, transparent 60%)` }} />
 
                   <div className="relative flex items-center gap-4">
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
                       style={{
-                        background: `${room.color}15`,
-                        border: `1px solid ${room.color}30`,
-                        boxShadow: hoveredRoom === room.id ? `0 0 20px ${room.glow}` : 'none',
+                        background: `${visuals.color}15`,
+                        border: `1px solid ${visuals.color}30`,
+                        boxShadow: hoveredRoom === room.name ? `0 0 20px ${visuals.glow}` : 'none',
                       }}>
-                      <room.icon size={18} style={{ color: room.color }} />
+                      <RoomIcon size={18} style={{ color: visuals.color }} />
                     </div>
                     <div>
-                      <div className="text-[15px] font-semibold text-white">{room.label}</div>
+                      <div className="text-[15px] font-semibold text-white">{room.name}</div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
-                        <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{room.sub}</span>
+                        <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{visuals.sub}</span>
                       </div>
-                      {hoveredRoom === room.id && roomUsers.length > 0 && (
+                      {hoveredRoom === room.name && roomUsers.length > 0 && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 text-xs flex flex-wrap gap-1">
                            {roomUsers.map((u, i) => (
                              <span key={i} className="bg-white/10 px-2 py-0.5 rounded text-white/80">{u.username}</span>
@@ -656,15 +730,16 @@ function App() {
                     </div>
                   </div>
 
-                  <motion.div animate={{ x: hoveredRoom === room.id ? 3 : 0 }} transition={{ duration: 0.2 }}>
-                    <ChevronRight size={18} style={{ color: hoveredRoom === room.id ? room.color : 'rgba(255,255,255,0.2)' }} />
+                  <motion.div animate={{ x: hoveredRoom === room.name ? 3 : 0 }} transition={{ duration: 0.2 }}>
+                    <ChevronRight size={18} style={{ color: hoveredRoom === room.name ? visuals.color : 'rgba(255,255,255,0.2)' }} />
                   </motion.div>
                 </motion.button>
-              ))}
+                );
+              })}
 
               <div className="text-center pt-3">
                 <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Yeni bir oda mı açmak istiyorsun? </span>
-                <button onClick={handleCustomRoom}
+                <button onClick={() => setIsCreateRoomModalOpen(true)}
                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
                   style={{ color: 'rgba(124,58,237,0.8)' }}>
                   Tıkla

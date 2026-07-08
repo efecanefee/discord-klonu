@@ -179,6 +179,28 @@ using (var scope = app.Services.CreateScope())
         // Eski kullanıcıları mağdur etmemek için, verification_token'ı olmayanları otomatik onaylanmış say
         try { await db.Database.ExecuteSqlRawAsync("UPDATE users SET is_verified = true WHERE verification_token IS NULL;"); } catch { }
 
+        // 7. Rooms tablosunu oluştur
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS rooms (
+                    id serial NOT NULL,
+                    name text NOT NULL,
+                    type text NOT NULL DEFAULT 'text',
+                    description text,
+                    created_by text NOT NULL DEFAULT '',
+                    created_at timestamp with time zone NOT NULL DEFAULT now(),
+                    CONSTRAINT ""PK_rooms"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+
+        // Unique index on room name
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_rooms_name"" ON rooms (name);"); } catch { }
+
+        // Seed: Varsayılan odaları ekle (varsa atla)
+        try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Ana Salon', 'text', 'Sohbet Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Müzik Odası', 'text', 'Dinleme Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
+
     }
     catch (Exception ex)
     {
