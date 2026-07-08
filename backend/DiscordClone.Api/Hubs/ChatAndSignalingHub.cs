@@ -290,26 +290,31 @@ namespace DiscordClone.Api.Hubs
             var senderId = Context.UserIdentifier;
             if (string.IsNullOrEmpty(senderId) || string.IsNullOrWhiteSpace(content)) return;
 
-            var dm = new DirectMessage
+            var sender = await _context.Users.FindAsync(senderId);
+
+            var directMessage = new DirectMessage
             {
                 SenderId = senderId,
                 ReceiverId = receiverId,
-                Content = content.Trim(),
+                Content = content,
                 CreatedAt = DateTime.UtcNow,
                 IsRead = false
             };
 
-            _db.DirectMessages.Add(dm);
-            await _db.SaveChangesAsync();
+            _context.DirectMessages.Add(directMessage);
+            await _context.SaveChangesAsync();
 
-            var dmData = new
-            {
-                id = dm.Id,
-                senderId = dm.SenderId,
-                receiverId = dm.ReceiverId,
-                content = dm.Content,
-                createdAt = dm.CreatedAt,
-                isRead = dm.IsRead
+            var dmData = new {
+                Id = directMessage.Id,
+                SenderId = senderId,
+                ReceiverId = receiverId,
+                Content = content,
+                CreatedAt = directMessage.CreatedAt,
+                IsRead = directMessage.IsRead,
+                IsEdited = directMessage.IsEdited,
+                SenderUsername = sender?.Username,
+                SenderAvatarId = sender?.AvatarId,
+                SenderCustomStatus = sender?.CustomStatus
             };
 
             // Alıcıya mesajı gönder (Eğer online ise)
@@ -326,6 +331,28 @@ namespace DiscordClone.Api.Hubs
 
             // Alıcıya "senderId yazıyor..." sinyali gönder
             await Clients.User(receiverId).SendAsync("UserTyping", senderId);
+        }
+
+        public async Task MarkMessagesAsRead(string senderId)
+        {
+            var currentUserId = Context.UserIdentifier;
+            if (string.IsNullOrEmpty(currentUserId)) return;
+
+            var unreadMessages = await _context.DirectMessages
+                .Where(m => m.SenderId == senderId && m.ReceiverId == currentUserId && !m.IsRead)
+                .ToListAsync();
+
+            if (unreadMessages.Any())
+            {
+                foreach (var msg in unreadMessages)
+                {
+                    msg.IsRead = true;
+                }
+                await _context.SaveChangesAsync();
+
+                // Gönderene "mesajların okundu" bilgisini ilet
+                await Clients.User(senderId).SendAsync("MessagesRead", currentUserId);
+            }
         }
     }
 }
