@@ -24,7 +24,7 @@ builder.Services.AddResend(options =>
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 // JWT Kimlik Doğrulama Konfigürasyonu
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "VarsayilanCokGizliAnahtarDegistirilmeli123!";
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKey123!_DiscordClone_UpdatedForForceLogout_2026";
 var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>

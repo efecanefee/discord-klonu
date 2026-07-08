@@ -86,6 +86,10 @@ function App() {
       const res = await fetch(`${API_BASE_URL}/api/rooms`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setRooms(() => {
@@ -251,6 +255,10 @@ function App() {
       const res = await fetch(`${API_BASE_URL}/api/directmessages/recent`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setActiveDMs(data);
@@ -266,7 +274,7 @@ function App() {
         .then(res => res.json())
         .then(data => setGlobalActiveUsers(data.count))
         .catch(console.error);
-      // Odaları yükle
+      
       fetchRooms();
       fetchRecentDMs();
     }
