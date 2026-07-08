@@ -988,11 +988,11 @@ function App() {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
         className="absolute bottom-8 flex items-center justify-center pointer-events-none w-full">
         <span 
-          className="text-lg font-bold tracking-[0.4em] uppercase opacity-80 mix-blend-screen"
+          className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
           style={{ 
             fontFamily: "'Orbitron', sans-serif",
             color: '#F8FAFC',
-            textShadow: '0 0 8px rgba(124,58,237,0.8), 0 0 16px rgba(124,58,237,0.6), 0 0 30px rgba(0,191,255,0.4)'
+            textShadow: '0 0 5px rgba(124,58,237,0.8), 0 0 10px rgba(124,58,237,0.6)'
           }}>
           MADE BY EFECAN
         </span>
