@@ -211,16 +211,15 @@ function App() {
             [dm.senderId]: (prev[dm.senderId] || 0) + 1
           }));
 
-          // Kullanıcı aktif listede yoksa otomatik ekle
           setActiveDMs(prev => {
             if (!prev.some(u => u.id === dm.senderId)) {
               return [{
                 id: dm.senderId,
-                username: dm.senderUsername || 'Bilinmeyen Kullanıcı',
+                username: dm.senderUsername || dm.SenderUsername || 'Bilinmeyen Kullanıcı',
                 firstName: '',
                 lastName: '',
-                avatarId: dm.senderAvatarId || 'default',
-                customStatus: dm.senderCustomStatus || 'online',
+                avatarId: dm.senderAvatarId || dm.SenderAvatarId || 'default',
+                customStatus: dm.senderCustomStatus || dm.SenderCustomStatus || 'online',
                 lastSeen: new Date().toISOString()
               }, ...prev];
             }
