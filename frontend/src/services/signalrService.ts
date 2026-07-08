@@ -216,6 +216,19 @@ class SignalRService {
         }
     }
 
+    // Okundu Bilgisi
+    public onMessagesRead(callback: (userId: string) => void) {
+        this.connection?.on('MessagesRead', callback);
+    }
+    public offMessagesRead(callback: (userId: string) => void) {
+        this.connection?.off('MessagesRead', callback);
+    }
+    public async sendMarkAsRead(senderId: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('MarkMessagesAsRead', senderId);
+        }
+    }
+
     // Senders
     public async sendMessage(roomId: string, username: string, message: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {

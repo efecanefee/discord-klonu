@@ -5,6 +5,7 @@ import ProfileModal from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
 import { getAvatarEmoji } from './constants/avatars';
+import { playNotificationSound } from './utils/sound';
 import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram, Hash, Volume2, MessageSquare, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -34,6 +35,7 @@ function App() {
   const [inDMRoom, setInDMRoom] = useState(false);
   const [activeDMUser, setActiveDMUser] = useState<ModalUserData | null>(null);
   const [activeDMs, setActiveDMs] = useState<ModalUserData[]>([]);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   const [focused, setFocused] = useState<string | null>(null);
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
@@ -188,6 +190,49 @@ function App() {
     };
     signalrService.onRoomCreated(handleRoomCreated);
   };
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const handleReceiveDM = (dm: any) => {
+      // Sadece bize gelen mesajları kontrol et
+      if (dm.receiverId === userId) {
+        // Eğer o an o kullanıcının odasındaysak bildirim yapma
+        let isCurrentlyFocused = false;
+        setActiveDMUser(prev => {
+          if (inDMRoom && prev?.id === dm.senderId) isCurrentlyFocused = true;
+          return prev;
+        });
+
+        if (!isCurrentlyFocused) {
+          playNotificationSound();
+          setUnreadCounts(prev => ({
+            ...prev,
+            [dm.senderId]: (prev[dm.senderId] || 0) + 1
+          }));
+
+          // Kullanıcı aktif listede yoksa otomatik ekle
+          setActiveDMs(prev => {
+            if (!prev.some(u => u.id === dm.senderId)) {
+              return [{
+                id: dm.senderId,
+                username: dm.senderUsername || 'Bilinmeyen Kullanıcı',
+                firstName: '',
+                lastName: '',
+                avatarId: dm.senderAvatarId || 'default',
+                customStatus: dm.senderCustomStatus || 'online',
+                lastSeen: new Date().toISOString()
+              }, ...prev];
+            }
+            return prev;
+          });
+        }
+      }
+    };
+
+    signalrService.onReceiveDirectMessage(handleReceiveDM);
+    return () => signalrService.offReceiveDirectMessage(handleReceiveDM);
+  }, [userId, inDMRoom]);
 
   useEffect(() => {
     if (authState === 'rooms') {
@@ -374,6 +419,12 @@ function App() {
     if (!activeDMs.some(u => u.id === user.id)) {
       setActiveDMs(prev => [user, ...prev]);
     }
+    // Okunmamışları sıfırla
+    setUnreadCounts(prev => {
+      const copy = { ...prev };
+      delete copy[user.id];
+      return copy;
+    });
     setIsNewMessageModalOpen(false);
   };
 
@@ -478,6 +529,11 @@ function App() {
                         {user.username}
                       </span>
                     </div>
+                    {unreadCounts[user.id] > 0 && (
+                      <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
+                        {unreadCounts[user.id]}
+                      </div>
+                    )}
                   </button>
                 ))
               )}

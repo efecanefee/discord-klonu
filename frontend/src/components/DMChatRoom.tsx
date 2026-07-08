@@ -50,6 +50,8 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
         setMessages(prev => [...prev, dm]);
         if (dm.senderId === targetUser.id) {
           setIsTyping(false); // Mesaj gelince yazıyor durumunu kapat
+          // Odanın içindeysek yeni gelen mesajı hemen okundu olarak işaretle
+          signalrService.sendMarkAsRead(targetUser.id);
         }
       }
     };
@@ -64,12 +66,26 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
       }
     };
 
+    const handleMessagesRead = (userId: string) => {
+      // Eğer hedef kullanıcı bizim mesajlarımızı okuduysa
+      if (userId === targetUser.id) {
+        setMessages(prev => prev.map(m => 
+          (m.senderId === currentUser.id && !m.isRead) ? { ...m, isRead: true } : m
+        ));
+      }
+    };
+
+    // İlk açılışta okunmamışları işaretle
+    signalrService.sendMarkAsRead(targetUser.id);
+
     signalrService.onReceiveDirectMessage(handleReceiveMessage);
     signalrService.onUserTyping(handleTyping);
+    signalrService.onMessagesRead(handleMessagesRead);
 
     return () => {
       signalrService.offReceiveDirectMessage(handleReceiveMessage);
       signalrService.offUserTyping(handleTyping);
+      signalrService.offMessagesRead(handleMessagesRead);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [targetUser.id, currentUser.id]);
