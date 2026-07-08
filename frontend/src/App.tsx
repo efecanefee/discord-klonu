@@ -43,7 +43,6 @@ function App() {
   const [roomUsers, setRoomUsers] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isLogoFlipped, setIsLogoFlipped] = useState(false);
   const [isMainLogoFlipped, setIsMainLogoFlipped] = useState(false);
   const hoverTimeoutRef = useRef<number | null>(null);
 
@@ -987,41 +986,16 @@ function App() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-        className="absolute bottom-8 flex items-center gap-3">
-        
-        {/* 3D Flip Logo Container */}
-        <div 
-          className="relative w-7 h-7 cursor-pointer z-50" 
-          style={{ perspective: '1000px' }}
-          onClick={() => setIsLogoFlipped(!isLogoFlipped)}
-        >
-          <div 
-            className="relative w-full h-full"
-            style={{ 
-              transformStyle: 'preserve-3d', 
-              transform: isLogoFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-              transition: 'transform 0.7s cubic-bezier(0.4, 0.2, 0.2, 1)'
-            }}
-          >
-            {/* Ön Yüz (Sandalye - Orijinal Logo) */}
-            <div 
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ backfaceVisibility: 'hidden' }}
-            >
-              <img src="/logo.png" alt="Sandalye" className="w-full h-full object-contain mix-blend-screen transition-all duration-300 hover:drop-shadow-[0_0_10px_rgba(0,191,255,0.8)] opacity-90 hover:opacity-100" />
-            </div>
-            
-            {/* Arka Yüz (SM Keskin Logo) */}
-            <div 
-              className="absolute inset-0 flex items-center justify-center"
-              style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-            >
-              <img src="/sm-logo.jpg" alt="SM" className="w-full h-full object-contain mix-blend-screen transition-all duration-300 hover:drop-shadow-[0_0_15px_rgba(124,58,237,0.8)] opacity-90 hover:opacity-100" />
-            </div>
-          </div>
-        </div>
-        <span className="text-[11px] font-[500] tracking-[0.2em] uppercase"
-          style={{ color: 'rgba(255,255,255,0.2)' }}>SANDALYECIMETIN</span>
+        className="absolute bottom-8 flex items-center justify-center pointer-events-none w-full">
+        <span 
+          className="text-lg font-bold tracking-[0.4em] uppercase opacity-80 mix-blend-screen"
+          style={{ 
+            fontFamily: "'Orbitron', sans-serif",
+            color: '#F8FAFC',
+            textShadow: '0 0 8px rgba(124,58,237,0.8), 0 0 16px rgba(124,58,237,0.6), 0 0 30px rgba(0,191,255,0.4)'
+          }}>
+          MADE BY EFECAN
+        </span>
       </motion.div>
 
       {/* Sabit Sosyal Medya İkonları */}
