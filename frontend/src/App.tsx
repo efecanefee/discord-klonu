@@ -6,8 +6,8 @@ import CreateRoomModal from './components/CreateRoomModal';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
-import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 
@@ -29,6 +29,7 @@ function App() {
   const [avatarId, setAvatarId] = useState('default');
   const [userId, setUserId] = useState(localStorage.getItem('userId') || '');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isDMOpen, setIsDMOpen] = useState(true);
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
   const [roomId, setRoomId] = useState('');
@@ -555,15 +556,30 @@ function App() {
           </button>
 
           {/* Özel Mesajlar (DM) Bölümü */}
-          <div className="flex flex-col flex-1 min-h-0 bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-4 px-1">
+          <div className={`flex flex-col min-h-0 bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-md transition-all duration-300 ${isDMOpen ? 'flex-1' : ''}`}>
+            <button 
+              onClick={() => setIsDMOpen(!isDMOpen)}
+              className="flex items-center justify-between mb-2 px-1 cursor-pointer w-full hover:bg-white/5 p-1 rounded-lg transition-colors group"
+            >
               <div className="flex items-center gap-2">
                 <MessageSquare size={16} className="text-[#7C3AED]" />
-                <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Özel Mesajlar</h3>
+                <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider group-hover:text-white transition-colors">Özel Mesajlar</h3>
               </div>
-            </div>
+              <motion.div animate={{ rotate: isDMOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
+                <ChevronDown size={16} className="text-white/50 group-hover:text-white" />
+              </motion.div>
+            </button>
 
-            {/* DM Listesi */}
+            <AnimatePresence initial={false}>
+              {isDMOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="flex flex-col flex-1 overflow-hidden"
+                >
+                  {/* DM Listesi */}
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-2">
               {activeDMs.length === 0 ? (
                 <div className="text-center py-6 text-white/30 text-[11px] px-2">
@@ -607,6 +623,9 @@ function App() {
               <Plus size={16} />
               Yeni Mesaj
             </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           </motion.div>
         </>
