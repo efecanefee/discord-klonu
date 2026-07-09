@@ -83,7 +83,7 @@ namespace DiscordClone.Api.Controllers
                 //     return Unauthorized("E-posta adresiniz henüz doğrulanmamış. Lütfen e-postanızı kontrol edin.");
 
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var jwtKey = _configuration["Jwt:Key"] ?? "VarsayilanCokGizliAnahtarDegistirilmeli123!";
+                var jwtKey = _configuration["Jwt:Key"] ?? "SuperSecretKey123!_DiscordClone_UpdatedForForceLogout_2026";
                 var key = Encoding.ASCII.GetBytes(jwtKey);
                 
                 var tokenDescriptor = new SecurityTokenDescriptor
@@ -203,7 +203,7 @@ namespace DiscordClone.Api.Controllers
 
             // Yeni JWT üret (Username değiştiği için claimlerin güncellenmesi gerekir)
             var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtKey = _configuration["Jwt:Key"] ?? "VarsayilanCokGizliAnahtarDegistirilmeli123!";
+            var jwtKey = _configuration["Jwt:Key"] ?? "SuperSecretKey123!_DiscordClone_UpdatedForForceLogout_2026";
             var key = Encoding.ASCII.GetBytes(jwtKey);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
