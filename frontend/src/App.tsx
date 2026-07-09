@@ -564,6 +564,11 @@ function App() {
               <div className="flex items-center gap-2">
                 <MessageSquare size={16} className="text-[#7C3AED]" />
                 <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider group-hover:text-white transition-colors">Özel Mesajlar</h3>
+                {!isDMOpen && Object.values(unreadCounts).reduce((a, b) => a + b, 0) > 0 && (
+                  <span className="ml-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
+                    {Object.values(unreadCounts).reduce((a, b) => a + b, 0)}
+                  </span>
+                )}
               </div>
               <motion.div animate={{ rotate: isDMOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
                 <ChevronDown size={16} className="text-white/50 group-hover:text-white" />
