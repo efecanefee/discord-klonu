@@ -290,7 +290,7 @@ namespace DiscordClone.Api.Hubs
             var senderId = Context.UserIdentifier;
             if (string.IsNullOrEmpty(senderId) || string.IsNullOrWhiteSpace(content)) return;
 
-            var sender = await _context.Users.FindAsync(senderId);
+            var sender = await _db.Users.FindAsync(senderId);
 
             var directMessage = new DirectMessage
             {
@@ -301,8 +301,8 @@ namespace DiscordClone.Api.Hubs
                 IsRead = false
             };
 
-            _context.DirectMessages.Add(directMessage);
-            await _context.SaveChangesAsync();
+            _db.DirectMessages.Add(directMessage);
+            await _db.SaveChangesAsync();
 
             var dmData = new {
                 id = directMessage.Id,
@@ -335,7 +335,7 @@ namespace DiscordClone.Api.Hubs
             var currentUserId = Context.UserIdentifier;
             if (string.IsNullOrEmpty(currentUserId)) return;
 
-            var unreadMessages = await _context.DirectMessages
+            var unreadMessages = await _db.DirectMessages
                 .Where(m => m.SenderId == senderId && m.ReceiverId == currentUserId && !m.IsRead)
                 .ToListAsync();
 
@@ -345,7 +345,7 @@ namespace DiscordClone.Api.Hubs
                 {
                     msg.IsRead = true;
                 }
-                await _context.SaveChangesAsync();
+                await _db.SaveChangesAsync();
 
                 // Gönderene "mesajların okundu" bilgisini ilet
                 await Clients.User(senderId).SendAsync("MessagesRead", currentUserId);
