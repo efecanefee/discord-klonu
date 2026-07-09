@@ -129,7 +129,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   };
 
   return (
-    <div className="flex flex-col h-[100vh] w-[100vw] bg-[#0F172A] relative">
+    <div className="flex flex-col h-[100dvh] w-[100vw] bg-[#0F172A] relative">
       {/* Odanın arkaplan efektleri */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -right-[10%] w-[70vw] h-[70vw] rounded-full bg-[#7C3AED]/5 blur-[120px]" />
@@ -141,7 +141,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
         <div className="flex items-center gap-4">
           <button 
             onClick={onLeave}
-            className="mr-2 p-2 hover:bg-white/10 rounded-xl text-white/50 hover:text-white transition-colors"
+            className="mr-1 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-xl text-white/50 hover:text-white transition-colors cursor-pointer"
           >
             ← Geri
           </button>
@@ -221,7 +221,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
       </div>
 
       {/* Input Area */}
-      <div className="p-6 bg-white/[0.02] border-t border-white/5 backdrop-blur-md">
+      <div className="p-4 sm:p-6 bg-[#0F172A]/90 border-t border-white/5 backdrop-blur-xl sticky bottom-0 z-20 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <form onSubmit={handleSendMessage} className="relative flex items-center">
           <input
             type="text"
@@ -236,7 +236,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
           <button
             type="submit"
             disabled={!newMessage.trim()}
-            className="absolute right-2 p-2.5 rounded-xl bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:opacity-50 disabled:hover:bg-[#7C3AED] transition-all"
+            className="absolute right-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:opacity-50 disabled:hover:bg-[#7C3AED] transition-all cursor-pointer"
           >
             <Send size={18} />
           </button>

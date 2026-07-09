@@ -729,7 +729,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
     return (
         <div 
-            className="relative flex flex-col h-screen overflow-hidden bg-bg-base font-sans selection:bg-primary-main/30 selection:text-text-main"
+            className="relative flex flex-col h-[100dvh] overflow-hidden bg-bg-base font-sans selection:bg-primary-main/30 selection:text-text-main"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -990,7 +990,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     <div ref={messagesEndRef} className="h-1" />
                                 </div>
                             </div>
-                            <div className="p-2 border-t border-border-main relative">
+                            <div className="p-3 border-t border-border-main sticky bottom-0 z-20 bg-bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                                 <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
                                     {editingMessageId && (
                                         <div className="flex items-center justify-between bg-bg-surface px-3 py-1.5 rounded-lg border border-primary-main/30 text-xs">
@@ -998,15 +998,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main"><X size={12} /></button>
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-1">
-                                        <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-2 text-text-muted hover:text-text-main cursor-pointer"><Smile size={16} /></button>
-                                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-text-muted hover:text-text-main cursor-pointer"><Paperclip size={16} /></button>
+                                    <div className="flex items-center gap-1.5">
+                                        <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Smile size={20} /></button>
+                                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Paperclip size={20} /></button>
                                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
                                         <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)} placeholder={isUploading ? "Yükleniyor..." : "Mesaj yaz..."} disabled={isUploading}
-                                            className="flex-1 bg-bg-surface border border-border-main rounded-xl px-2 py-2 text-[13px] text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
+                                            className="flex-1 bg-bg-surface border border-border-main rounded-xl px-3 py-3 text-[14px] text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
                                         <button type="button" onClick={editingMessageId ? handleSaveEdit : handleSendMessage} disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
-                                            className="p-2.5 rounded-xl bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer ml-1">
-                                            {editingMessageId ? <Pencil size={14} /> : <Send size={14} />}
+                                            className="p-3 rounded-xl bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-md">
+                                            {editingMessageId ? <Pencil size={18} /> : <Send size={18} />}
                                         </button>
                                     </div>
                                 </form>
@@ -1190,7 +1190,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                         </div>
 
                         {/* Mesaj input */}
-                        <motion.div variants={itemVariants} className="relative">
+                        <motion.div variants={itemVariants} className="relative sticky bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-base/90 backdrop-blur-xl pt-2">
                             {editingMessageId && (
                                 <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
                                     <span className="text-primary-main flex items-center gap-2 font-medium"><Pencil size={14} /> Mesajı düzenliyorsun</span>
@@ -1213,7 +1213,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
                                 
                                 <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
-                                    className="flex items-center justify-center px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer">
+                                    className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
                                     {editingMessageId ? <Pencil size={18} className="mr-0 sm:mr-2" /> : <Send size={18} className="mr-0 sm:mr-2" />}
                                     <span className="hidden sm:inline">{editingMessageId ? 'Kaydet' : 'Gönder'}</span>
                                 </button>
