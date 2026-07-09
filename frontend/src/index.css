@@ -73,7 +73,7 @@ input:focus {
   background-size: 300% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: textShine 5s linear infinite;
+  animation: textShine 8s linear infinite;
   animation-delay: 0.8s;
   will-change: background-position;
 }
