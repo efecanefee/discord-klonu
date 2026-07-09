@@ -7,7 +7,7 @@ import NewMessageModal, { type UserData as ModalUserData } from './components/Ne
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
 import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 
@@ -575,62 +575,56 @@ function App() {
               </motion.div>
             </motion.button>
 
-            <AnimatePresence initial={false}>
-              {isDMOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="flex flex-col flex-1 overflow-hidden"
-                >
-                  {/* DM Listesi */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-2">
-              {activeDMs.length === 0 ? (
-                <div className="text-center py-6 text-white/30 text-[11px] px-2">
-                  Henüz özel mesaj yok. Yeni bir mesaj başlat!
-                </div>
-              ) : (
-                activeDMs.map(user => (
-                  <button
-                    key={user.id}
-                    onClick={() => handleStartDM(user)}
-                    className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
-                      activeDMUser?.id === user.id ? 'bg-[#7C3AED]/20 border border-[#7C3AED]/30' : 'hover:bg-white/5 border border-transparent'
-                    }`}
-                  >
-                    <div className="relative">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-[#1E293B] border border-[#334155]">
-                        {getAvatarEmoji(user.avatarId)}
-                      </div>
-                      <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#0F172A] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : 'bg-gray-500'}`} />
-                    </div>
-                    <div className="flex flex-col items-start truncate flex-1">
-                      <span className={`text-sm font-semibold truncate ${activeDMUser?.id === user.id ? 'text-white' : 'text-white/80'}`}>
-                        {user.username}
-                      </span>
-                    </div>
-                    {unreadCounts[user.id] > 0 && (
-                      <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
-                        {unreadCounts[user.id]}
-                      </div>
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-
-            {/* Yeni Mesaj Butonu */}
-            <button
-              onClick={() => setIsNewMessageModalOpen(true)}
-              className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED] hover:text-white transition-all font-semibold text-sm border border-[#7C3AED]/30 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] shrink-0"
+            <motion.div
+              layout
+              initial={false}
+              className={`flex flex-col overflow-hidden transition-all duration-300 ${isDMOpen ? 'flex-1 opacity-100 mt-4' : 'h-0 opacity-0 mt-0 pointer-events-none'}`}
             >
-              <Plus size={16} />
-              Yeni Mesaj
-            </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+              {/* DM Listesi */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-2">
+                {activeDMs.length === 0 ? (
+                  <div className="text-center py-6 text-white/30 text-[11px] px-2">
+                    Henüz özel mesaj yok. Yeni bir mesaj başlat!
+                  </div>
+                ) : (
+                  activeDMs.map(user => (
+                    <button
+                      key={user.id}
+                      onClick={() => handleStartDM(user)}
+                      className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
+                        activeDMUser?.id === user.id ? 'bg-[#7C3AED]/20 border border-[#7C3AED]/30' : 'hover:bg-white/5 border border-transparent'
+                      }`}
+                    >
+                      <div className="relative">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-[#1E293B] border border-[#334155]">
+                          {getAvatarEmoji(user.avatarId)}
+                        </div>
+                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#0F172A] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                      </div>
+                      <div className="flex flex-col items-start truncate flex-1">
+                        <span className={`text-sm font-semibold truncate ${activeDMUser?.id === user.id ? 'text-white' : 'text-white/80'}`}>
+                          {user.username}
+                        </span>
+                      </div>
+                      {unreadCounts[user.id] > 0 && (
+                        <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
+                          {unreadCounts[user.id]}
+                        </div>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {/* Yeni Mesaj Butonu */}
+              <button
+                onClick={() => setIsNewMessageModalOpen(true)}
+                className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED] hover:text-white transition-all font-semibold text-sm border border-[#7C3AED]/30 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] shrink-0"
+              >
+                <Plus size={16} />
+                Yeni Mesaj
+              </button>
+            </motion.div>
           </motion.div>
           </motion.div>
         </>
