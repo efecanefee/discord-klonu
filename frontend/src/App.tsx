@@ -700,9 +700,18 @@ function App() {
 
             <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105 pointer-events-none" />
           </div>
-          <h1 className="text-[28px] font-[700] text-white mb-2 tracking-tight"
-            style={{ textShadow: '0 0 40px rgba(124,58,237,0.4)' }}>
-            SandalyeciMetin
+          <h1 className="text-[28px] font-[700] text-white mb-2 tracking-tight flex justify-center text-shine"
+            style={{ textShadow: '0 0 40px #00B4D860' }}>
+            {'SandalyeciMetin'.split('').map((char, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.045, duration: 0.35 }}
+                >
+                  {char === " " ? "\u00A0" : char}
+                </motion.span>
+            ))}
           </h1>
           <p className="text-[14px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
             {authState === 'rooms' ? `Hoş geldin, ${username}` : (authState === 'login' ? 'Hesabına giriş yap' : 'Yeni hesap oluştur')}
