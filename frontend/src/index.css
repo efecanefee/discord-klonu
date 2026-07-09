@@ -62,3 +62,18 @@ input:focus {
   scrollbar-width: thin;
   scrollbar-color: rgba(124, 58, 237, 0.4) transparent;
 }
+
+@keyframes textShine {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+.text-shine {
+  background: linear-gradient(90deg, #ffffff 35%, #00B4D8 50%, #90E0EF 55%, #ffffff 65%);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShine 5s linear infinite;
+  animation-delay: 0.8s;
+  will-change: background-position;
+}
