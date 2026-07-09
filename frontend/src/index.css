@@ -20,6 +20,8 @@
 
 body {
   @apply bg-bg-base text-text-main font-sans m-0 p-0 antialiased overflow-hidden;
+  -webkit-tap-highlight-color: transparent;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 html, body, #root {
   height: 100%;
@@ -29,4 +31,12 @@ html, body, #root {
 /* Base custom styles to ensure consistent overrides */
 input:focus {
   outline: none;
+}
+
+/* Scrollbar tweaks for mobile */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
 }
