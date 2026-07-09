@@ -556,10 +556,16 @@ function App() {
           </button>
 
           {/* Özel Mesajlar (DM) Bölümü */}
-          <motion.div layout className={`flex flex-col min-h-0 bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-md ${isDMOpen ? 'flex-1' : ''}`}>
-            <motion.button layout
+          <motion.div 
+            layout 
+            transition={{ layout: { type: 'spring', stiffness: 350, damping: 25 } }}
+            className={`flex flex-col min-h-0 bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-md overflow-hidden ${isDMOpen ? 'flex-1' : ''}`}
+          >
+            <motion.button 
+              layout
+              transition={{ layout: { type: 'spring', stiffness: 350, damping: 25 } }}
               onClick={() => setIsDMOpen(!isDMOpen)}
-              className="flex items-center justify-between mb-2 px-1 cursor-pointer w-full hover:bg-white/5 p-1 rounded-lg transition-colors group"
+              className="flex items-center justify-between px-1 cursor-pointer w-full hover:bg-white/5 p-1 rounded-lg transition-colors group shrink-0"
             >
               <div className="flex items-center gap-2">
                 <MessageSquare size={16} className="text-[#7C3AED]" />
@@ -578,7 +584,8 @@ function App() {
             <motion.div
               layout
               initial={false}
-              className={`flex flex-col overflow-hidden transition-all duration-300 ${isDMOpen ? 'flex-1 opacity-100 mt-4' : 'h-0 opacity-0 mt-0 pointer-events-none'}`}
+              transition={{ layout: { type: 'spring', stiffness: 350, damping: 25 } }}
+              className={`flex flex-col overflow-hidden transition-opacity duration-300 ${isDMOpen ? 'flex-1 opacity-100 mt-2' : 'h-0 opacity-0 mt-0 pointer-events-none'}`}
             >
               {/* DM Listesi */}
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-2">
