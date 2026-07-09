@@ -91,10 +91,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="relative w-full max-w-2xl bg-[#0F172A] border border-[#334155] rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row"
+          className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-[#0F172A] border border-[#334155] rounded-3xl overflow-y-auto custom-scrollbar shadow-2xl flex flex-col md:flex-row"
         >
           {/* Sol Panel: Form ve Seçim */}
-          <div className="flex-1 p-6 border-b md:border-b-0 md:border-r border-[#334155] max-h-[80vh] overflow-y-auto">
+          <div className="flex-1 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#334155]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <UserCircle className="text-[#7C3AED]" />
@@ -171,7 +171,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
 
           {/* Sağ Panel: Live Preview */}
-          <div className="w-full md:w-80 bg-[#0B1020] p-6 flex flex-col items-center justify-center relative">
+          <div className="w-full md:w-80 bg-[#0B1020] p-4 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center relative shrink-0">
             <button onClick={onClose} className="absolute top-4 right-4 p-2 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-colors hidden md:block">
               <X size={20} />
             </button>
