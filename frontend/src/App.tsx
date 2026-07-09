@@ -556,8 +556,8 @@ function App() {
           </button>
 
           {/* Özel Mesajlar (DM) Bölümü */}
-          <div className={`flex flex-col min-h-0 bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-md transition-all duration-300 ${isDMOpen ? 'flex-1' : ''}`}>
-            <button 
+          <motion.div layout className={`flex flex-col min-h-0 bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-md ${isDMOpen ? 'flex-1' : ''}`}>
+            <motion.button layout
               onClick={() => setIsDMOpen(!isDMOpen)}
               className="flex items-center justify-between mb-2 px-1 cursor-pointer w-full hover:bg-white/5 p-1 rounded-lg transition-colors group"
             >
@@ -568,7 +568,7 @@ function App() {
               <motion.div animate={{ rotate: isDMOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
                 <ChevronDown size={16} className="text-white/50 group-hover:text-white" />
               </motion.div>
-            </button>
+            </motion.button>
 
             <AnimatePresence initial={false}>
               {isDMOpen && (
@@ -626,7 +626,7 @@ function App() {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
           </motion.div>
         </>
       )}
