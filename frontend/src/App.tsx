@@ -6,7 +6,7 @@ import CreateRoomModal from './components/CreateRoomModal';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
-import { ChevronRight, Music, Users, Sparkles, Lock, Mail, User, Github, Linkedin, Instagram, Hash, Volume2, MessageSquare, Plus } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
@@ -38,7 +38,8 @@ function App() {
   const [onlineUserList, setOnlineUserList] = useState<string[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
-  const [focused, setFocused] = useState<string | null>(null);
+  const [focused, setFocused] = useState<'username' | 'email' | 'password' | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
   const [roomUsers, setRoomUsers] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
@@ -512,13 +513,38 @@ function App() {
 
 
       {authState === 'rooms' && (
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
-          className="absolute top-5 left-5 z-50 flex flex-col gap-6 max-h-[calc(100vh-40px)] w-64">
-          
-          <button 
-            onClick={() => setIsProfileModalOpen(true)}
-            className="flex items-center gap-3 p-2 pr-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#7C3AED]/50 transition-all group backdrop-blur-md shrink-0 w-max"
+        <>
+          {/* Hamburger Menu Button (Mobile) */}
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="absolute top-5 left-5 z-40 p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 md:hidden text-white backdrop-blur-md cursor-pointer"
           >
+            <Menu size={24} />
+          </button>
+
+          {/* Overlay (Mobile) */}
+          {isSidebarOpen && (
+            <div 
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+
+          {/* Sidebar */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
+            className={`fixed md:absolute top-0 left-0 h-full md:h-auto md:top-5 md:left-5 z-50 flex flex-col gap-6 w-72 md:w-64 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#0F172A] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+          >
+            {/* Close Button (Mobile) */}
+            <div className="flex md:hidden justify-end mb-[-10px]">
+              <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-white/50 hover:text-white bg-white/5 rounded-full cursor-pointer">
+                <X size={20} />
+              </button>
+            </div>
+          
+            <button 
+              onClick={() => setIsProfileModalOpen(true)}
+              className="flex items-center gap-3 p-2 pr-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#7C3AED]/50 transition-all group backdrop-blur-md shrink-0 w-max"
+            >
             <div className="w-10 h-10 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B] flex items-center justify-center text-xl">
               {getAvatarEmoji(avatarId)}
             </div>
@@ -582,7 +608,8 @@ function App() {
               Yeni Mesaj
             </button>
           </div>
-        </motion.div>
+          </motion.div>
+        </>
       )}
 
       <ProfileModal 
