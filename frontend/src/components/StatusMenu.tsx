@@ -65,7 +65,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ duration: 0.15 }}
-        className="absolute bottom-[80px] left-4 w-72 bg-[#0F172A] border border-white/10 rounded-xl shadow-2xl p-2 z-[60]"
+        className="absolute bottom-[80px] left-4 w-72 bg-[#09090b] border border-white/10 rounded-xl shadow-2xl p-2 z-[60]"
       >
         <div className="mb-2 p-2">
           {isEditingMessage ? (

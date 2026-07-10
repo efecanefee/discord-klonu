@@ -14,9 +14,7 @@ import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 
-const Orb = ({ className }: { className: string }) => (
-  <div className={`absolute rounded-full pointer-events-none ${className}`} />
-);
+// Removed Orb component as it is replaced by CSS mesh background
 
 function App() {
   const [authState, setAuthState] = useState<'login' | 'register' | 'rooms' | 'forgot' | 'reset'>('login');
@@ -569,16 +567,11 @@ function App() {
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-[#0F172A]">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-bg-base">
 
-      {/* Bokeh / Soft Light Beams */}
-      {!settings.reducedMotion && (
-        <>
-          <Orb className="w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-[#7C3AED] blur-[80px] md:blur-[150px] opacity-40 -top-16 -left-16 md:-top-32 md:-left-32 animate-[pulse_8s_ease-in-out_infinite]" />
-          <Orb className="w-[250px] h-[250px] md:w-[500px] md:h-[500px] bg-[#8B5CF6] blur-[70px] md:blur-[140px] opacity-40 top-1/2 -right-24 md:-right-48 animate-[pulse_10s_ease-in-out_infinite_2s]" />
-          <Orb className="w-[200px] h-[200px] md:w-[450px] md:h-[450px] bg-[#3B82F6] blur-[90px] md:blur-[160px] opacity-30 bottom-[-50px] left-1/4 animate-[pulse_12s_ease-in-out_infinite_4s]" />
-        </>
-      )}
+      {/* Premium Background */}
+      <div className={`absolute inset-0 bg-mesh-gradient ${!settings.reducedMotion ? 'animate-mesh' : ''}`} />
+      <div className="bg-noise" />
 
 
 
@@ -603,7 +596,7 @@ function App() {
 
           {/* Sidebar */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
-            className={`fixed md:absolute top-0 left-0 h-full md:h-auto md:top-5 md:left-5 z-50 flex flex-col gap-6 w-72 md:w-64 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#0F172A] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+            className={`fixed md:absolute top-0 left-0 h-full md:h-auto md:top-5 md:left-5 z-50 flex flex-col gap-6 w-72 md:w-64 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
           >
             {/* Close Button (Mobile) */}
             <div className="flex md:hidden justify-end mb-[-10px]">
@@ -626,10 +619,10 @@ function App() {
               className="flex items-center gap-2 flex-1 hover:bg-white/10 p-1 rounded-full transition-all group overflow-hidden"
             >
               <div className="avatar-container relative cursor-pointer group/avatar">
-                <div className="w-9 h-9 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B] flex items-center justify-center text-lg shrink-0 group-hover/avatar:opacity-80 transition-opacity">
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-[#7C3AED] bg-[#18181b] flex items-center justify-center text-lg shrink-0 group-hover/avatar:opacity-80 transition-opacity">
                   {getAvatarEmoji(avatarId)}
                 </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#0F172A] rounded-full ${myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
               </div>
               <div className="flex flex-col items-start min-w-0 flex-1">
                 <span className="text-sm font-bold text-white group-hover:text-[#7C3AED] transition-colors truncate w-full text-left">{username}</span>
@@ -717,10 +710,10 @@ function App() {
                       }`}
                     >
                       <div className="relative">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-[#1E293B] border border-[#334155]">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-[#18181b] border border-[#334155]">
                           {getAvatarEmoji(user.avatarId)}
                         </div>
-                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#0F172A] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : user.customStatus === 'idle' ? 'bg-yellow-500' : user.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
+                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#09090b] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : user.customStatus === 'idle' ? 'bg-yellow-500' : user.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
                       </div>
                       <div className="flex flex-col items-start truncate flex-1">
                         <span className={`text-sm font-semibold truncate ${activeDMUser?.id === user.id ? 'text-white' : 'text-white/80'}`}>
@@ -1058,7 +1051,7 @@ function App() {
                       onMouseLeave={() => setOnlineUserList([])}
                     >
                       {globalActiveUsers} online
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 flex flex-col gap-1 text-[12px] font-medium text-white/90 max-h-48 overflow-y-auto">
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-[#09090b] border border-[#334155] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 flex flex-col gap-1 text-[12px] font-medium text-white/90 max-h-48 overflow-y-auto">
                         {onlineUserList.length > 0 ? (
                           onlineUserList[0].startsWith('[Hata') ? (
                             <span className="text-red-400">{onlineUserList[0]}</span>

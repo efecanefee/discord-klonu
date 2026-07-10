@@ -157,7 +157,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             root.style.setProperty('--color-bg-base', '#f1f5f9');
             root.style.setProperty('--color-bg-surface', '#ffffff');
             root.style.setProperty('--color-bg-card', '#ffffff');
-            root.style.setProperty('--color-text-main', '#0f172a');
+            root.style.setProperty('--color-text-main', '#09090b');
             root.style.setProperty('--color-text-muted', '#64748b');
             root.style.setProperty('--color-border-main', '#e2e8f0');
         } else if (theme === 'oled') {
