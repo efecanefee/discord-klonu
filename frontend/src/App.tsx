@@ -570,7 +570,7 @@ function App() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-bg-base">
 
       {/* Premium Background */}
-      <div className="absolute inset-0 bg-mesh-gradient" />
+      <div className={`absolute inset-0 bg-mesh-gradient ${!settings.reducedMotion && !isSettingsModalOpen && !isProfileModalOpen && !isCreateRoomModalOpen && !isNewMessageModalOpen ? 'animate-mesh' : ''}`} />
 
 
 
