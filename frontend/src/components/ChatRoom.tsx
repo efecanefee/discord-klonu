@@ -1272,7 +1272,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                         </div>
 
                         {/* Mesaj input */}
-                        <motion.div variants={itemVariants} className="relative sticky bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-base/90 backdrop-blur-xl pt-2">
+                        <motion.div variants={itemVariants} className="relative sticky bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-base pt-2">
                             {editingMessageId && (
                                 <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
                                     <span className="text-primary-main flex items-center gap-2 font-medium"><Pencil size={14} /> Mesajı düzenliyorsun</span>

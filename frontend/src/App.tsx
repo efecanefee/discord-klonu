@@ -560,8 +560,8 @@ function App() {
     visible: { opacity: 1, transition: { duration: 0.6, staggerChildren: 0.08, delayChildren: 0.1 } },
   };
   const itemVariants: Variants = {
-    hidden: { opacity: 0, y: settings.reducedMotion ? 0 : 20, filter: settings.reducedMotion ? 'blur(0px)' : 'blur(8px)' },
-    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: settings.reducedMotion ? 0 : 0.5, ease: [0.25, 0.46, 0.45, 0.94] } },
+    hidden: { opacity: 0, y: settings.reducedMotion ? 0 : 16 },
+    visible: { opacity: 1, y: 0, transition: { duration: settings.reducedMotion ? 0 : 0.4, ease: [0.25, 0.46, 0.45, 0.94] } },
   };
 
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
@@ -580,7 +580,7 @@ function App() {
           {/* Hamburger Menu Button (Mobile) */}
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="absolute top-5 left-5 z-40 p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 md:hidden text-white backdrop-blur-md cursor-pointer"
+            className="absolute top-5 left-5 z-40 p-3 rounded-2xl bg-bg-surface/90 border border-white/10 hover:bg-bg-surface md:hidden text-white cursor-pointer"
           >
             <Menu size={24} />
           </button>
@@ -588,7 +588,7 @@ function App() {
           {/* Overlay (Mobile) */}
           {isSidebarOpen && (
             <div 
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/70 z-40 md:hidden"
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
@@ -604,7 +604,7 @@ function App() {
               </button>
             </div>
           
-          <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-md w-full shrink-0 relative">
+          <div className="flex items-center gap-1 bg-bg-surface/80 border border-white/10 p-1.5 rounded-full w-full shrink-0 relative">
             <button 
               ref={profileButtonRef}
               onClick={(e) => {
@@ -665,7 +665,7 @@ function App() {
           <motion.div 
             layout 
             transition={{ layout: { type: 'spring', stiffness: 350, damping: 25 } }}
-            className={`flex flex-col min-h-0 bg-white/5 border border-white/10 rounded-3xl p-4 backdrop-blur-md overflow-hidden ${isDMOpen ? 'flex-1' : ''}`}
+            className={`flex flex-col min-h-0 bg-bg-surface/60 border border-white/10 rounded-3xl p-4 overflow-hidden ${isDMOpen ? 'flex-1' : ''}`}
           >
             <motion.button 
               layout
@@ -769,9 +769,7 @@ function App() {
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
         className="relative z-10 w-full max-w-[440px] mx-4"
         style={{
-          background: 'rgba(255,255,255,0.04)',
-          backdropFilter: 'blur(40px)',
-          WebkitBackdropFilter: 'blur(40px)',
+          background: 'rgba(9,9,11,0.85)',
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '28px',
           boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.1)',
@@ -1169,15 +1167,15 @@ function App() {
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
         className="fixed bottom-5 right-5 flex flex-col gap-3 z-50">
         <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer" 
-           className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] backdrop-blur-md transition-all duration-300">
+           className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] transition-all duration-300">
           <Github size={20} />
         </a>
         <a href="https://www.linkedin.com/in/efecanefee/" target="_blank" rel="noopener noreferrer" 
-           className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-[#0a66c2]/50 hover:shadow-[0_0_15px_rgba(10,102,194,0.6)] backdrop-blur-md transition-all duration-300">
+           className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-[#0a66c2]/50 hover:shadow-[0_0_15px_rgba(10,102,194,0.6)] transition-all duration-300">
           <Linkedin size={20} />
         </a>
         <a href="https://www.instagram.com/efecan.efeee/" target="_blank" rel="noopener noreferrer" 
-           className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-[#e1306c]/50 hover:shadow-[0_0_15px_rgba(225,48,108,0.6)] backdrop-blur-md transition-all duration-300">
+           className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-[#e1306c]/50 hover:shadow-[0_0_15px_rgba(225,48,108,0.6)] transition-all duration-300">
           <Instagram size={20} />
         </a>
       </motion.div>

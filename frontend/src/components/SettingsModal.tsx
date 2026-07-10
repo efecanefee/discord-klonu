@@ -81,7 +81,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className={`absolute inset-0 ${settings.reducedMotion ? 'bg-black/80' : 'bg-black/60 backdrop-blur-sm'}`}
+          className="absolute inset-0 bg-black/80"
           onClick={onClose}
         />
 
