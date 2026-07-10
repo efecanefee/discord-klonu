@@ -164,7 +164,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] w-[100vw] bg-[#0F172A] relative">
+    <div className="flex flex-col h-[100dvh] w-[100vw] bg-[#09090b] relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -right-[10%] w-[70vw] h-[70vw] rounded-full bg-[#7C3AED]/5 blur-[120px]" />
         <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#3B82F6]/5 blur-[120px]" />
@@ -179,10 +179,10 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             ← Geri
           </button>
           <div className="relative">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-[#1E293B] border border-[#334155] shadow-lg">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-[#18181b] border border-[#334155] shadow-lg">
               {getAvatarEmoji(targetUser.avatarId)}
             </div>
-            <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-[#0F172A] rounded-full ${targetUser.customStatus === 'online' ? 'bg-green-500' : targetUser.customStatus === 'idle' ? 'bg-yellow-500' : targetUser.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
+            <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-[#09090b] rounded-full ${targetUser.customStatus === 'online' ? 'bg-green-500' : targetUser.customStatus === 'idle' ? 'bg-yellow-500' : targetUser.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
           </div>
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -293,7 +293,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
       </div>
 
       {/* Input Area */}
-      <div className="p-4 sm:p-6 bg-[#0F172A]/90 border-t border-white/5 backdrop-blur-xl sticky bottom-0 z-20 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="p-4 sm:p-6 bg-[#09090b]/90 border-t border-white/5 backdrop-blur-xl sticky bottom-0 z-20 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {editingMessageId && (
           <div className="flex items-center justify-between mb-2 bg-blue-500/10 rounded-xl px-4 py-2 border border-blue-500/20">
             <div className="flex items-center gap-2 text-sm text-blue-200">
@@ -318,7 +318,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             </button>
           </div>
         )}
-        <form onSubmit={handleSendMessage} className="relative flex items-center bg-[#1E293B]/50 border border-white/10 rounded-2xl transition-all shadow-inner focus-within:border-[#7C3AED]/50 focus-within:bg-[#1E293B]/80">
+        <form onSubmit={handleSendMessage} className="relative flex items-center bg-[#18181b]/50 border border-white/10 rounded-2xl transition-all shadow-inner focus-within:border-[#7C3AED]/50 focus-within:bg-[#18181b]/80">
           <div className="relative">
             <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 text-white/30 hover:text-white transition-colors cursor-pointer">
               <Smile size={20} />

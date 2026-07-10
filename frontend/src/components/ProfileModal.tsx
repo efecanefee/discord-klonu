@@ -91,7 +91,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-[#0F172A] border border-[#334155] rounded-3xl overflow-y-auto custom-scrollbar shadow-2xl flex flex-col md:flex-row"
+          className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-[#09090b] border border-[#334155] rounded-3xl overflow-y-auto custom-scrollbar shadow-2xl flex flex-col md:flex-row"
         >
           {/* Sol Panel: Form ve Seçim */}
           <div className="flex-1 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#334155]">
@@ -119,7 +119,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full bg-[#1E293B] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
+                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
                     placeholder="Adınız"
                   />
                 </div>
@@ -129,7 +129,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full bg-[#1E293B] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
+                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
                     placeholder="Soyadınız"
                   />
                 </div>
@@ -143,7 +143,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-[#1E293B] border border-[#334155] rounded-xl pl-9 pr-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
+                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-9 pr-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
                     placeholder="Kullanıcı adınız"
                   />
                 </div>
@@ -157,7 +157,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   <button
                     key={avatar.id}
                     onClick={() => setAvatarId(avatar.id)}
-                    className={`relative rounded-xl flex items-center justify-center transition-all overflow-hidden aspect-square text-4xl bg-[#1E293B] ${
+                    className={`relative rounded-xl flex items-center justify-center transition-all overflow-hidden aspect-square text-4xl bg-[#18181b] ${
                       avatarId === avatar.id
                         ? 'border-2 border-[#7C3AED] shadow-[0_0_20px_rgba(124,58,237,0.5)] scale-[1.02] z-10'
                         : 'border-2 border-transparent hover:border-[#7C3AED]/50 hover:scale-[1.02]'
@@ -189,15 +189,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     Merhaba, bu yeni profilim!
                   </div>
                 </div>
-                <div className="w-8 h-8 rounded-full border border-[#7C3AED] overflow-hidden bg-[#1E293B] shrink-0 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-full border border-[#7C3AED] overflow-hidden bg-[#18181b] shrink-0 flex items-center justify-center text-sm">
                   {getAvatarEmoji(avatarId)}
                 </div>
               </div>
             </div>
 
             {/* Aktif Kullanıcı Listesi Önizlemesi */}
-            <div className="w-full bg-[#1E293B]/50 border border-[#334155] rounded-xl p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border-2 border-[#7C3AED] overflow-hidden shrink-0 flex items-center justify-center text-xl bg-[#1E293B]">
+            <div className="w-full bg-[#18181b]/50 border border-[#334155] rounded-xl p-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full border-2 border-[#7C3AED] overflow-hidden shrink-0 flex items-center justify-center text-xl bg-[#18181b]">
                  {getAvatarEmoji(avatarId)}
               </div>
               <div className="flex flex-col min-w-0">

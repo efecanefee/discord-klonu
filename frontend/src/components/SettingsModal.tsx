@@ -91,10 +91,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: settings.reducedMotion ? 1 : 0.95, y: settings.reducedMotion ? 0 : 20 }}
           transition={{ duration: settings.reducedMotion ? 0 : 0.3 }}
-          className={`relative w-full max-w-2xl bg-[#0F172A] border border-white/10 rounded-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-[600px] ${settings.reducedMotion ? 'shadow-none' : 'shadow-2xl'}`}
+          className={`relative w-full max-w-2xl bg-[#09090b] border border-white/10 rounded-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-[600px] ${settings.reducedMotion ? 'shadow-none' : 'shadow-2xl'}`}
         >
           {/* Sidebar */}
-          <div className="w-full md:w-64 bg-[#1E293B]/50 border-r border-white/5 p-4 flex flex-col gap-2 shrink-0">
+          <div className="w-full md:w-64 bg-[#18181b]/50 border-r border-white/5 p-4 flex flex-col gap-2 shrink-0">
             <h2 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2 px-2">Ayarlar</h2>
             
             <button
@@ -184,7 +184,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                     <select 
                       value={settings.microphoneId}
                       onChange={(e) => updateSettings({ microphoneId: e.target.value })}
-                      className="w-full bg-[#1E293B] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
+                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
                     >
                       <option value="default">Varsayılan Mikrofon</option>
                       {microphones.map(mic => (
@@ -200,7 +200,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                     <select 
                       value={settings.speakerId}
                       onChange={(e) => updateSettings({ speakerId: e.target.value })}
-                      className="w-full bg-[#1E293B] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
+                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
                     >
                       <option value="default">Varsayılan Hoparlör</option>
                       {speakers.map(speaker => (
@@ -281,7 +281,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                     <select 
                       value={settings.notificationTone}
                       onChange={(e) => updateSettings({ notificationTone: e.target.value })}
-                      className="w-full bg-[#1E293B] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
+                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
                     >
                       <option value="default">Klasik Ding</option>
                       <option value="pop">Hafif Pop</option>

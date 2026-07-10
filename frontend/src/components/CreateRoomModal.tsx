@@ -94,7 +94,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-md bg-[#0F172A] border border-[#334155] rounded-3xl overflow-hidden shadow-2xl"
+          className="relative w-full max-w-md bg-[#09090b] border border-[#334155] rounded-3xl overflow-hidden shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Üst Gradient Çizgi */}
@@ -155,7 +155,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   maxLength={50}
                   autoFocus
                   disabled={isLoading}
-                  className="w-full bg-[#1E293B] border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm placeholder:text-white/20 disabled:opacity-50"
+                  className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm placeholder:text-white/20 disabled:opacity-50"
                 />
                 <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-white/20">
                   {name.length}/50
@@ -176,7 +176,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   className={`relative flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 ${
                     type === 'text'
                       ? 'bg-[#7C3AED]/10 border-[#7C3AED]/50 shadow-[0_0_20px_rgba(124,58,237,0.15)]'
-                      : 'bg-[#1E293B] border-[#334155] hover:border-[#7C3AED]/30'
+                      : 'bg-[#18181b] border-[#334155] hover:border-[#7C3AED]/30'
                   } disabled:opacity-50`}
                 >
                   <div
@@ -210,7 +210,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   className={`relative flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 ${
                     type === 'voice'
                       ? 'bg-[#10b981]/10 border-[#10b981]/50 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-                      : 'bg-[#1E293B] border-[#334155] hover:border-[#10b981]/30'
+                      : 'bg-[#18181b] border-[#334155] hover:border-[#10b981]/30'
                   } disabled:opacity-50`}
                 >
                   <div
@@ -252,7 +252,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   maxLength={200}
                   rows={3}
                   disabled={isLoading}
-                  className="w-full bg-[#1E293B] border border-[#334155] rounded-xl px-4 py-3 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm placeholder:text-white/20 resize-none disabled:opacity-50"
+                  className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-3 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm placeholder:text-white/20 resize-none disabled:opacity-50"
                 />
                 <span className="absolute right-3 bottom-2 text-[10px] text-white/20">
                   {description.length}/200
