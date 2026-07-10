@@ -95,7 +95,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
     };
 
     const handleMessageDeleted = (msgId: number) => {
-      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, isDeleted: true, content: "Bu mesaj silindi." } : m));
+      setMessages(prev => prev.filter(m => m.id !== msgId));
     };
 
     signalrService.onDirectMessageEdited(handleMessageEdited);
@@ -244,23 +244,22 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                             </button>
                           </>
                         )}
-                        {!msg.isDeleted && (
-                          <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white" title="Yanıtla">
-                             <Reply size={12} />
-                          </button>
                         )}
+                        <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white" title="Yanıtla">
+                           <Reply size={12} />
+                        </button>
                     </div>
 
                     <div 
-                      className={`rounded-2xl px-5 py-3 cursor-pointer ${msg.isDeleted ? 'bg-white/5 text-white/40 italic' : isMe ? 'bg-[#7C3AED] text-white rounded-br-none shadow-[0_4px_20px_rgba(124,58,237,0.3)]' : 'bg-white/5 text-white/90 rounded-bl-none border border-white/10 shadow-lg'}`}
+                      className={`rounded-2xl px-5 py-3 cursor-pointer ${isMe ? 'bg-[#7C3AED] text-white rounded-br-none shadow-[0_4px_20px_rgba(124,58,237,0.3)]' : 'bg-white/5 text-white/90 rounded-bl-none border border-white/10 shadow-lg'}`}
                       title="Kopyalamak için tıkla"
                       onClick={() => navigator.clipboard.writeText(msg.content)}
                     >
                       <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
                       <div className={`flex items-center gap-1.5 mt-2 text-[10px] ${isMe ? 'text-white/60 justify-end' : 'text-white/40'}`}>
                         <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        {msg.isEdited && !msg.isDeleted && <span>(Düzenlendi)</span>}
-                        {isMe && !msg.isDeleted && (
+                        {msg.isEdited && <span>(Düzenlendi)</span>}
+                        {isMe && (
                           msg.isRead ? <CheckCheck size={12} className="text-blue-300" /> : <Check size={12} />
                         )}
                       </div>
