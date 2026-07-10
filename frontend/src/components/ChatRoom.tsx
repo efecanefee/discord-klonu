@@ -78,7 +78,7 @@ const RemoteVideoPlayer: React.FC<{ stream: MediaStream; label: string }> = ({ s
     if (!hasVideo) return null;
 
     return (
-        <div className="relative rounded-xl overflow-hidden border border-border-main bg-black">
+        <div className="relative w-full h-full flex justify-center items-center rounded-xl overflow-hidden border border-border-main bg-black">
             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain" />
             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm flex items-center gap-1.5">
                 {label}
@@ -883,7 +883,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         </div>
                                     )}
                                     {isCameraOn && !isScreenSharing && (
-                                        <div className="relative rounded-xl overflow-hidden border border-border-main bg-black">
+                                        <div className="relative w-full h-full flex justify-center items-center rounded-xl overflow-hidden border border-border-main bg-black">
                                             <video ref={localVideoRef} autoPlay muted className="w-full h-full object-contain" />
                                             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg flex items-center gap-1.5 backdrop-blur-sm">
                                                 {username} (Sen)
@@ -906,8 +906,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     })}
                                 </div>
                                 {isCameraOn && isScreenSharing && (
-                                    <div className="absolute bottom-4 right-4 w-48 h-36 rounded-xl overflow-hidden border-2 border-border-main shadow-2xl bg-black z-10">
-                                        <video ref={localVideoRef} autoPlay muted className="w-full h-full object-cover" />
+                                    <div className="absolute bottom-4 right-4 w-48 h-36 rounded-xl overflow-hidden border-2 border-border-main shadow-2xl bg-black z-10 flex justify-center items-center">
+                                        <video ref={localVideoRef} autoPlay muted className="w-full h-full object-contain" />
                                     </div>
                                 )}
                             </div>
