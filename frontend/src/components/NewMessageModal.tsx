@@ -10,7 +10,7 @@ export interface UserData {
   lastName: string;
   avatarId: string;
   customStatus: string; // 'online' | 'offline' vb.
-  lastSeen: string;
+  lastSeen?: string;
 }
 
 interface NewMessageModalProps {

@@ -168,6 +168,7 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN is_edited boolean NOT NULL DEFAULT false;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_url text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_name text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN reply_to_id bigint;"); } catch { }
 
         // 6. User için yeni kolonlar (Varsa atlar)
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN is_verified boolean NOT NULL DEFAULT true;"); } catch { }
@@ -201,9 +202,11 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Ana Salon', 'text', 'Sohbet Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Müzik Odası', 'text', 'Dinleme Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
 
-        // 8. Users tablosuna Faz 1 DM alanlarını ekle (last_seen ve custom_status)
+        // 8. Users tablosuna Faz 1 ve Faz 2 DM/Durum alanlarını ekle
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen timestamp with time zone NOT NULL DEFAULT now();"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_status text NOT NULL DEFAULT 'offline';"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_status text NOT NULL DEFAULT 'online';"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_status_message text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS show_last_seen boolean NOT NULL DEFAULT true;"); } catch { }
 
         // 9. Direct Messages tablosunu oluştur
         try {

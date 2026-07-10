@@ -5,6 +5,7 @@ import ProfileModal from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
 import SettingsModal from './components/SettingsModal';
+import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
@@ -29,6 +30,9 @@ function App() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [avatarId, setAvatarId] = useState('default');
+  const [myCustomStatus, setMyCustomStatus] = useState('online');
+  const [myCustomStatusMessage, setMyCustomStatusMessage] = useState('');
+  const [myShowLastSeen, setMyShowLastSeen] = useState(true);
   const [userId, setUserId] = useState(localStorage.getItem('userId') || '');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isDMOpen, setIsDMOpen] = useState(true);
@@ -36,6 +40,8 @@ function App() {
   const [isDeafened, setIsDeafened] = useState(false);
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
   const [roomId, setRoomId] = useState('');
   const [inDMRoom, setInDMRoom] = useState(false);
   const [activeDMs, setActiveDMs] = useState<ModalUserData[]>([]);
@@ -53,6 +59,25 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isMainLogoFlipped, setIsMainLogoFlipped] = useState(false);
   const hoverTimeoutRef = useRef<number | null>(null);
+
+  const handleUpdatePrivacy = async (showLastSeen: boolean) => {
+    setMyShowLastSeen(showLastSeen);
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${API_BASE_URL}/api/users/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ showLastSeen })
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Dinamik oda listesi
   type RoomData = {
@@ -176,12 +201,19 @@ function App() {
     const savedFirstName = localStorage.getItem('firstName') || '';
     const savedLastName = localStorage.getItem('lastName') || '';
     const savedAvatarId = localStorage.getItem('avatarId') || 'default';
+    const savedStatus = localStorage.getItem('customStatus') || 'online';
+    const savedStatusMsg = localStorage.getItem('customStatusMessage') || '';
+    const savedShowLastSeen = localStorage.getItem('showLastSeen') !== 'false'; // default true
+
     if (token && savedUsername && savedUserId) {
       setUserId(savedUserId);
       setUsername(savedUsername);
       setFirstName(savedFirstName);
       setLastName(savedLastName);
       setAvatarId(savedAvatarId);
+      setMyCustomStatus(savedStatus);
+      setMyCustomStatusMessage(savedStatusMsg);
+      setMyShowLastSeen(savedShowLastSeen);
       setAuthState('rooms');
       connectSignalR();
     }
@@ -232,6 +264,7 @@ function App() {
                 lastName: '',
                 avatarId: dm.senderAvatarId || dm.SenderAvatarId || 'default',
                 customStatus: dm.senderCustomStatus || dm.SenderCustomStatus || 'online',
+                customStatusMessage: dm.senderCustomStatusMessage || dm.SenderCustomStatusMessage,
                 lastSeen: new Date().toISOString()
               }, ...prev];
             }
@@ -241,9 +274,10 @@ function App() {
       }
     };
 
-    const handleUserStatusChanged = (id: string, status: string, lastSeen: string) => {
-      setActiveDMs(prev => prev.map(u => u.id === id ? { ...u, customStatus: status, lastSeen } : u));
-      setActiveDMUser(prev => prev?.id === id ? { ...prev, customStatus: status, lastSeen } : prev);
+    const handleUserStatusChanged = (data: { userId: string, status: string, message?: string,  lastSeen?: string; }) => {
+      const { userId: id, status, message, lastSeen } = data;
+      setActiveDMs(prev => prev.map(u => u.id === id ? { ...u, customStatus: status, customStatusMessage: message, lastSeen } : u));
+      setActiveDMUser(prev => prev?.id === id ? { ...prev, customStatus: status, customStatusMessage: message, lastSeen } : prev);
     };
 
     signalrService.onReceiveDirectMessage(handleReceiveDM);
@@ -310,11 +344,18 @@ function App() {
         localStorage.setItem('firstName', data.firstName || '');
         localStorage.setItem('lastName', data.lastName || '');
         localStorage.setItem('avatarId', data.avatarId || 'default');
+        localStorage.setItem('customStatus', data.customStatus || 'online');
+        localStorage.setItem('customStatusMessage', data.customStatusMessage || '');
+        localStorage.setItem('showLastSeen', data.showLastSeen === false ? 'false' : 'true');
+        
         setUserId(data.userId);
         setUsername(data.username);
         setFirstName(data.firstName || '');
         setLastName(data.lastName || '');
         setAvatarId(data.avatarId || 'default');
+        setMyCustomStatus(data.customStatus || 'online');
+        setMyCustomStatusMessage(data.customStatusMessage || '');
+        setMyShowLastSeen(data.showLastSeen !== false);
         setAuthState('rooms');
         connectSignalR();
       } else {
@@ -412,6 +453,25 @@ function App() {
       setErrorMsg('Bağlantı hatası.');
     }
     setIsLoading(false);
+  };
+
+  const handleUpdateStatus = async (status: string, message: string = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/users/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ customStatus: status, customStatusMessage: message })
+      });
+      if (res.ok) {
+        setMyCustomStatus(status);
+        setMyCustomStatusMessage(message);
+        localStorage.setItem('customStatus', status);
+        localStorage.setItem('customStatusMessage', message);
+      }
+    } catch (err) {
+      console.error('Durum güncellenirken hata oluştu:', err);
+    }
   };
 
   const handleLogout = () => {
@@ -552,17 +612,28 @@ function App() {
               </button>
             </div>
           
-          <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-md w-full shrink-0">
+          <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-md w-full shrink-0 relative">
             <button 
-              onClick={() => setIsProfileModalOpen(true)}
+              ref={profileButtonRef}
+              onClick={(e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest('.avatar-container')) {
+                  setIsStatusMenuOpen(prev => !prev);
+                } else {
+                  setIsProfileModalOpen(true);
+                }
+              }}
               className="flex items-center gap-2 flex-1 hover:bg-white/10 p-1 rounded-full transition-all group overflow-hidden"
             >
-              <div className="w-9 h-9 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B] flex items-center justify-center text-lg shrink-0">
-                {getAvatarEmoji(avatarId)}
+              <div className="avatar-container relative cursor-pointer group/avatar">
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B] flex items-center justify-center text-lg shrink-0 group-hover/avatar:opacity-80 transition-opacity">
+                  {getAvatarEmoji(avatarId)}
+                </div>
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#0F172A] rounded-full ${myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
               </div>
               <div className="flex flex-col items-start min-w-0 flex-1">
                 <span className="text-sm font-bold text-white group-hover:text-[#7C3AED] transition-colors truncate w-full text-left">{username}</span>
-                <span className="text-[10px] text-white/50 truncate w-full text-left">Profili Düzenle</span>
+                <span className="text-[10px] text-white/50 truncate w-full text-left">{myCustomStatusMessage || "Profili Düzenle"}</span>
               </div>
             </button>
             <div className="flex items-center pr-1 gap-0.5 shrink-0">
@@ -588,6 +659,14 @@ function App() {
                 <Settings size={18} />
               </button>
             </div>
+            <StatusMenu 
+              isOpen={isStatusMenuOpen} 
+              onClose={() => setIsStatusMenuOpen(false)} 
+              currentStatus={myCustomStatus} 
+              currentMessage={myCustomStatusMessage} 
+              onUpdateStatus={handleUpdateStatus} 
+              buttonRef={profileButtonRef} 
+            />
           </div>
 
           {/* Özel Mesajlar (DM) Bölümü */}
@@ -641,7 +720,7 @@ function App() {
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-[#1E293B] border border-[#334155]">
                           {getAvatarEmoji(user.avatarId)}
                         </div>
-                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#0F172A] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : 'bg-gray-500'}`} />
+                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#0F172A] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : user.customStatus === 'idle' ? 'bg-yellow-500' : user.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
                       </div>
                       <div className="flex flex-col items-start truncate flex-1">
                         <span className={`text-sm font-semibold truncate ${activeDMUser?.id === user.id ? 'text-white' : 'text-white/80'}`}>
@@ -1111,7 +1190,12 @@ function App() {
         </a>
       </motion.div>
 
-      <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
+      <SettingsModal 
+        isOpen={isSettingsModalOpen} 
+        onClose={() => setIsSettingsModalOpen(false)} 
+        showLastSeen={myShowLastSeen}
+        onUpdatePrivacy={handleUpdatePrivacy}
+      />
     </div>
   );
 }

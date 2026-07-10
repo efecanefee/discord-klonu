@@ -19,5 +19,7 @@ namespace DiscordClone.Api.Models
         // Dosya/resim ekleri
         public string? FileUrl { get; set; }
         public string? FileName { get; set; }
+
+        public long? ReplyToId { get; set; }
     }
 }
