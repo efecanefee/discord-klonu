@@ -37,7 +37,7 @@ namespace DiscordClone.Api.Controllers
                 .Where(m => 
                     ((m.SenderId == currentUserId && m.ReceiverId == otherUserId) ||
                     (m.SenderId == otherUserId && m.ReceiverId == currentUserId)) &&
-                    m.CreatedAt >= twoWeeksAgo)
+                    m.CreatedAt >= twoWeeksAgo && !m.IsDeleted)
                 .OrderByDescending(m => m.CreatedAt)
                 .Take(200) // Son 200 mesaj (en yeni 200)
                 .ToListAsync();
