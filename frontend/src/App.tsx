@@ -6,7 +6,7 @@ import CreateRoomModal from './components/CreateRoomModal';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
-import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
@@ -30,6 +30,8 @@ function App() {
   const [userId, setUserId] = useState(localStorage.getItem('userId') || '');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isDMOpen, setIsDMOpen] = useState(true);
+  const [isMicMuted, setIsMicMuted] = useState(false);
+  const [isDeafened, setIsDeafened] = useState(false);
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
   const [roomId, setRoomId] = useState('');
@@ -542,18 +544,42 @@ function App() {
               </button>
             </div>
           
+          <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-md w-full shrink-0">
             <button 
               onClick={() => setIsProfileModalOpen(true)}
-              className="flex items-center gap-3 p-2 pr-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-[#7C3AED]/50 transition-all group backdrop-blur-md shrink-0 w-max"
+              className="flex items-center gap-2 flex-1 hover:bg-white/10 p-1 rounded-full transition-all group overflow-hidden"
             >
-            <div className="w-10 h-10 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B] flex items-center justify-center text-xl">
-              {getAvatarEmoji(avatarId)}
+              <div className="w-9 h-9 rounded-full overflow-hidden border border-[#7C3AED] bg-[#1E293B] flex items-center justify-center text-lg shrink-0">
+                {getAvatarEmoji(avatarId)}
+              </div>
+              <div className="flex flex-col items-start min-w-0 flex-1">
+                <span className="text-sm font-bold text-white group-hover:text-[#7C3AED] transition-colors truncate w-full text-left">{username}</span>
+                <span className="text-[10px] text-white/50 truncate w-full text-left">Profili Düzenle</span>
+              </div>
+            </button>
+            <div className="flex items-center pr-1 gap-0.5 shrink-0">
+              <button 
+                onClick={() => setIsMicMuted(!isMicMuted)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                title={isMicMuted ? "Sesi Aç" : "Sustur"}
+              >
+                {isMicMuted ? <MicOff size={18} className="text-red-400" /> : <Mic size={18} />}
+              </button>
+              <button 
+                onClick={() => setIsDeafened(!isDeafened)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                title={isDeafened ? "Sağırlaştırmayı Kaldır" : "Sağırlaştır"}
+              >
+                {isDeafened ? <Headphones size={18} className="text-red-400" /> : <Headphones size={18} />}
+              </button>
+              <button 
+                className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                title="Ayarlar"
+              >
+                <Settings size={18} />
+              </button>
             </div>
-            <div className="flex flex-col items-start">
-              <span className="text-sm font-bold text-white group-hover:text-[#7C3AED] transition-colors">{username}</span>
-              <span className="text-[10px] text-white/50">Profili Düzenle</span>
-            </div>
-          </button>
+          </div>
 
           {/* Özel Mesajlar (DM) Bölümü */}
           <motion.div 
