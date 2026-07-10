@@ -31,13 +31,18 @@ namespace DiscordClone.Api.Controllers
 
             var currentUserId = currentUser.Id;
 
+            var twoWeeksAgo = DateTime.UtcNow.AddDays(-14);
+
             var messages = await _db.DirectMessages
                 .Where(m => 
-                    (m.SenderId == currentUserId && m.ReceiverId == otherUserId) ||
-                    (m.SenderId == otherUserId && m.ReceiverId == currentUserId))
-                .OrderBy(m => m.CreatedAt)
-                .Take(100) // Son 100 mesaj
+                    ((m.SenderId == currentUserId && m.ReceiverId == otherUserId) ||
+                    (m.SenderId == otherUserId && m.ReceiverId == currentUserId)) &&
+                    m.CreatedAt >= twoWeeksAgo)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(200) // Son 200 mesaj (en yeni 200)
                 .ToListAsync();
+
+            messages.Reverse(); // Kronolojik sıraya çevir
 
             return Ok(messages);
         }

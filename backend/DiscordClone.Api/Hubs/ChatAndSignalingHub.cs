@@ -161,12 +161,12 @@ namespace DiscordClone.Api.Hubs
             // Mute durumlarını caller'a gönder
             await Clients.Caller.SendAsync("RoomMuteStates", muteStates);
 
-            // Son 100 mesajı gönder (en yeni 100)
+            // Son 50 mesajı gönder (en yeni 50)
             var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
             var history = await _db.Messages
                 .Where(m => m.RoomId == roomId && m.Timestamp >= oneWeekAgo && !m.IsDeleted)
                 .OrderByDescending(m => m.Timestamp)
-                .Take(100)
+                .Take(50)
                 .Select(m => new { m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName, m.ReplyToId })
                 .ToListAsync();
 
