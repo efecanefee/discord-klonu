@@ -292,7 +292,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
       </div>
 
       {/* Input Area */}
-      <div className="p-4 sm:p-6 bg-[#09090b]/90 border-t border-white/5 backdrop-blur-xl sticky bottom-0 z-20 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="p-4 sm:p-6 bg-[#09090b] border-t border-white/5 sticky bottom-0 z-20 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {editingMessageId && (
           <div className="flex items-center justify-between mb-2 bg-blue-500/10 rounded-xl px-4 py-2 border border-blue-500/20">
             <div className="flex items-center gap-2 text-sm text-blue-200">
