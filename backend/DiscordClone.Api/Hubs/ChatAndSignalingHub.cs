@@ -35,12 +35,23 @@ namespace DiscordClone.Api.Hubs
                 var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
                 if (user != null)
                 {
-                    user.CustomStatus = "online";
+                    // Görünmez moddaysa online'a çevirme
+                    if (user.CustomStatus == "offline") 
+                    {
+                        user.CustomStatus = "online";
+                    }
                     user.LastSeen = DateTime.UtcNow;
                     await _db.SaveChangesAsync();
                     
-                    // Herkese bu kullanıcının online olduğunu bildir
-                    await Clients.All.SendAsync("UserStatusChanged", user.Id, "online", user.LastSeen);
+                    // Herkese bu kullanıcının durumunu bildir (Görünmezse offline olarak bildir)
+                    var broadcastStatus = user.CustomStatus == "invisible" ? "offline" : user.CustomStatus;
+                    await Clients.All.SendAsync("UserStatusChanged", new
+                    {
+                        userId = user.Id,
+                        status = broadcastStatus,
+                        message = user.CustomStatusMessage,
+                        lastSeen = user.ShowLastSeen ? user.LastSeen : (DateTime?)null
+                    });
                 }
             }
             
@@ -58,11 +69,22 @@ namespace DiscordClone.Api.Hubs
                 var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
                 if (user != null)
                 {
-                    user.CustomStatus = "offline";
+                    // Sadece kullanıcı görünmez modda değilse DB'yi offline olarak güncelle
+                    // (Görünmez modun kalıcı olması için)
+                    if (user.CustomStatus != "invisible")
+                    {
+                        user.CustomStatus = "offline";
+                    }
                     user.LastSeen = DateTime.UtcNow;
                     await _db.SaveChangesAsync();
                     
-                    await Clients.All.SendAsync("UserStatusChanged", user.Id, "offline", user.LastSeen);
+                    await Clients.All.SendAsync("UserStatusChanged", new
+                    {
+                        userId = user.Id,
+                        status = "offline",
+                        message = user.CustomStatusMessage,
+                        lastSeen = user.ShowLastSeen ? user.LastSeen : (DateTime?)null
+                    });
                 }
             }
 
@@ -145,7 +167,7 @@ namespace DiscordClone.Api.Hubs
                 .Where(m => m.RoomId == roomId && m.Timestamp >= oneWeekAgo && !m.IsDeleted)
                 .OrderBy(m => m.Timestamp)
                 .Take(100)
-                .Select(m => new { m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName })
+                .Select(m => new { m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName, m.ReplyToId })
                 .ToListAsync();
 
             await Clients.Caller.SendAsync("RoomHistory", history);
@@ -168,7 +190,7 @@ namespace DiscordClone.Api.Hubs
             await Clients.Group(roomId).SendAsync("UserLeft", username, Context.ConnectionId);
         }
 
-        public async Task SendMessage(string roomId, string requestedUsername, string message)
+        public async Task SendMessage(string roomId, string requestedUsername, string message, long? replyToId = null)
         {
             var userId = Context.UserIdentifier; // JWT Token'dan (NameIdentifier)
             var username = Context.User?.Identity?.Name ?? requestedUsername;
@@ -177,7 +199,7 @@ namespace DiscordClone.Api.Hubs
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             // Önce yayınla
-            await Clients.Group(roomId).SendAsync("ReceiveMessage", username, avatarId, message, 0L, timestamp);
+            await Clients.Group(roomId).SendAsync("ReceiveMessage", username, avatarId, message, 0L, timestamp, replyToId);
 
             // DB'ye kaydet
             var msg = new ChatMessage
@@ -187,7 +209,8 @@ namespace DiscordClone.Api.Hubs
                 Username = username,
                 AvatarId = avatarId,
                 Text = message,
-                Timestamp = timestamp
+                Timestamp = timestamp,
+                ReplyToId = replyToId
             };
             _db.Messages.Add(msg);
             await _db.SaveChangesAsync();
@@ -285,7 +308,7 @@ namespace DiscordClone.Api.Hubs
         // ==========================================
         // ÖZEL MESAJLAR (DIRECT MESSAGES) - FAZ 1
         // ==========================================
-        public async Task SendDirectMessage(string receiverId, string content)
+        public async Task SendDirectMessage(string receiverId, string content, long? replyToId = null)
         {
             var senderId = Context.UserIdentifier;
             if (string.IsNullOrEmpty(senderId) || string.IsNullOrWhiteSpace(content)) return;
@@ -298,7 +321,8 @@ namespace DiscordClone.Api.Hubs
                 ReceiverId = receiverId,
                 Content = content,
                 CreatedAt = DateTime.UtcNow,
-                IsRead = false
+                IsRead = false,
+                ReplyToId = replyToId
             };
 
             _db.DirectMessages.Add(directMessage);
@@ -312,13 +336,43 @@ namespace DiscordClone.Api.Hubs
                 createdAt = directMessage.CreatedAt,
                 isRead = directMessage.IsRead,
                 isEdited = directMessage.IsEdited,
+                replyToId = directMessage.ReplyToId,
                 senderUsername = sender?.Username,
                 senderAvatarId = sender?.AvatarId,
                 senderCustomStatus = sender?.CustomStatus
             };
 
-            // Alıcıya ve gönderene mesajı gönder (Eğer online iseler)
+        // Alıcıya ve gönderene mesajı gönder (Eğer online iseler)
             await Clients.Users(new[] { senderId, receiverId }).SendAsync("ReceiveDirectMessage", dmData);
+        }
+
+        public async Task EditDirectMessage(long messageId, string newContent)
+        {
+            var userId = Context.UserIdentifier;
+            if (string.IsNullOrEmpty(userId)) return;
+
+            var msg = await _db.DirectMessages.FindAsync(messageId);
+            if (msg == null || msg.SenderId != userId || msg.IsDeleted) return;
+
+            msg.Content = newContent;
+            msg.IsEdited = true;
+            await _db.SaveChangesAsync();
+
+            await Clients.Users(new[] { msg.SenderId, msg.ReceiverId }).SendAsync("DirectMessageEdited", messageId, newContent);
+        }
+
+        public async Task DeleteDirectMessage(long messageId)
+        {
+            var userId = Context.UserIdentifier;
+            if (string.IsNullOrEmpty(userId)) return;
+
+            var msg = await _db.DirectMessages.FindAsync(messageId);
+            if (msg == null || msg.SenderId != userId || msg.IsDeleted) return;
+
+            msg.IsDeleted = true;
+            await _db.SaveChangesAsync();
+
+            await Clients.Users(new[] { msg.SenderId, msg.ReceiverId }).SendAsync("DirectMessageDeleted", messageId);
         }
 
         public async Task SendUserTyping(string receiverId)

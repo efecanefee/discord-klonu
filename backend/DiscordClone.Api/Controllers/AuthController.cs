@@ -108,7 +108,10 @@ namespace DiscordClone.Api.Controllers
                     username = user.Username,
                     avatarId = user.AvatarId ?? "default",
                     firstName = user.FirstName ?? "",
-                    lastName = user.LastName ?? ""
+                    lastName = user.LastName ?? "",
+                    customStatus = user.CustomStatus,
+                    customStatusMessage = user.CustomStatusMessage,
+                    showLastSeen = user.ShowLastSeen
                 });
             }
             catch (Exception ex)

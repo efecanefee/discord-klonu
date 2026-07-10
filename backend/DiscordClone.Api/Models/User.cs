@@ -20,7 +20,9 @@ namespace DiscordClone.Api.Models
 
         // DM & Online Status Fields
         public DateTime LastSeen { get; set; } = DateTime.UtcNow;
-        public string CustomStatus { get; set; } = "offline"; // "online", "idle", "dnd", "offline"
+        public string CustomStatus { get; set; } = "online"; // "online", "idle", "dnd", "invisible"
+        public string? CustomStatusMessage { get; set; }
+        public bool ShowLastSeen { get; set; } = true;
 
         // Navigation property
         public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();

@@ -12,4 +12,15 @@ namespace DiscordClone.Api.Models
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
     }
+
+    public class UpdateStatusDto
+    {
+        public string CustomStatus { get; set; } = string.Empty;
+        public string? CustomStatusMessage { get; set; }
+    }
+
+    public class UpdatePrivacyDto
+    {
+        public bool ShowLastSeen { get; set; }
+    }
 }

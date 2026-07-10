@@ -75,7 +75,7 @@ class SignalRService {
     public onUserLeft(callback: (username: string, connectionId: string) => void) {
         this.connection?.on('UserLeft', callback);
     }
-    public onReceiveMessage(callback: (username: string, avatarId: string, message: string, serverId: number, timestamp: number) => void) {
+    public onReceiveMessage(callback: (username: string, avatarId: string, message: string, serverId: number, timestamp: number, replyToId?: number) => void) {
         this.connection?.on('ReceiveMessage', callback);
     }
     public onReceiveSignal(callback: (senderConnectionId: string, signalData: string) => void) {
@@ -179,27 +179,46 @@ class SignalRService {
     // ==========================================
     
     // Kullanıcı durum değişimi (Online, Offline)
-    public onUserStatusChanged(callback: (userId: string, status: string, lastSeen: string) => void) {
+    public onUserStatusChanged(callback: (data: { userId: string, status: string, message?: string, lastSeen?: string }) => void) {
         this.connection?.on('UserStatusChanged', callback);
     }
-    public offUserStatusChanged(callback: (userId: string, status: string, lastSeen: string) => void) {
+    public offUserStatusChanged(callback: (data: { userId: string, status: string, message?: string, lastSeen?: string }) => void) {
         this.connection?.off('UserStatusChanged', callback);
     }
 
     // Yeni özel mesaj geldi
-    public onReceiveDirectMessage(callback: (dm: { id: number; senderId: string; receiverId: string; content: string; createdAt: string; isRead: boolean }) => void) {
+    public onReceiveDirectMessage(callback: (dm: any) => void) {
         this.connection?.on('ReceiveDirectMessage', callback);
     }
-    public offReceiveDirectMessage(callback: (dm: { id: number; senderId: string; receiverId: string; content: string; createdAt: string; isRead: boolean }) => void) {
+    public offReceiveDirectMessage(callback: (dm: any) => void) {
         this.connection?.off('ReceiveDirectMessage', callback);
     }
 
     // DM Gönderme
-    public async sendDirectMessage(receiverId: string, content: string) {
-        if (this.connection.state === signalR.HubConnectionState.Connected) {
-            await this.connection.invoke('SendDirectMessage', receiverId, content);
-        } else {
-            console.warn('Cannot send DM, SignalR disconnected.');
+    public async sendDirectMessage(receiverId: string, content: string, replyToId?: number) {
+        if (!this.connection) return;
+        try {
+            await this.connection.invoke("SendDirectMessage", receiverId, content, replyToId || null);
+        } catch (err) {
+            console.error("Send DM Error:", err);
+        }
+    }
+
+    public async editDirectMessage(messageId: number, newContent: string) {
+        if (!this.connection) return;
+        try {
+            await this.connection.invoke("EditDirectMessage", messageId, newContent);
+        } catch (err) {
+            console.error("Edit DM Error:", err);
+        }
+    }
+
+    public async deleteDirectMessage(messageId: number) {
+        if (!this.connection) return;
+        try {
+            await this.connection.invoke("DeleteDirectMessage", messageId);
+        } catch (err) {
+            console.error("Delete DM Error:", err);
         }
     }
 
@@ -223,6 +242,18 @@ class SignalRService {
     public offMessagesRead(callback: (userId: string) => void) {
         this.connection?.off('MessagesRead', callback);
     }
+    public onDirectMessageEdited(callback: (messageId: number, newContent: string) => void) {
+        this.connection?.on('DirectMessageEdited', callback);
+    }
+    public onDirectMessageDeleted(callback: (messageId: number) => void) {
+        this.connection?.on('DirectMessageDeleted', callback);
+    }
+    public offDirectMessageEdited(callback: (messageId: number, newContent: string) => void) {
+        this.connection?.off('DirectMessageEdited', callback);
+    }
+    public offDirectMessageDeleted(callback: (messageId: number) => void) {
+        this.connection?.off('DirectMessageDeleted', callback);
+    }
     public async sendMarkAsRead(senderId: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             await this.connection.invoke('MarkMessagesAsRead', senderId);
@@ -230,11 +261,12 @@ class SignalRService {
     }
 
     // Senders
-    public async sendMessage(roomId: string, username: string, message: string) {
-        if (this.connection.state === signalR.HubConnectionState.Connected) {
-            await this.connection.invoke('SendMessage', roomId, username, message);
-        } else {
-            console.warn("Mesaj gönderilemedi, bağlantı koptu.");
+    public async sendMessage(roomId: string, username: string, message: string, replyToId?: number): Promise<void> {
+        if (!this.connection) return;
+        try {
+            await this.connection.invoke("SendMessage", roomId, username, message, replyToId || null);
+        } catch (err) {
+            console.error("Error sending message: ", err);
         }
     }
     public async sendFileMessage(roomId: string, username: string, fileUrl: string, fileName: string) {

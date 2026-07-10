@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Send, Users, LogOut, Mic, MicOff, VolumeX, Volume1, Volume2, Camera, CameraOff, Monitor, MonitorOff, Settings, Search, X, Code, Smile, Paperclip, Pencil, FileText } from 'lucide-react';
+import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -27,6 +27,7 @@ interface Message {
     isEdited?: boolean;
     fileUrl?: string;
     fileName?: string;
+    replyToId?: number;
 }
 
 type UserStatus = 'online' | 'away' | 'busy' | 'music';
@@ -124,6 +125,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // Mesaj düzenleme
     const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
     const [editText, setEditText] = useState('');
+    const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null);
     // Dosya yükleme
     const [isDragging, setIsDragging] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -195,7 +197,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             setTypingUsers(prev => { const n = new Set(prev); n.delete(u); return n; });
         };
 
-        const handleReceiveMessage = (u: string, senderAvatarId: string, m: string, serverId: number, timestamp: number) => {
+        const handleReceiveMessage = (u: string, senderAvatarId: string, m: string, serverId: number, timestamp: number, replyToId?: number) => {
             if (!isMounted) return;
             if (u === username) {
                 // Optimistic mesajın pending'ini kaldır, serverId'sini güncelle
@@ -215,6 +217,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                 text: m,
                 type: 'message',
                 timestamp,
+                replyToId
             }]);
             setTypingUsers(prev => { const n = new Set(prev); n.delete(u); return n; });
         };
@@ -232,7 +235,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId })));
         };
 
-        const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string }[]) => {
+        const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string; replyToId?: number }[]) => {
             if (!isMounted) return;
             setMessages(history.map(m => ({
                 id: m.id,
@@ -245,6 +248,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                 isEdited: m.isEdited,
                 fileUrl: m.fileUrl ?? undefined,
                 fileName: m.fileName ?? undefined,
+                replyToId: m.replyToId ?? undefined
             })));
         };
 
@@ -485,13 +489,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             type: 'message',
             pending: true,
             timestamp: Date.now(),
+            replyToId: replyingToMessage?.serverId || replyingToMessage?.id
         }]);
 
         playSendSound();
         setMessageInput('');
+        setReplyingToMessage(null);
 
         // Backend'e gönder — SignalR confirm gelince pending kaldır
-        signalrService.sendMessage(roomId, username, text);
+        signalrService.sendMessage(roomId, username, text, replyingToMessage?.serverId || replyingToMessage?.id);
 
         // Backend confirm gelince pending flag'i kaldır
         // (SignalR handleReceiveMessage'da kendi mesajını da alıyorsan aşağıdaki satırı sil)
@@ -947,7 +953,25 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                         </div>
                                                         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                             <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
-                                                            <div className="relative group/msg">
+                                                            
+                                                            {msg.replyToId && (() => {
+                                                                const replyMsg = messages.find(m => m.serverId === msg.replyToId || m.id === msg.replyToId);
+                                                                if (replyMsg) {
+                                                                    return (
+                                                                        <div className={`flex items-center gap-1 mb-0.5 text-[9px] text-text-muted cursor-pointer hover:text-text-main transition-colors ${isMine ? 'justify-end' : 'justify-start'}`} onClick={() => {
+                                                                            const el = document.getElementById(`compact-msg-${replyMsg.id}`);
+                                                                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                        }}>
+                                                                            <div className="w-2 h-2 rounded border-l border-t border-border-main ml-0.5 opacity-60" />
+                                                                            <span className="font-semibold">{replyMsg.username === username ? 'Sen' : replyMsg.username}</span>
+                                                                            <span className="truncate max-w-[80px]">{replyMsg.text}</span>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
+
+                                                            <div className="relative group/msg" id={`compact-msg-${msg.id}`}>
                                                                 <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
                                                                     <div className="whitespace-pre-wrap break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
                                                                 </div>
@@ -959,16 +983,23 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         {msg.pending && ' · gönderiliyor...'}
                                                                     </div>
                                                                 </div>
-                                                                {isMine && msg.serverId && !msg.pending && (
-                                                                    <div className="absolute -top-3 -left-10 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 flex gap-1 z-20">
-                                                                        <button onClick={() => handleStartEdit(msg)} className="w-6 h-6 rounded-full bg-blue-500/80 hover:bg-blue-500 flex items-center justify-center cursor-pointer" title="Düzenle">
-                                                                            <Pencil size={11} className="text-white" />
-                                                                        </button>
-                                                                        <button onClick={() => signalrService.deleteMessage(msg.serverId!)} className="w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer" title="Sil">
-                                                                            <X size={11} className="text-white" />
-                                                                        </button>
+                                                                    <div className={`absolute -top-3 ${isMine ? '-left-16' : '-right-8'} opacity-60 hover:opacity-100 transition-opacity duration-150 flex gap-1 z-20`}>
+                                                                        {isMine && msg.serverId && !msg.pending && (
+                                                                            <>
+                                                                                <button onClick={() => handleStartEdit(msg)} className="w-6 h-6 rounded-full bg-blue-500/80 hover:bg-blue-500 flex items-center justify-center cursor-pointer" title="Düzenle">
+                                                                                    <Pencil size={11} className="text-white" />
+                                                                                </button>
+                                                                                <button onClick={() => signalrService.deleteMessage(msg.serverId!)} className="w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer" title="Sil">
+                                                                                    <X size={11} className="text-white" />
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                        {!msg.pending && (
+                                                                            <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer" title="Yanıtla">
+                                                                                <Reply size={11} className="text-text-main" />
+                                                                            </button>
+                                                                        )}
                                                                     </div>
-                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1062,7 +1093,25 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                 <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
                                                                     {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}
                                                                 </span>
-                                                                <div className="relative group/msg">
+                                                                
+                                                                {msg.replyToId && (() => {
+                                                                    const replyMsg = messages.find(m => m.serverId === msg.replyToId || m.id === msg.replyToId);
+                                                                    if (replyMsg) {
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 mb-1 text-[11px] text-text-muted cursor-pointer hover:text-text-main transition-colors ${isMine ? 'justify-end' : 'justify-start'}`} onClick={() => {
+                                                                                const el = document.getElementById(`room-msg-${replyMsg.id}`);
+                                                                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                            }}>
+                                                                                <div className="w-3 h-3 rounded border-l border-t border-border-main ml-1 opacity-60" />
+                                                                                <span className="font-semibold">{replyMsg.username === username ? 'Sen' : replyMsg.username}</span>
+                                                                                <span className="truncate max-w-[120px]">{replyMsg.text}</span>
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    return null;
+                                                                })()}
+
+                                                                <div className="relative group/msg" id={`room-msg-${msg.id}`}>
                                                                     <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
                                                                         <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
                                                                     </div>
@@ -1074,15 +1123,35 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                             {msg.pending && ' · gönderiliyor...'}
                                                                         </div>
                                                                     </div>
-                                                                    {isMine && msg.serverId && !msg.pending && (
-                                                                        <button
-                                                                            onClick={() => signalrService.deleteMessage(msg.serverId!)}
-                                                                            className="absolute -top-2 -left-6 opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 w-5 h-5 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer z-20"
-                                                                            title="Mesajı sil"
-                                                                        >
-                                                                            <X size={10} className="text-white" />
-                                                                        </button>
-                                                                    )}
+                                                                    <div className={`absolute -top-3 ${isMine ? '-left-16' : '-right-8'} opacity-60 hover:opacity-100 transition-opacity duration-150 flex gap-1 z-20`}>
+                                                                        {isMine && msg.serverId && !msg.pending && (
+                                                                            <button
+                                                                                onClick={() => handleStartEdit(msg)}
+                                                                                className="w-6 h-6 rounded-full bg-blue-500/80 hover:bg-blue-500 flex items-center justify-center cursor-pointer"
+                                                                                title="Düzenle"
+                                                                            >
+                                                                                <Pencil size={11} className="text-white" />
+                                                                            </button>
+                                                                        )}
+                                                                        {isMine && msg.serverId && !msg.pending && (
+                                                                            <button
+                                                                                onClick={() => signalrService.deleteMessage(msg.serverId!)}
+                                                                                className="w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer"
+                                                                                title="Mesajı sil"
+                                                                            >
+                                                                                <X size={10} className="text-white" />
+                                                                            </button>
+                                                                        )}
+                                                                        {!msg.pending && (
+                                                                            <button
+                                                                                onClick={() => setReplyingToMessage(msg)}
+                                                                                className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer"
+                                                                                title="Yanıtla"
+                                                                            >
+                                                                                <Reply size={12} className="text-text-main" />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1195,6 +1264,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
                                     <span className="text-primary-main flex items-center gap-2 font-medium"><Pencil size={14} /> Mesajı düzenliyorsun</span>
                                     <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
+                                </div>
+                            )}
+                            {!editingMessageId && replyingToMessage && (
+                                <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
+                                    <span className="text-primary-main flex items-center gap-2 font-medium"><Reply size={14} /> {replyingToMessage.username} yanıtlanıyor: <span className="text-text-muted truncate max-w-[150px]">{replyingToMessage.text}</span></span>
+                                    <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
                                 </div>
                             )}
                             <form onSubmit={editingMessageId ? handleSaveEdit : handleSendMessage}

@@ -31,9 +31,26 @@ namespace DiscordClone.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("AvatarId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_id");
+
+                    b.Property<string>("FileName")
+                        .HasColumnType("text")
+                        .HasColumnName("file_name");
+
+                    b.Property<string>("FileUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("file_url");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsEdited")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_edited");
 
                     b.Property<string>("RoomId")
                         .IsRequired()
@@ -65,30 +82,177 @@ namespace DiscordClone.Api.Migrations
                     b.ToTable("messages", (string)null);
                 });
 
+            modelBuilder.Entity("DiscordClone.Api.Models.DirectMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FileName")
+                        .HasColumnType("text")
+                        .HasColumnName("file_name");
+
+                    b.Property<string>("FileUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("file_url");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsEdited")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_edited");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_read");
+
+                    b.Property<string>("ReceiverId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("receiver_id");
+
+                    b.Property<long?>("ReplyToId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("reply_to_id");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("sender_id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("direct_messages", (string)null);
+                });
+
+            modelBuilder.Entity("DiscordClone.Api.Models.Room", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("rooms", (string)null);
+                });
+
             modelBuilder.Entity("DiscordClone.Api.Models.User", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")
                         .HasColumnName("id");
 
+                    b.Property<string>("AvatarId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("avatar_id");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<string>("CustomStatus")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("custom_status");
+
+                    b.Property<string>("CustomStatusMessage")
+                        .HasColumnType("text");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("email");
 
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("first_name");
+
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_verified");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_name");
+
+                    b.Property<DateTime>("LastSeen")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
+                    b.Property<DateTime?>("ResetPasswordExpires")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reset_password_expires");
+
+                    b.Property<string>("ResetPasswordToken")
+                        .HasColumnType("text")
+                        .HasColumnName("reset_password_token");
+
+                    b.Property<bool>("ShowLastSeen")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("username");
+
+                    b.Property<DateTime?>("VerificationExpires")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verification_expires");
+
+                    b.Property<string>("VerificationToken")
+                        .HasColumnType("text")
+                        .HasColumnName("verification_token");
 
                     b.HasKey("Id");
 

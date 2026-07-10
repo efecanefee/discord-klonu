@@ -79,6 +79,10 @@ namespace DiscordClone.Api.Data
                 .Property(u => u.LastSeen).HasColumnName("last_seen");
             modelBuilder.Entity<User>()
                 .Property(u => u.CustomStatus).HasColumnName("custom_status");
+            modelBuilder.Entity<User>()
+                .Property(u => u.CustomStatusMessage).HasColumnName("custom_status_message");
+            modelBuilder.Entity<User>()
+                .Property(u => u.ShowLastSeen).HasColumnName("show_last_seen");
 
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email).IsUnique();
