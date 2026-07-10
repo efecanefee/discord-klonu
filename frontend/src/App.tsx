@@ -14,7 +14,7 @@ import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 
 const Orb = ({ className }: { className: string }) => (
-  <div className={`absolute rounded-full blur-[120px] opacity-30 animate-pulse pointer-events-none ${className}`} />
+  <div className={`absolute rounded-full pointer-events-none ${className}`} />
 );
 
 function App() {
