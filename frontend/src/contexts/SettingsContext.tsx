@@ -28,7 +28,7 @@ const defaultSettings: Settings = {
   dmNotificationsEnabled: true,
   pushNotificationsEnabled: false,
   
-  reducedMotion: false,
+  reducedMotion: true,
 };
 
 interface SettingsContextType {
