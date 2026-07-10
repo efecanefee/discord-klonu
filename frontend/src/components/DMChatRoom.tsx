@@ -233,7 +233,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                   )}
                   
                   <div className="relative flex items-center gap-2" id={`msg-${msg.id}`}>
-                    <div className={`absolute top-1 ${isMe ? '-left-24' : '-right-8'} flex gap-1 opacity-60 hover:opacity-100 transition-opacity z-20`}>
+                    <div className={`absolute top-1 ${isMe ? '-left-24' : '-right-8'} flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20`}>
                         {isMe && !msg.isDeleted && (
                           <>
                             <button onClick={() => startEditing(msg)} className="w-6 h-6 rounded-full bg-blue-500/80 hover:bg-blue-500 flex items-center justify-center text-white" title="Düzenle">

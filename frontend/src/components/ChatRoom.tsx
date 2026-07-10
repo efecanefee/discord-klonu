@@ -983,7 +983,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         {msg.pending && ' · gönderiliyor...'}
                                                                     </div>
                                                                 </div>
-                                                                    <div className={`absolute -top-3 ${isMine ? '-left-16' : '-right-8'} opacity-60 hover:opacity-100 transition-opacity duration-150 flex gap-1 z-20`}>
+                                                                    <div className={`absolute -top-3 ${isMine ? '-left-16' : '-right-8'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 flex gap-1 z-20`}>
                                                                         {isMine && msg.serverId && !msg.pending && (
                                                                             <>
                                                                                 <button onClick={() => handleStartEdit(msg)} className="w-6 h-6 rounded-full bg-blue-500/80 hover:bg-blue-500 flex items-center justify-center cursor-pointer" title="Düzenle">
@@ -1123,7 +1123,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                             {msg.pending && ' · gönderiliyor...'}
                                                                         </div>
                                                                     </div>
-                                                                    <div className={`absolute -top-3 ${isMine ? '-left-16' : '-right-8'} opacity-60 hover:opacity-100 transition-opacity duration-150 flex gap-1 z-20`}>
+                                                                    <div className={`absolute -top-3 ${isMine ? '-left-16' : '-right-8'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 flex gap-1 z-20`}>
                                                                         {isMine && msg.serverId && !msg.pending && (
                                                                             <button
                                                                                 onClick={() => handleStartEdit(msg)}
