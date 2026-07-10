@@ -571,7 +571,6 @@ function App() {
 
       {/* Premium Background */}
       <div className={`absolute inset-0 bg-mesh-gradient ${!settings.reducedMotion ? 'animate-mesh' : ''}`} />
-      <div className="bg-noise" />
 
 
 
