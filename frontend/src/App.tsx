@@ -570,7 +570,7 @@ function App() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-bg-base">
 
       {/* Premium Background */}
-      <div className={`absolute inset-0 bg-mesh-gradient ${!settings.reducedMotion ? 'animate-mesh' : ''}`} />
+      <div className="absolute inset-0 bg-mesh-gradient" />
 
 
 
@@ -831,8 +831,8 @@ function App() {
 
             <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105 pointer-events-none" />
           </div>
-          <h1 className={`text-[22px] sm:text-[24px] md:text-[28px] font-[700] text-white mb-2 tracking-tight flex justify-center ${settings.reducedMotion ? '' : 'text-shine'}`}
-            style={{ textShadow: settings.reducedMotion ? 'none' : '0 0 40px #00B4D860' }}>
+          <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-[700] text-white mb-2 tracking-tight flex justify-center text-shine"
+            style={{ textShadow: '0 0 40px #00B4D860' }}>
             {'SandalyeciMetin'.split('').map((char, index) => (
                 <motion.span
                   key={index}
