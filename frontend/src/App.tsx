@@ -4,6 +4,8 @@ import DMChatRoom from './components/DMChatRoom';
 import ProfileModal from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
+import SettingsModal from './components/SettingsModal';
+import { useSettings } from './contexts/SettingsContext';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
 import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings } from 'lucide-react';
@@ -43,6 +45,8 @@ function App() {
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
   const [focused, setFocused] = useState<'username' | 'email' | 'password' | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const { settings } = useSettings();
   const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
   const [roomUsers, setRoomUsers] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
@@ -508,9 +512,9 @@ function App() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-[#0F172A]">
 
       {/* Bokeh / Soft Light Beams */}
-      <Orb className="w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-[#7C3AED] blur-[80px] md:blur-[150px] opacity-40 -top-16 -left-16 md:-top-32 md:-left-32 animate-[pulse_8s_ease-in-out_infinite]" />
-      <Orb className="w-[250px] h-[250px] md:w-[500px] md:h-[500px] bg-[#8B5CF6] blur-[70px] md:blur-[140px] opacity-40 top-1/2 -right-24 md:-right-48 animate-[pulse_10s_ease-in-out_infinite_2s]" />
-      <Orb className="w-[200px] h-[200px] md:w-[450px] md:h-[450px] bg-[#3B82F6] blur-[90px] md:blur-[160px] opacity-30 bottom-[-50px] left-1/4 animate-[pulse_12s_ease-in-out_infinite_4s]" />
+      <Orb className={`w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-[#7C3AED] blur-[80px] md:blur-[150px] opacity-40 -top-16 -left-16 md:-top-32 md:-left-32 ${settings.reducedMotion ? '' : 'animate-[pulse_8s_ease-in-out_infinite]'}`} />
+      <Orb className={`w-[250px] h-[250px] md:w-[500px] md:h-[500px] bg-[#8B5CF6] blur-[70px] md:blur-[140px] opacity-40 top-1/2 -right-24 md:-right-48 ${settings.reducedMotion ? '' : 'animate-[pulse_10s_ease-in-out_infinite_2s]'}`} />
+      <Orb className={`w-[200px] h-[200px] md:w-[450px] md:h-[450px] bg-[#3B82F6] blur-[90px] md:blur-[160px] opacity-30 bottom-[-50px] left-1/4 ${settings.reducedMotion ? '' : 'animate-[pulse_12s_ease-in-out_infinite_4s]'}`} />
 
 
 
@@ -573,6 +577,7 @@ function App() {
                 {isDeafened ? <Headphones size={18} className="text-red-400" /> : <Headphones size={18} />}
               </button>
               <button 
+                onClick={() => setIsSettingsModalOpen(true)}
                 className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
                 title="Ayarlar"
               >
@@ -1101,6 +1106,8 @@ function App() {
           <Instagram size={20} />
         </a>
       </motion.div>
+
+      <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} />
     </div>
   );
 }
