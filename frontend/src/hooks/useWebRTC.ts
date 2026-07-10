@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
+import { useSettings } from '../contexts/SettingsContext';
 
 const STUN_SERVERS = {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -11,6 +12,8 @@ export interface DeviceInfo {
 }
 
 export function useWebRTC() {
+    const { settings } = useSettings();
+    const noiseSuppression = settings.noiseSuppression;
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
     const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
@@ -57,7 +60,12 @@ export function useWebRTC() {
     const openMicStream = useCallback(async (deviceId?: string) => {
         try {
             const constraints: MediaStreamConstraints = {
-                audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+                audio: {
+                    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+                    noiseSuppression: noiseSuppression ? { ideal: true } : { ideal: false },
+                    echoCancellation: noiseSuppression ? { ideal: true } : { ideal: false },
+                    autoGainControl: noiseSuppression ? { ideal: true } : { ideal: false }
+                },
                 video: false
             };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -471,6 +479,19 @@ export function useWebRTC() {
             setRemoteStreams(new Map());
         };
     }, []);
+
+    // Dinamik olarak Gürültü Engelleme ayarı değiştiğinde canlı stream'e uygula
+    useEffect(() => {
+        if (!isReady || !localStream) return;
+        const track = localStream.getAudioTracks()[0];
+        if (track) {
+            track.applyConstraints({
+                noiseSuppression: noiseSuppression ? { ideal: true } : { ideal: false },
+                echoCancellation: noiseSuppression ? { ideal: true } : { ideal: false },
+                autoGainControl: noiseSuppression ? { ideal: true } : { ideal: false }
+            }).catch(e => console.error('[WebRTC] applyConstraints failed:', e));
+        }
+    }, [noiseSuppression, localStream, isReady]);
 
     const toggleMute = useCallback(() => {
         if (streamRef.current) {

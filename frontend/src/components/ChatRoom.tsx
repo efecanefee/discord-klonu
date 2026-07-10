@@ -6,6 +6,7 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import { useSettings } from '../contexts/SettingsContext';
 import { getAvatarEmoji } from '../constants/avatars';
 
 interface ChatRoomProps {
@@ -105,6 +106,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const [theme, setTheme] = useState<Theme>('dark');
     const [myStatus, setMyStatus] = useState<UserStatus>('online');
     const [showStatusMenu, setShowStatusMenu] = useState(false);
+    const { settings, updateSettings } = useSettings();
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
@@ -816,9 +818,20 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     <div>
                                         <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Mikrofon</p>
                                         <select value={selectedMicId} onChange={e => switchMicrophone(e.target.value)}
-                                            className="w-full bg-bg-surface border border-border-main text-text-main text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-primary-main cursor-pointer">
+                                            className="w-full bg-bg-surface border border-border-main text-text-main text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-primary-main cursor-pointer mb-3">
                                             {audioInputs.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
                                         </select>
+                                        
+                                        <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-colors">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-sm font-semibold text-text-main">Gürültü Engelleme</span>
+                                                <span className="text-[10px] text-text-muted leading-tight">Yapay zeka ile arka plan sesini filtreler</span>
+                                            </div>
+                                            <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.noiseSuppression ? 'bg-primary-main' : 'bg-white/10'}`}>
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.noiseSuppression ? 'translate-x-4' : 'translate-x-1'}`} />
+                                            </div>
+                                            <input type="checkbox" className="hidden" checked={settings.noiseSuppression} onChange={() => updateSettings({ noiseSuppression: !settings.noiseSuppression })} />
+                                        </label>
                                     </div>
                                     {audioOutputs.length > 0 && (
                                         <div>
