@@ -502,8 +502,8 @@ function App() {
     visible: { opacity: 1, transition: { duration: 0.6, staggerChildren: 0.08, delayChildren: 0.1 } },
   };
   const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20, filter: 'blur(8px)' },
-    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } },
+    hidden: { opacity: 0, y: settings.reducedMotion ? 0 : 20, filter: settings.reducedMotion ? 'blur(0px)' : 'blur(8px)' },
+    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: settings.reducedMotion ? 0 : 0.5, ease: [0.25, 0.46, 0.45, 0.94] } },
   };
 
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
@@ -512,9 +512,13 @@ function App() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-[#0F172A]">
 
       {/* Bokeh / Soft Light Beams */}
-      <Orb className={`w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-[#7C3AED] blur-[80px] md:blur-[150px] opacity-40 -top-16 -left-16 md:-top-32 md:-left-32 ${settings.reducedMotion ? '' : 'animate-[pulse_8s_ease-in-out_infinite]'}`} />
-      <Orb className={`w-[250px] h-[250px] md:w-[500px] md:h-[500px] bg-[#8B5CF6] blur-[70px] md:blur-[140px] opacity-40 top-1/2 -right-24 md:-right-48 ${settings.reducedMotion ? '' : 'animate-[pulse_10s_ease-in-out_infinite_2s]'}`} />
-      <Orb className={`w-[200px] h-[200px] md:w-[450px] md:h-[450px] bg-[#3B82F6] blur-[90px] md:blur-[160px] opacity-30 bottom-[-50px] left-1/4 ${settings.reducedMotion ? '' : 'animate-[pulse_12s_ease-in-out_infinite_4s]'}`} />
+      {!settings.reducedMotion && (
+        <>
+          <Orb className="w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-[#7C3AED] blur-[80px] md:blur-[150px] opacity-40 -top-16 -left-16 md:-top-32 md:-left-32 animate-[pulse_8s_ease-in-out_infinite]" />
+          <Orb className="w-[250px] h-[250px] md:w-[500px] md:h-[500px] bg-[#8B5CF6] blur-[70px] md:blur-[140px] opacity-40 top-1/2 -right-24 md:-right-48 animate-[pulse_10s_ease-in-out_infinite_2s]" />
+          <Orb className="w-[200px] h-[200px] md:w-[450px] md:h-[450px] bg-[#3B82F6] blur-[90px] md:blur-[160px] opacity-30 bottom-[-50px] left-1/4 animate-[pulse_12s_ease-in-out_infinite_4s]" />
+        </>
+      )}
 
 
 
@@ -756,8 +760,8 @@ function App() {
 
             <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105 pointer-events-none" />
           </div>
-          <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-[700] text-white mb-2 tracking-tight flex justify-center text-shine"
-            style={{ textShadow: '0 0 40px #00B4D860' }}>
+          <h1 className={`text-[22px] sm:text-[24px] md:text-[28px] font-[700] text-white mb-2 tracking-tight flex justify-center ${settings.reducedMotion ? '' : 'text-shine'}`}
+            style={{ textShadow: settings.reducedMotion ? 'none' : '0 0 40px #00B4D860' }}>
             {'SandalyeciMetin'.split('').map((char, index) => (
                 <motion.span
                   key={index}
