@@ -79,16 +79,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className={`absolute inset-0 ${settings.reducedMotion ? 'bg-black/80' : 'bg-black/60 backdrop-blur-sm'}`}
           onClick={onClose}
         />
 
         {/* Modal */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: settings.reducedMotion ? 1 : 0.95, y: settings.reducedMotion ? 0 : 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-2xl bg-[#0F172A] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-[600px]"
+          exit={{ opacity: 0, scale: settings.reducedMotion ? 1 : 0.95, y: settings.reducedMotion ? 0 : 20 }}
+          transition={{ duration: settings.reducedMotion ? 0 : 0.3 }}
+          className={`relative w-full max-w-2xl bg-[#0F172A] border border-white/10 rounded-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-[600px] ${settings.reducedMotion ? 'shadow-none' : 'shadow-2xl'}`}
         >
           {/* Sidebar */}
           <div className="w-full md:w-64 bg-[#1E293B]/50 border-r border-white/5 p-4 flex flex-col gap-2 shrink-0">
