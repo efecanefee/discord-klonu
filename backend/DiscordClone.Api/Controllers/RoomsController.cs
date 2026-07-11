@@ -29,6 +29,7 @@ namespace DiscordClone.Api.Controllers
         public async Task<IActionResult> GetRooms()
         {
             var rooms = await _db.Rooms
+                .Where(r => !r.IsPrivate)
                 .OrderBy(r => r.CreatedAt)
                 .Select(r => new
                 {
@@ -37,7 +38,9 @@ namespace DiscordClone.Api.Controllers
                     r.Type,
                     r.Description,
                     r.CreatedBy,
-                    r.CreatedAt
+                    r.CreatedAt,
+                    r.IsPrivate,
+                    r.RoomCode
                 })
                 .ToListAsync();
 
@@ -71,13 +74,17 @@ namespace DiscordClone.Api.Controllers
 
             var username = User.Identity?.Name ?? "unknown";
 
+            var roomCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+
             var room = new Room
             {
                 Name = dto.Name.Trim(),
                 Type = type,
                 Description = dto.Description?.Trim(),
                 CreatedBy = username,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                IsPrivate = dto.IsPrivate,
+                RoomCode = roomCode
             };
 
             _db.Rooms.Add(room);
@@ -90,13 +97,74 @@ namespace DiscordClone.Api.Controllers
                 room.Type,
                 room.Description,
                 room.CreatedBy,
-                room.CreatedAt
+                room.CreatedAt,
+                room.IsPrivate,
+                room.RoomCode
             };
 
             // SignalR ile tüm bağlı istemcilere yeni oda bilgisini yayınla
             await _hubContext.Clients.All.SendAsync("RoomCreated", roomData);
 
             return Created($"/api/rooms/{room.Id}", roomData);
+        }
+
+        /// <summary>
+        /// Oda sil (sadece oda sahibi)
+        /// </summary>
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteRoom(int id)
+        {
+            var currentUsername = User.Identity?.Name;
+            if (string.IsNullOrEmpty(currentUsername)) return Unauthorized();
+
+            var room = await _db.Rooms.FindAsync(id);
+            if (room == null) return NotFound("Oda bulunamadı.");
+
+            if (room.CreatedBy != currentUsername)
+                return Forbid();
+
+            // Odaya ait mesajları sil
+            var roomMessages = _db.Messages.Where(m => m.RoomId == room.Name);
+            _db.Messages.RemoveRange(roomMessages);
+            
+            _db.Rooms.Remove(room);
+            await _db.SaveChangesAsync();
+
+            // SignalR ile tüm bağlı istemcilere oda silindiğini bildir
+            await _hubContext.Clients.All.SendAsync("RoomDeleted", id);
+
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Oda ara (kod veya isim ile)
+        /// </summary>
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchRooms([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return BadRequest("Arama terimi gerekli.");
+
+            var trimmed = query.Trim();
+            
+            // Önce oda koduna göre tam eşleşme ara (gizli odalar dahil)
+            var codeMatch = await _db.Rooms
+                .Where(r => r.RoomCode == trimmed.ToUpper())
+                .Select(r => new { r.Id, r.Name, r.Type, r.Description, r.CreatedBy, r.CreatedAt, r.IsPrivate, r.RoomCode })
+                .FirstOrDefaultAsync();
+            
+            if (codeMatch != null)
+                return Ok(new[] { codeMatch });
+
+            // İsme göre ara (sadece açık odalar)
+            var nameMatches = await _db.Rooms
+                .Where(r => !r.IsPrivate && r.Name.Contains(trimmed))
+                .OrderBy(r => r.Name)
+                .Take(20)
+                .Select(r => new { r.Id, r.Name, r.Type, r.Description, r.CreatedBy, r.CreatedAt, r.IsPrivate, r.RoomCode })
+                .ToListAsync();
+            
+            return Ok(nameMatches);
         }
     }
 }

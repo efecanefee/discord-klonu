@@ -244,7 +244,6 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                             </button>
                           </>
                         )}
-                        )}
                         <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white" title="Yanıtla">
                            <Reply size={12} />
                         </button>
