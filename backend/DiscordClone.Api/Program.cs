@@ -265,4 +265,28 @@ app.MapGet("/api/rooms/{roomId}/users", (string roomId) =>
 
 app.MapHub<ChatAndSignalingHub>("/hub/chat");
 
+app.MapGet("/api/test-db", async (AppDbContext db) =>
+{
+    try
+    {
+        var msg = new DiscordClone.Api.Models.ChatMessage
+        {
+            RoomId = "test_room",
+            UserId = "test_user",
+            Username = "test_user",
+            AvatarId = "default",
+            Text = "test message",
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            IsDeleted = false
+        };
+        db.Messages.Add(msg);
+        await db.SaveChangesAsync();
+        return Microsoft.AspNetCore.Http.Results.Ok("Success! Message ID: " + msg.Id);
+    }
+    catch (Exception ex)
+    {
+        return Microsoft.AspNetCore.Http.Results.BadRequest(ex.InnerException?.Message ?? ex.Message);
+    }
+});
+
 app.Run();
