@@ -942,7 +942,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     return (
                                         <div key={u.connectionId} className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/30' : 'hover:bg-bg-surface'}`}>
                                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
-                                                {getAvatarEmoji(u.avatarId)}
+                                                {getAvatarEmoji(u.avatarId || 'default')}
                                             </div>
                                             <div className="flex flex-col min-w-0">
                                                 <span className="text-xs font-medium text-text-main truncate">{u.username}</span>
