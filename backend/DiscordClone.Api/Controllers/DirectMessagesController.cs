@@ -61,13 +61,14 @@ namespace DiscordClone.Api.Controllers
 
             var currentUserId = currentUser.Id;
 
-            // En son mesajlaşılan kullanıcıları bul (Gönderen veya alan)
+            // En son mesajlaşılan kullanıcıları bul (en yeni mesaj sırasına göre)
             var recentUserIds = await _db.DirectMessages
                 .Where(m => m.SenderId == currentUserId || m.ReceiverId == currentUserId)
-                .OrderByDescending(m => m.CreatedAt)
-                .Select(m => m.SenderId == currentUserId ? m.ReceiverId : m.SenderId)
-                .Distinct()
+                .GroupBy(m => m.SenderId == currentUserId ? m.ReceiverId : m.SenderId)
+                .Select(g => new { UserId = g.Key, LastMessageAt = g.Max(m => m.CreatedAt) })
+                .OrderByDescending(x => x.LastMessageAt)
                 .Take(20)
+                .Select(x => x.UserId)
                 .ToListAsync();
 
             var recentUsers = await _db.Users

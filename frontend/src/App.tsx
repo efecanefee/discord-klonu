@@ -254,19 +254,21 @@ function App() {
           }));
 
           setActiveDMs(prev => {
-            if (!prev.some(u => u.id === dm.senderId)) {
-              return [{
-                id: dm.senderId,
-                username: dm.senderUsername || dm.SenderUsername || 'Bilinmeyen Kullanıcı',
-                firstName: '',
-                lastName: '',
-                avatarId: dm.senderAvatarId || dm.SenderAvatarId || 'default',
-                customStatus: dm.senderCustomStatus || dm.SenderCustomStatus || 'online',
-                customStatusMessage: dm.senderCustomStatusMessage || dm.SenderCustomStatusMessage,
-                lastSeen: new Date().toISOString()
-              }, ...prev];
+            const existing = prev.find(u => u.id === dm.senderId);
+            if (existing) {
+              // Var olan kullanıcıyı listenin en üstüne taşı (WhatsApp gibi)
+              return [existing, ...prev.filter(u => u.id !== dm.senderId)];
             }
-            return prev;
+            return [{
+              id: dm.senderId,
+              username: dm.senderUsername || dm.SenderUsername || 'Bilinmeyen Kullanıcı',
+              firstName: '',
+              lastName: '',
+              avatarId: dm.senderAvatarId || dm.SenderAvatarId || 'default',
+              customStatus: dm.senderCustomStatus || dm.SenderCustomStatus || 'online',
+              customStatusMessage: dm.senderCustomStatusMessage || dm.SenderCustomStatusMessage,
+              lastSeen: new Date().toISOString()
+            }, ...prev];
           });
         }
       }
@@ -552,7 +554,9 @@ function App() {
     setAvatarId(result.avatarId || 'default');
   };
 
-  if (inRoom) return <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={() => { setInRoom(false); setRoomId(''); }} />;
+  const totalUnreadDMs = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
+
+  if (inRoom) return <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={() => { setInRoom(false); setRoomId(''); }} unreadDMCount={totalUnreadDMs} onOpenDMs={() => { setInRoom(false); setRoomId(''); setIsDMOpen(true); }} />;
   if (inDMRoom && activeDMUser) return <DMChatRoom currentUser={{ id: userId, username }} targetUser={activeDMUser} API_BASE_URL={API_BASE_URL} onLeave={() => { setInDMRoom(false); setActiveDMUser(null); }} />;
 
   const containerVariants: Variants = {
