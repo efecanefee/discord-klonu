@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, MessageSquare } from 'lucide-react';
+import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -14,8 +14,6 @@ interface ChatRoomProps {
     avatarId?: string;
     roomId: string;
     onLeave: () => void;
-    unreadDMCount?: number;
-    onOpenDMs?: () => void;
 }
 
 interface Message {
@@ -98,7 +96,7 @@ const THEMES: { id: Theme; label: string }[] = [
     { id: 'oled', label: 'OLED' },
 ];
 
-const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roomId, onLeave, unreadDMCount = 0, onOpenDMs }) => {
+const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roomId, onLeave }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string }[]>([]);
     const [messageInput, setMessageInput] = useState('');
@@ -809,20 +807,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             )}
                         </div>
 
-                        {/* Özel Mesajlar Butonu */}
-                        {onOpenDMs && (
-                            <button onClick={onOpenDMs}
-                                className="relative flex items-center justify-center p-2.5 rounded-xl border bg-bg-base border-border-main text-text-muted hover:text-primary-main hover:border-primary-main/40 transition-colors cursor-pointer"
-                                title="Özel Mesajlar">
-                                <MessageSquare size={18} />
-                                {unreadDMCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-md animate-pulse">
-                                        {unreadDMCount}
-                                    </span>
-                                )}
-                            </button>
-                        )}
-
                         {/* Cihaz ayarları */}
                         <div className="relative">
                             <button onClick={() => setShowDeviceMenu(p => !p)}
@@ -939,6 +923,34 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         <video ref={localVideoRef} autoPlay muted className="w-full h-full object-contain" />
                                     </div>
                                 )}
+                            </div>
+                        </motion.div>
+
+                        {/* Kullanıcılar Sidebar (Medya Modunda) */}
+                        <motion.div variants={itemVariants} className="hidden lg:flex w-48 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
+                            <div className="p-3 border-b border-border-main bg-bg-surface/30">
+                                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center justify-between">
+                                    <span>Odada</span>
+                                    <span className="bg-bg-surface px-2 py-0.5 rounded-lg border border-border-main text-text-main font-semibold text-[11px]">
+                                        {Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}
+                                    </span>
+                                </h3>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
+                                {usersInRoom.map((u) => {
+                                    const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
+                                    return (
+                                        <div key={u.connectionId} className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/30' : 'hover:bg-bg-surface'}`}>
+                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0 ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
+                                                {getAvatarEmoji(u.avatarId)}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-xs font-medium text-text-main truncate">{u.username}</span>
+                                                {mutedUsers[u.connectionId] && <MicOff size={10} className="text-red-400 mt-0.5" />}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </motion.div>
 
@@ -1071,36 +1083,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     </div>
                                 </form>
                                 <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
-                            </div>
-                        </motion.div>
-
-                        {/* Kompakt Katılımcılar (Medya Modunda) */}
-                        <motion.div variants={itemVariants} className="hidden lg:flex w-52 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
-                            <div className="p-3 border-b border-border-main bg-bg-surface/30 flex items-center justify-between">
-                                <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Odadakiler</span>
-                                <span className="bg-bg-surface px-2 py-0.5 rounded-lg border border-border-main text-text-main font-semibold text-[11px]">
-                                    {Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}
-                                </span>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                                {usersInRoom.map((u) => {
-                                    const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
-                                    return (
-                                        <div key={u.connectionId}
-                                            className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-bg-surface'}`}>
-                                            <div className="relative">
-                                                <div className="w-7 h-7 rounded-full bg-bg-surface border border-border-main flex items-center justify-center text-sm">
-                                                    {getAvatarEmoji(u.avatarId)}
-                                                </div>
-                                                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-bg-card" />
-                                            </div>
-                                            <div className="flex flex-col min-w-0">
-                                                <span className="text-xs font-semibold text-text-main truncate">{u.username}</span>
-                                                {mutedUsers[u.connectionId] && <MicOff size={10} className="text-red-500" />}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
                             </div>
                         </motion.div>
                     </div>

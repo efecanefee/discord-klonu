@@ -207,13 +207,12 @@ export function useWebRTC() {
                     audio: true
                 });
 
-                // Kullanıcı tarayıcıdan durdurursa
+                // Kullanıcı tarayıcıdan durdurursa — tam cleanup yap (peer connections dahil)
                 display.getVideoTracks()[0].onended = () => {
                     screenStreamRef.current = null;
                     setScreenStream(null);
                     setIsScreenSharing(false);
-
-                    // Karşı tarafa bildir ve renegotiation yap
+                    // Peer bağlantılarından video track'i kaldır ve renegotiation yap
                     peerConnections.current.forEach(async (pc, connId) => {
                         const sender = pc.getSenders().find(s => s.track?.kind === 'video');
                         if (sender) {
@@ -223,7 +222,7 @@ export function useWebRTC() {
                                 await pc.setLocalDescription(offer);
                                 signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
                             } catch (e) {
-                                console.error('[WebRTC] Screen onended renegotiation hatası:', e);
+                                console.error('[WebRTC] Browser-stop renegotiation hatası:', e);
                             }
                         }
                         signalrService.sendSignalToUser(JSON.stringify({ type: 'screen-stopped' }), connId);
