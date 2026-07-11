@@ -94,9 +94,9 @@ namespace DiscordClone.Api.Hubs
             {
                 if (_roomUsers.TryGetValue(roomId, out var usersInRoom))
                 {
-                    if (usersInRoom.TryRemove(Context.ConnectionId, out var username))
+                    if (usersInRoom.TryRemove(Context.ConnectionId, out var userDto))
                     {
-                        await Clients.Group(roomId).SendAsync("UserLeft", username, Context.ConnectionId);
+                        await Clients.Group(roomId).SendAsync("UserLeft", userDto.Username, Context.ConnectionId);
                     }
                 }
             }
