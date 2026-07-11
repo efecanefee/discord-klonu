@@ -169,6 +169,7 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_url text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN file_name text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN reply_to_id bigint;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN is_deleted boolean NOT NULL DEFAULT false;"); } catch { }
 
         // 6. User için yeni kolonlar (Varsa atlar)
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN is_verified boolean NOT NULL DEFAULT true;"); } catch { }
