@@ -39,6 +39,8 @@ namespace DiscordClone.Api.Data
                 .Property(m => m.FileName).HasColumnName("file_name");
             modelBuilder.Entity<ChatMessage>()
                 .Property(m => m.AvatarId).HasColumnName("avatar_id");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.ReplyToId).HasColumnName("reply_to_id");
 
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(m => m.User)
