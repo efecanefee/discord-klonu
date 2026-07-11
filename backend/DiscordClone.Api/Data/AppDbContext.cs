@@ -104,7 +104,13 @@ namespace DiscordClone.Api.Data
             modelBuilder.Entity<Room>()
                 .Property(r => r.CreatedAt).HasColumnName("created_at");
             modelBuilder.Entity<Room>()
+                .Property(r => r.IsPrivate).HasColumnName("is_private").HasDefaultValue(false);
+            modelBuilder.Entity<Room>()
+                .Property(r => r.RoomCode).HasColumnName("room_code").HasMaxLength(8);
+            modelBuilder.Entity<Room>()
                 .HasIndex(r => r.Name).IsUnique();
+            modelBuilder.Entity<Room>()
+                .HasIndex(r => r.RoomCode).IsUnique();
 
             modelBuilder.Entity<DirectMessage>()
                 .ToTable("direct_messages");
