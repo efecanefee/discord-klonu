@@ -179,7 +179,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             ← Geri
           </button>
           <div className="relative">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-[#18181b] border border-[#334155] shadow-lg">
+            <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-[#18181b] border border-[#334155] shadow-lg">
               {getAvatarEmoji(targetUser.avatarId)}
             </div>
             <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-[#09090b] rounded-full ${targetUser.customStatus === 'online' ? 'bg-green-500' : targetUser.customStatus === 'idle' ? 'bg-yellow-500' : targetUser.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />

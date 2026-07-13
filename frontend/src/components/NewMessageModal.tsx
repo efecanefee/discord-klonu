@@ -168,7 +168,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-[#18181b] border border-[#334155]">
+                        <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-xl bg-[#18181b] border border-[#334155]">
                           {getAvatarEmoji(user.avatarId)}
                         </div>
                         {/* Status Indicator */}

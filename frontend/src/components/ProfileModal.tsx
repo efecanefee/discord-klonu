@@ -157,13 +157,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   <button
                     key={avatar.id}
                     onClick={() => setAvatarId(avatar.id)}
-                    className={`relative rounded-xl flex items-center justify-center transition-all overflow-hidden aspect-square text-4xl bg-[#18181b] ${
+                    className={`relative rounded-full flex items-center justify-center transition-all overflow-hidden aspect-square text-4xl bg-[#18181b] ${
                       avatarId === avatar.id
                         ? 'border-2 border-[#7C3AED] shadow-[0_0_20px_rgba(124,58,237,0.5)] scale-[1.02] z-10'
                         : 'border-2 border-transparent hover:border-[#7C3AED]/50 hover:scale-[1.02]'
                     }`}
                   >
-                    {avatar.emoji}
+                    {getAvatarEmoji(avatar.id)}
                   </button>
                 ))}
               </div>
