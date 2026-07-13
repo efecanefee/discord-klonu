@@ -164,7 +164,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] w-[100vw] bg-[#09090b] relative">
+    <div className="flex flex-col h-[100dvh] w-full bg-[#09090b] relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -right-[10%] w-[70vw] h-[70vw] rounded-full bg-[#7C3AED]/5 blur-[120px]" />
         <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#3B82F6]/5 blur-[120px]" />

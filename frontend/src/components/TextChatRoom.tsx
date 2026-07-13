@@ -5,6 +5,7 @@ import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Repl
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import { getAvatarEmoji } from '../constants/avatars';
 
 export interface TextRoomInfo {
@@ -19,6 +20,8 @@ interface TextChatRoomProps {
     roomId: string;
     roomInfo?: TextRoomInfo;
     onLeave: () => void;
+    onOpenDM?: (user: PopoverUser) => void;
+    onOpenProfile?: () => void;
 }
 
 interface Message {
@@ -36,9 +39,10 @@ interface Message {
     replyToId?: number;
 }
 
-const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'default', roomId, roomInfo, onLeave }) => {
+const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'default', roomId, roomInfo, onLeave, onOpenDM, onOpenProfile }) => {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string }[]>([]);
+    const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string }[]>([]);
+    const [popoverUserConnId, setPopoverUserConnId] = useState<string | null>(null);
     const [messageInput, setMessageInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
@@ -131,9 +135,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             ));
         };
 
-        const handleRoomUsers = (usersDict: Record<string, { username: string; avatarId: string }>) => {
+        const handleRoomUsers = (usersDict: Record<string, { username: string; avatarId: string; userId?: string }>) => {
             if (!isMounted) return;
-            setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId })));
+            setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId, userId: data.userId })));
         };
 
         const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string; replyToId?: number }[]) => {
@@ -704,7 +708,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             <AnimatePresence>
                                 {usersInRoom.map((u) => (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={u.connectionId}
-                                        className="flex items-center gap-3 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200">
+                                        onClick={() => setPopoverUserConnId(prev => prev === u.connectionId ? null : u.connectionId)}
+                                        className="relative flex items-center gap-3 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200 cursor-pointer">
                                         <div className="relative">
                                             <div className="w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 border-[#7C3AED] shadow-sm text-xl">
                                                 {getAvatarEmoji(u.avatarId || 'default')}
@@ -717,6 +722,22 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                             </span>
                                             <span className="text-[11px] text-text-muted">Çevrimiçi</span>
                                         </div>
+
+                                        <AnimatePresence>
+                                            {popoverUserConnId === u.connectionId && (
+                                                <>
+                                                    <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setPopoverUserConnId(null); }} />
+                                                    <div className="absolute right-full top-0 mr-3 z-50">
+                                                        <UserPopoverCard
+                                                            user={{ userId: u.userId, username: u.username, avatarId: u.avatarId, customStatus: 'online' }}
+                                                            isSelf={u.username === username}
+                                                            onSendMessage={() => { setPopoverUserConnId(null); onOpenDM?.({ userId: u.userId, username: u.username, avatarId: u.avatarId }); }}
+                                                            onEditProfile={() => { setPopoverUserConnId(null); onOpenProfile?.(); }}
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
+                                        </AnimatePresence>
                                     </motion.div>
                                 ))}
                             </AnimatePresence>

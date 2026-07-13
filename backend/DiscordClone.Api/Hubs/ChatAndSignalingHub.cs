@@ -119,6 +119,7 @@ namespace DiscordClone.Api.Hubs
         {
             public string Username { get; set; } = string.Empty;
             public string AvatarId { get; set; } = "default";
+            public string UserId { get; set; } = string.Empty;
         }
 
         public async Task JoinRoom(string roomId, string requestedUsername)
@@ -142,7 +143,7 @@ namespace DiscordClone.Api.Hubs
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
             _userConnections[Context.ConnectionId] = roomId;
 
-            usersInRoom[Context.ConnectionId] = new RoomUserDto { Username = username, AvatarId = avatarId };
+            usersInRoom[Context.ConnectionId] = new RoomUserDto { Username = username, AvatarId = avatarId, UserId = Context.UserIdentifier ?? string.Empty };
 
             var dictionary = usersInRoom.ToDictionary(k => k.Key, v => v.Value);
 
