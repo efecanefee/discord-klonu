@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import ChatRoom from './components/ChatRoom';
+import TextChatRoom from './components/TextChatRoom';
 import DMChatRoom from './components/DMChatRoom';
 import ProfileModal from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
@@ -9,8 +10,8 @@ import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
-import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 
@@ -85,6 +86,8 @@ function App() {
     description?: string;
     createdBy: string;
     createdAt: string;
+    isPrivate?: boolean;
+    roomCode?: string;
   };
   const defaultRooms: RoomData[] = [
     { id: -1, name: 'Ana Salon', type: 'text', description: 'Sohbet Odası', createdBy: 'system', createdAt: new Date().toISOString() },
@@ -92,6 +95,17 @@ function App() {
   ];
 
   const [rooms, setRooms] = useState<RoomData[]>(defaultRooms);
+  const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
+  // Kaydırmalı oda sayfası (0: Ana Odalar, 1: Topluluk Odaları)
+  const [roomPage, setRoomPage] = useState(0);
+  const roomPagesRef = useRef<HTMLDivElement>(null);
+  // Topluluk odası arama
+  const [roomSearchQuery, setRoomSearchQuery] = useState('');
+  const [roomSearchResults, setRoomSearchResults] = useState<RoomData[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  // Oda silme onay diyalogu
+  const [deleteConfirmRoom, setDeleteConfirmRoom] = useState<RoomData | null>(null);
+  const [isDeletingRoom, setIsDeletingRoom] = useState(false);
 
   // Oda için ikon ve renk mapping
   const getRoomVisuals = (room: RoomData) => {
@@ -107,6 +121,84 @@ function App() {
     }
     // Varsayılan text odası
     return { icon: Hash, color: '#3B82F6', glow: 'rgba(59,130,246,0.3)', sub: room.description || 'Yazı Kanalı' };
+  };
+
+  // Tek bir oda kartı — hem sabit hem topluluk odaları için
+  const renderRoomCard = (room: RoomData, opts?: { showMeta?: boolean }) => {
+    const visuals = getRoomVisuals(room);
+    const RoomIcon = visuals.icon;
+    const isOwner = room.createdBy === username && room.id > 0;
+    const showMeta = opts?.showMeta ?? false;
+    return (
+      <motion.button
+        key={room.id}
+        onClick={() => handleJoinRoom(room)}
+        onMouseEnter={() => handleRoomHover(room.name)}
+        onMouseLeave={handleRoomLeave}
+        whileHover={{ scale: 1.02, y: -2 }}
+        whileTap={{ scale: 0.98 }}
+        className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative overflow-hidden"
+        style={{
+          background: hoveredRoom === room.name ? `${visuals.color}14` : 'rgba(255,255,255,0.03)',
+          border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid rgba(255,255,255,0.06)',
+          boxShadow: hoveredRoom === room.name ? `0 8px 32px ${visuals.glow}` : 'none',
+        }}>
+
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{ background: `radial-gradient(circle at 20% 50%, ${visuals.glow} 0%, transparent 60%)` }} />
+
+        <div className="relative flex items-center gap-4 min-w-0">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
+            style={{
+              background: `${visuals.color}15`,
+              border: `1px solid ${visuals.color}30`,
+              boxShadow: hoveredRoom === room.name ? `0 0 20px ${visuals.glow}` : 'none',
+            }}>
+            <RoomIcon size={18} style={{ color: visuals.color }} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[15px] font-semibold text-white flex items-center gap-1.5 truncate">
+              {room.name}
+              {room.isPrivate && <Lock size={12} className="text-white/40 flex-shrink-0" />}
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
+              <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>{visuals.sub}</span>
+            </div>
+            {showMeta && room.createdBy && room.createdBy !== 'system' && (
+              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                Kurucu: {room.createdBy}
+              </div>
+            )}
+            {hoveredRoom === room.name && roomUsers.length > 0 && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 text-xs flex flex-wrap gap-1">
+                {roomUsers.map((u, i) => (
+                  <span key={i} className="bg-white/10 px-2 py-0.5 rounded text-white/80">{u.username}</span>
+                ))}
+              </motion.div>
+            )}
+          </div>
+        </div>
+
+        <div className="relative flex items-center gap-1 flex-shrink-0">
+          {isOwner && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); setDeleteConfirmRoom(room); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setDeleteConfirmRoom(room); } }}
+              title="Odayı sil"
+              className="p-2 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+            >
+              <Trash2 size={15} />
+            </span>
+          )}
+          <motion.div animate={{ x: hoveredRoom === room.name ? 3 : 0 }} transition={{ duration: 0.2 }}>
+            <ChevronRight size={18} style={{ color: hoveredRoom === room.name ? visuals.color : 'rgba(255,255,255,0.2)' }} />
+          </motion.div>
+        </div>
+      </motion.button>
+    );
   };
 
   // Odaları API'den çek
@@ -224,6 +316,8 @@ function App() {
 
     // Yeni oda oluşturulduğunda dinle
     const handleRoomCreated = (room: RoomData) => {
+      // Gizli odaları listeye ekleme (sadece kod ile bulunur)
+      if (room.isPrivate) return;
       setRooms(prev => {
         // Zaten listede varsa ekleme
         if (prev.some(r => r.id === room.id)) return prev;
@@ -231,6 +325,22 @@ function App() {
       });
     };
     signalrService.onRoomCreated(handleRoomCreated);
+
+    // Oda silindiğinde dinle
+    const handleRoomDeleted = (deletedRoomId: number) => {
+      setRooms(prev => prev.filter(r => r.id !== deletedRoomId));
+      setRoomSearchResults(prev => prev ? prev.filter(r => r.id !== deletedRoomId) : prev);
+      // Silinen odadaysak dışarı çık
+      setActiveRoom(prev => {
+        if (prev && prev.id === deletedRoomId) {
+          setInRoom(false);
+          setRoomId('');
+          return null;
+        }
+        return prev;
+      });
+    };
+    signalrService.onRoomDeleted(handleRoomDeleted);
   };
 
   useEffect(() => {
@@ -499,12 +609,13 @@ function App() {
     window.location.reload();
   };
 
-  const handleJoinRoom = (selectedRoomId: string) => {
-    setRoomId(selectedRoomId);
+  const handleJoinRoom = (room: RoomData) => {
+    setActiveRoom(room);
+    setRoomId(room.name);
     setInRoom(true);
   };
 
-  const handleCreateRoom = async (data: { name: string; type: string; description?: string }) => {
+  const handleCreateRoom = async (data: { name: string; type: string; description?: string; isPrivate: boolean }) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`${API_BASE_URL}/api/rooms`, {
       method: 'POST',
@@ -518,7 +629,69 @@ function App() {
       const errText = await res.text();
       throw new Error(errText || 'Oda oluşturulamadı.');
     }
+    const created = await res.json();
+    // Oluşturan kişi olarak listeye hemen ekle (gizli oda dahil — sadece kurucu görür)
+    setRooms(prev => prev.some(r => r.id === created.id) ? prev : [...prev, created]);
+    return { name: created.name, isPrivate: !!created.isPrivate, roomCode: created.roomCode };
   };
+
+  // Oda arama (isim veya kod ile)
+  const handleRoomSearch = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setRoomSearchResults(null);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/rooms/search?query=${encodeURIComponent(trimmed)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRoomSearchResults(data);
+      } else {
+        setRoomSearchResults([]);
+      }
+    } catch (err) {
+      console.error('Oda araması başarısız:', err);
+      setRoomSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [API_BASE_URL]);
+
+  // Oda silme (onaylı)
+  const handleDeleteRoom = async (room: RoomData) => {
+    setIsDeletingRoom(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE_URL}/api/rooms/${room.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok || res.status === 204) {
+        setRooms(prev => prev.filter(r => r.id !== room.id));
+        setRoomSearchResults(prev => prev ? prev.filter(r => r.id !== room.id) : prev);
+        setDeleteConfirmRoom(null);
+      } else {
+        const errText = await res.text();
+        alert(errText || 'Oda silinemedi.');
+      }
+    } catch (err) {
+      console.error('Oda silme hatası:', err);
+      alert('Oda silinirken bir hata oluştu.');
+    } finally {
+      setIsDeletingRoom(false);
+    }
+  };
+
+  // Arama debounce
+  useEffect(() => {
+    const t = setTimeout(() => { handleRoomSearch(roomSearchQuery); }, 350);
+    return () => clearTimeout(t);
+  }, [roomSearchQuery, handleRoomSearch]);
 
   const handleStartDM = (user: ModalUserData) => {
     setActiveDMUser(user);
@@ -562,7 +735,16 @@ function App() {
     setAvatarId(result.avatarId || 'default');
   };
 
-  if (inRoom) return <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={() => { setInRoom(false); setRoomId(''); }} />;
+  if (inRoom && activeRoom) {
+    // Sabit odalar (Ana Salon, Müzik Odası) ve SES odaları → ChatRoom (WebRTC).
+    // Topluluk YAZI odaları → TextChatRoom (sadece mesajlaşma).
+    const isVoiceStyle = activeRoom.id < 0 || activeRoom.name === 'Ana Salon' || activeRoom.name === 'Müzik Odası' || activeRoom.type === 'voice';
+    const handleLeaveRoom = () => { setInRoom(false); setRoomId(''); setActiveRoom(null); };
+    if (isVoiceStyle) {
+      return <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={handleLeaveRoom} />;
+    }
+    return <TextChatRoom username={username} avatarId={avatarId} roomId={roomId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy }} onLeave={handleLeaveRoom} />;
+  }
   if (inDMRoom && activeDMUser) return <DMChatRoom currentUser={{ id: userId, username }} targetUser={activeDMUser} API_BASE_URL={API_BASE_URL} onLeave={() => { setInDMRoom(false); setActiveDMUser(null); }} />;
 
   const containerVariants: Variants = {
@@ -775,6 +957,59 @@ function App() {
         onClose={() => setIsCreateRoomModalOpen(false)}
         onCreateRoom={handleCreateRoom}
       />
+
+      {/* Oda Silme Onay Diyalogu */}
+      <AnimatePresence>
+        {deleteConfirmRoom && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+            onClick={(e) => { if (e.target === e.currentTarget && !isDeletingRoom) setDeleteConfirmRoom(null); }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-sm bg-[#09090b] border border-[#334155] rounded-3xl overflow-hidden shadow-2xl p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center text-center gap-4">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', boxShadow: '0 0 24px rgba(239,68,68,0.2)' }}
+                >
+                  <AlertTriangle size={28} className="text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Bu odayı silmek istediğine emin misin?</h3>
+                  <p className="text-sm text-white/50 mt-2">
+                    <span className="text-white/80 font-semibold">{deleteConfirmRoom.name}</span> odasındaki tüm mesajlar kalıcı olarak silinecektir. Bu işlem geri alınamaz.
+                  </p>
+                </div>
+                <div className="flex gap-3 w-full mt-2">
+                  <button
+                    onClick={() => setDeleteConfirmRoom(null)}
+                    disabled={isDeletingRoom}
+                    className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 font-semibold text-sm transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={() => handleDeleteRoom(deleteConfirmRoom)}
+                    disabled={isDeletingRoom}
+                    className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {isDeletingRoom ? 'Siliniyor...' : <><Trash2 size={15} /> Sil</>}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
         className="relative z-10 w-full max-w-[440px] mx-4"
@@ -1079,71 +1314,93 @@ function App() {
                 </div>
               </div>
 
-              {rooms
-                .slice()
-                .sort((a, b) => {
-                  const getOrder = (name: string) => {
-                    if (name === 'Ana Salon' || name === 'Genel Oda') return 1;
-                    if (name === 'Müzik Odası') return 2;
-                    return 3;
-                  };
-                  const aOrder = getOrder(a.name);
-                  const bOrder = getOrder(b.name);
-                  if (aOrder !== bOrder) return aOrder - bOrder;
-                  return a.id - b.id;
-                })
-                .map((room) => {
-                const visuals = getRoomVisuals(room);
-                const RoomIcon = visuals.icon;
+              {/* Kaydırmalı iki sayfalı oda listesi */}
+              {(() => {
+                const fixedRooms = rooms.filter(r => r.id < 0 || r.name === 'Ana Salon' || r.name === 'Müzik Odası');
+                const communityRooms = rooms
+                  .filter(r => r.id > 0 && r.name !== 'Ana Salon' && r.name !== 'Müzik Odası')
+                  .slice()
+                  .sort((a, b) => a.id - b.id);
+                const searchResults = roomSearchResults;
                 return (
-                <motion.button
-                  key={room.id}
-                  onClick={() => handleJoinRoom(room.name)}
-                  onMouseEnter={() => handleRoomHover(room.name)}
-                  onMouseLeave={handleRoomLeave}
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative overflow-hidden"
-                  style={{
-                    background: hoveredRoom === room.name ? `${visuals.color}14` : 'rgba(255,255,255,0.03)',
-                    border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid rgba(255,255,255,0.06)',
-                    boxShadow: hoveredRoom === room.name ? `0 8px 32px ${visuals.glow}` : 'none',
-                  }}>
-
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{ background: `radial-gradient(circle at 20% 50%, ${visuals.glow} 0%, transparent 60%)` }} />
-
-                  <div className="relative flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
-                      style={{
-                        background: `${visuals.color}15`,
-                        border: `1px solid ${visuals.color}30`,
-                        boxShadow: hoveredRoom === room.name ? `0 0 20px ${visuals.glow}` : 'none',
-                      }}>
-                      <RoomIcon size={18} style={{ color: visuals.color }} />
-                    </div>
-                    <div>
-                      <div className="text-[15px] font-semibold text-white">{room.name}</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
-                        <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{visuals.sub}</span>
+                  <>
+                    <div
+                      ref={roomPagesRef}
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const page = Math.round(el.scrollLeft / el.clientWidth);
+                        if (page !== roomPage) setRoomPage(page);
+                      }}
+                      className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-1 px-1"
+                      style={{ scrollBehavior: 'smooth' }}
+                    >
+                      {/* Sayfa 1: Ana (sabit) Odalar */}
+                      <div className="snap-center shrink-0 w-full space-y-3 pr-1">
+                        {fixedRooms.map((room) => renderRoomCard(room))}
                       </div>
-                      {hoveredRoom === room.name && roomUsers.length > 0 && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 text-xs flex flex-wrap gap-1">
-                           {roomUsers.map((u, i) => (
-                             <span key={i} className="bg-white/10 px-2 py-0.5 rounded text-white/80">{u.username}</span>
-                           ))}
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
 
-                  <motion.div animate={{ x: hoveredRoom === room.name ? 3 : 0 }} transition={{ duration: 0.2 }}>
-                    <ChevronRight size={18} style={{ color: hoveredRoom === room.name ? visuals.color : 'rgba(255,255,255,0.2)' }} />
-                  </motion.div>
-                </motion.button>
+                      {/* Sayfa 2: Topluluk Odaları */}
+                      <div className="snap-center shrink-0 w-full space-y-3 pl-1">
+                        {/* Arama çubuğu */}
+                        <div className="relative">
+                          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                          <input
+                            type="text"
+                            value={roomSearchQuery}
+                            onChange={(e) => setRoomSearchQuery(e.target.value)}
+                            placeholder="İsim veya oda kodu ile ara..."
+                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-10 pr-9 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#7C3AED]/50 transition-colors"
+                          />
+                          {roomSearchQuery && (
+                            <button onClick={() => setRoomSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors">
+                              <X size={15} />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Sonuçlar / liste */}
+                        {searchResults !== null ? (
+                          isSearching ? (
+                            <div className="text-center py-6 text-white/30 text-[12px]">Aranıyor...</div>
+                          ) : searchResults.length === 0 ? (
+                            <div className="text-center py-6 text-white/30 text-[12px] px-2">
+                              Sonuç bulunamadı. Gizli bir oda için tam kodu girmelisin.
+                            </div>
+                          ) : (
+                            searchResults.map((room) => renderRoomCard(room, { showMeta: true }))
+                          )
+                        ) : communityRooms.length === 0 ? (
+                          <div className="text-center py-6 text-white/30 text-[12px] px-2">
+                            Henüz topluluk odası yok. İlk odayı sen oluştur!
+                          </div>
+                        ) : (
+                          communityRooms.map((room) => renderRoomCard(room, { showMeta: true }))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Nokta göstergeleri + sayfa etiketi */}
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      {['Ana Odalar', 'Topluluk'].map((label, i) => (
+                        <button
+                          key={label}
+                          onClick={() => {
+                            const el = roomPagesRef.current;
+                            if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+                            setRoomPage(i);
+                          }}
+                          className="flex items-center gap-1.5 group"
+                        >
+                          <div className={`h-1.5 rounded-full transition-all duration-300 ${roomPage === i ? 'w-5 bg-[#7C3AED]' : 'w-1.5 bg-white/20 group-hover:bg-white/40'}`} />
+                        </button>
+                      ))}
+                      <span className="ml-2 text-[10px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                        {roomPage === 0 ? 'Ana Odalar' : 'Topluluk Odaları'}
+                      </span>
+                    </div>
+                  </>
                 );
-              })}
+              })()}
 
               <div className="text-center pt-3">
                 <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Yeni bir oda mı açmak istiyorsun? </span>

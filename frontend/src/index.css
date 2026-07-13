@@ -57,6 +57,17 @@ input:focus {
   background: rgba(124, 58, 237, 0.8) !important;
 }
 
+/* Scrollbar tamamen gizle (yatay kaydırmalı oda sayfaları için) */
+.scrollbar-hide::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+.scrollbar-hide {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
 /* Firefox */
 * {
   scrollbar-width: thin;

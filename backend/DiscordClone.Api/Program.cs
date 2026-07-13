@@ -199,6 +199,11 @@ using (var scope = app.Services.CreateScope())
         // Unique index on room name
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_rooms_name"" ON rooms (name);"); } catch { }
 
+        // Gizli oda + oda kodu alanları (Oda Sistemi Yenileme)
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE rooms ADD COLUMN IF NOT EXISTS is_private boolean NOT NULL DEFAULT false;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE rooms ADD COLUMN IF NOT EXISTS room_code varchar(8);"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_rooms_room_code"" ON rooms (room_code);"); } catch { }
+
         // Seed: Varsayılan odaları ekle (varsa atla)
         try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Ana Salon', 'text', 'Sohbet Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Müzik Odası', 'text', 'Dinleme Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
