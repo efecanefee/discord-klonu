@@ -237,12 +237,14 @@ function App() {
     if (!userId) return;
 
     const handleReceiveDM = (dm: any) => {
-      // Sadece bize gelen mesajları kontrol et
-      if (dm.receiverId === userId) {
+      const isOutgoing = dm.senderId === userId;
+      const contactId = isOutgoing ? dm.receiverId : dm.senderId;
+
+      if (!isOutgoing) {
         // Eğer o an o kullanıcının odasındaysak bildirim yapma
         let isCurrentlyFocused = false;
         setActiveDMUser(prev => {
-          if (inDMRoom && prev?.id === dm.senderId) isCurrentlyFocused = true;
+          if (inDMRoom && prev?.id === contactId) isCurrentlyFocused = true;
           return prev;
         });
 
@@ -250,31 +252,34 @@ function App() {
           playNotificationSound();
           setUnreadCounts(prev => ({
             ...prev,
-            [dm.senderId]: (prev[dm.senderId] || 0) + 1
+            [contactId]: (prev[contactId] || 0) + 1
           }));
-
-          setActiveDMs(prev => {
-            const existingIndex = prev.findIndex(u => u.id === dm.senderId);
-            if (existingIndex === -1) {
-              // Yeni kişi — başa ekle
-              return [{
-                id: dm.senderId,
-                username: dm.senderUsername || dm.SenderUsername || 'Bilinmeyen Kullanıcı',
-                firstName: '',
-                lastName: '',
-                avatarId: dm.senderAvatarId || dm.SenderAvatarId || 'default',
-                customStatus: dm.senderCustomStatus || dm.SenderCustomStatus || 'online',
-                customStatusMessage: dm.senderCustomStatusMessage || dm.SenderCustomStatusMessage,
-                lastSeen: new Date().toISOString()
-              }, ...prev];
-            } else {
-              // Mevcut kişi — başa taşı (WhatsApp tarzı)
-              const contact = prev[existingIndex];
-              return [contact, ...prev.filter((_, i) => i !== existingIndex)];
-            }
-          });
         }
       }
+
+      // Mesajlaşılan kişiyi her zaman en üste al (WhatsApp tarzı)
+      setActiveDMs(prev => {
+        const existingIndex = prev.findIndex(u => u.id === contactId);
+        
+        if (existingIndex !== -1) {
+          if (existingIndex === 0) return prev; // Zaten en üstteyse değiştirme
+          const contact = prev[existingIndex];
+          return [contact, ...prev.filter((_, i) => i !== existingIndex)];
+        } else if (!isOutgoing) {
+          // Yeni kişiyse ve mesaj geldiyse başa ekle
+          return [{
+            id: dm.senderId,
+            username: dm.senderUsername || dm.SenderUsername || 'Bilinmeyen Kullanıcı',
+            firstName: '',
+            lastName: '',
+            avatarId: dm.senderAvatarId || dm.SenderAvatarId || 'default',
+            customStatus: dm.senderCustomStatus || dm.SenderCustomStatus || 'online',
+            customStatusMessage: dm.senderCustomStatusMessage || dm.SenderCustomStatusMessage,
+            lastSeen: new Date().toISOString()
+          }, ...prev];
+        }
+        return prev;
+      });
     };
 
     const handleUserStatusChanged = (data: { userId: string, status: string, message?: string,  lastSeen?: string; }) => {
@@ -714,7 +719,7 @@ function App() {
                       }`}
                     >
                       <div className="relative">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm bg-[#18181b] border border-[#334155]">
+                        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm bg-[#18181b] border border-[#334155]">
                           {getAvatarEmoji(user.avatarId)}
                         </div>
                         <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#09090b] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : user.customStatus === 'idle' ? 'bg-yellow-500' : user.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />

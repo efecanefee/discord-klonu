@@ -1,19 +1,20 @@
 export const AVATARS = [
-  { id: 'default', img: '/avatars/yuji.png' },
-  { id: 'admin', emoji: '👔' },
-  { id: 'robot', emoji: '🤖' },
-  { id: 'rider', emoji: '🏍️' },
-  { id: 'cowboy', emoji: '🤠' },
-  { id: 'gangsta', emoji: '😎' },
-  { id: 'cyberpunk', emoji: '👾' },
-  { id: 'racer', emoji: '🏎️' },
-  { id: 'footballer', emoji: '⚽' }
+  { id: 'default', emoji: '👤' },
+  { id: 'yuji', img: '/avatars/yuji.png' },
+  { id: 'admin', img: '/avatars/megumi.png' },
+  { id: 'robot', img: '/avatars/yuta.png' },
+  { id: 'rider', img: '/avatars/gojo.png' },
+  { id: 'cowboy', img: '/avatars/sukuna.png' },
+  { id: 'gangsta', img: '/avatars/todo.png' },
+  { id: 'cyberpunk', img: '/avatars/toji.png' },
+  { id: 'racer', img: '/avatars/nanami.png' },
+  { id: 'footballer', img: '/avatars/choso.png' }
 ];
 
 export const getAvatarEmoji = (id: string) => {
   const avatar = AVATARS.find(a => a.id === id) || AVATARS[0];
   if (avatar.img) {
-    return <img src={avatar.img} alt="avatar" className="w-full h-full object-cover" />;
+    return <img src={avatar.img} alt="avatar" className="w-full h-full object-cover scale-[1.85] translate-y-[9%]" />;
   }
   return <span>{avatar.emoji}</span>;
 };
