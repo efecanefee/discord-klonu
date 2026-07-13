@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Hash, Volume2, MessageSquare, Loader2 } from 'lucide-react';
+import { X, Plus, Hash, Volume2, MessageSquare, Loader2, Lock, Globe, Check, Copy } from 'lucide-react';
+
+interface CreatedRoomInfo {
+  name: string;
+  isPrivate: boolean;
+  roomCode?: string;
+}
 
 interface CreateRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateRoom: (data: { name: string; type: string; description?: string }) => Promise<void>;
+  onCreateRoom: (data: { name: string; type: string; description?: string; isPrivate: boolean }) => Promise<CreatedRoomInfo | void>;
 }
 
 const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
@@ -16,8 +22,11 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   const [name, setName] = useState('');
   const [type, setType] = useState<'text' | 'voice'>('text');
   const [description, setDescription] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [createdRoom, setCreatedRoom] = useState<CreatedRoomInfo | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Modal her açıldığında formu sıfırla
   useEffect(() => {
@@ -25,8 +34,11 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
       setName('');
       setType('text');
       setDescription('');
+      setIsPrivate(false);
       setError('');
       setIsLoading(false);
+      setCreatedRoom(null);
+      setCopied(false);
     }
   }, [isOpen]);
 
@@ -63,17 +75,32 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
     setError('');
 
     try {
-      await onCreateRoom({
+      const result = await onCreateRoom({
         name: trimmedName,
         type,
-        description: description.trim() || undefined
+        description: description.trim() || undefined,
+        isPrivate
       });
-      onClose();
+      // Oluşturulan odanın kodunu göster (özellikle gizli odalar için önemli)
+      if (result && result.roomCode) {
+        setCreatedRoom(result);
+      } else {
+        onClose();
+      }
     } catch (err: any) {
       setError(err.message || 'Oda oluşturulurken bir hata oluştu.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCopyCode = async () => {
+    if (!createdRoom?.roomCode) return;
+    try {
+      await navigator.clipboard.writeText(createdRoom.roomCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* pano erişimi yok */ }
   };
 
   if (!isOpen) return null;
@@ -127,7 +154,61 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
             </button>
           </div>
 
-          {/* Form */}
+          {/* Oda oluşturuldu — kod gösterim ekranı */}
+          {createdRoom ? (
+            <div className="p-6 pt-4 space-y-5">
+              <div className="flex flex-col items-center text-center gap-3">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    boxShadow: '0 0 24px rgba(16, 185, 129, 0.2)',
+                  }}
+                >
+                  <Check size={28} className="text-[#10b981]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Oda oluşturuldu!</h3>
+                  <p className="text-xs text-white/40 mt-1">
+                    <span className="text-white/70 font-semibold">{createdRoom.name}</span> hazır.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs text-white/50 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                  {createdRoom.isPrivate ? <Lock size={12} /> : <Globe size={12} />}
+                  Oda Kodu
+                </label>
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  className="w-full flex items-center justify-between gap-3 bg-[#18181b] border border-[#334155] hover:border-[#7C3AED]/50 rounded-xl px-4 py-3.5 transition-colors group"
+                >
+                  <span className="text-2xl font-mono font-bold tracking-[0.3em] text-white">{createdRoom.roomCode}</span>
+                  <span className="flex items-center gap-1.5 text-xs text-white/50 group-hover:text-white transition-colors">
+                    {copied ? <><Check size={14} className="text-[#10b981]" /> Kopyalandı</> : <><Copy size={14} /> Kopyala</>}
+                  </span>
+                </button>
+                <p className="text-[11px] text-white/30 leading-relaxed">
+                  {createdRoom.isPrivate
+                    ? 'Bu oda gizli. Sadece bu kodu bilenler odayı bulup katılabilir. Kodu paylaşmayı unutma!'
+                    : 'Oda herkese açık listede görünür. Bu kod ile de doğrudan bulunabilir.'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)' }}
+              >
+                Tamam
+              </button>
+            </div>
+          ) : (
+          /* Form */
           <form onSubmit={handleSubmit} className="p-6 pt-4 space-y-5">
             {/* Error Message */}
             {error && (
@@ -260,6 +341,40 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               </div>
             </div>
 
+            {/* Gizli Oda Toggle */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setIsPrivate(p => !p)}
+                disabled={isLoading}
+                className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 text-left ${
+                  isPrivate
+                    ? 'bg-[#7C3AED]/10 border-[#7C3AED]/50 shadow-[0_0_20px_rgba(124,58,237,0.15)]'
+                    : 'bg-[#18181b] border-[#334155] hover:border-[#7C3AED]/30'
+                } disabled:opacity-50`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shrink-0 ${
+                    isPrivate ? 'bg-[#7C3AED]/20' : 'bg-white/5'
+                  }`}
+                >
+                  {isPrivate ? <Lock size={18} className="text-[#7C3AED]" /> : <Globe size={18} className="text-white/40" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm font-semibold ${isPrivate ? 'text-white' : 'text-white/60'}`}>
+                    Gizli Oda
+                  </div>
+                  <div className="text-[10px] text-white/30 leading-tight">
+                    {isPrivate ? 'Sadece oda kodunu bilenler bulabilir' : 'Herkese açık listede görünür'}
+                  </div>
+                </div>
+                {/* Switch */}
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${isPrivate ? 'bg-[#7C3AED]' : 'bg-white/10'}`}>
+                  <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform ${isPrivate ? 'translate-x-6' : 'translate-x-1'}`} style={{ height: '18px', width: '18px' }} />
+                </div>
+              </button>
+            </div>
+
             {/* Alt Gradient Ayırıcı */}
             <div className="w-full h-px bg-gradient-to-r from-transparent via-[#334155] to-transparent" />
 
@@ -290,6 +405,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               )}
             </motion.button>
           </form>
+          )}
 
           {/* Alt Gradient Çizgi */}
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-[#7C3AED]/30 to-transparent" />

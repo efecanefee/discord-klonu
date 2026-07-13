@@ -167,11 +167,19 @@ class SignalRService {
     }
 
     // Yeni oda oluşturuldu
-    public onRoomCreated(callback: (room: { id: number; name: string; type: string; description?: string; createdBy: string; createdAt: string }) => void) {
+    public onRoomCreated(callback: (room: { id: number; name: string; type: string; description?: string; createdBy: string; createdAt: string; isPrivate?: boolean; roomCode?: string }) => void) {
         this.connection?.on('RoomCreated', callback);
     }
-    public offRoomCreated(callback: (room: { id: number; name: string; type: string; description?: string; createdBy: string; createdAt: string }) => void) {
+    public offRoomCreated(callback: (room: { id: number; name: string; type: string; description?: string; createdBy: string; createdAt: string; isPrivate?: boolean; roomCode?: string }) => void) {
         this.connection?.off('RoomCreated', callback);
+    }
+
+    // Oda silindi
+    public onRoomDeleted(callback: (roomId: number) => void) {
+        this.connection?.on('RoomDeleted', callback);
+    }
+    public offRoomDeleted(callback: (roomId: number) => void) {
+        this.connection?.off('RoomDeleted', callback);
     }
 
     // ==========================================
