@@ -15,6 +15,7 @@ builder.WebHost.UseUrls("http://0.0.0.0:" + (Environment.GetEnvironmentVariable(
 builder.Services.AddOpenApi();
 builder.Services.AddControllers(); // REST API Controller'larını ekliyoruz (AuthController için)
 builder.Services.AddSignalR();
+builder.Services.AddHttpClient(); // Dosya yüklemede Supabase Storage'a istek için
 
 // Email & Resend
 builder.Services.AddResend(options =>
