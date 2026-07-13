@@ -3,9 +3,11 @@ import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
+import { useKeybinds } from '../hooks/useKeybinds';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import { useSettings } from '../contexts/SettingsContext';
 import { getAvatarEmoji } from '../constants/avatars';
@@ -142,7 +144,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
     const {
-        localStream, remoteStreams, isMuted, toggleMute, isReady,
+        localStream, remoteStreams, isMuted, toggleMute, setMicEnabled, isReady,
         localVideoStream, screenStream,
         isCameraOn, isScreenSharing,
         toggleCamera, toggleScreenShare,
@@ -614,6 +616,30 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         signalrService.notifyMuteStatus(roomId, newMuted);
     }, [isMuted, toggleMute, playMuteSound, playUnmuteSound, roomId]);
 
+    // Bas-Konuş modu açık/kapandığında mikrofonun başlangıç durumunu ayarla
+    useEffect(() => {
+        if (!isReady) return;
+        if (settings.pushToTalk) {
+            // PTT açıkken mikrofon varsayılan olarak KAPALI; sadece tuş basılıyken açılır
+            setMicEnabled(false);
+            signalrService.notifyMuteStatus(roomId, true);
+        } else {
+            setMicEnabled(true);
+            signalrService.notifyMuteStatus(roomId, false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [settings.pushToTalk, isReady]);
+
+    // Global kısayollar: bas-konuş + mikrofon aç/kapat
+    useKeybinds({
+        pttEnabled: settings.pushToTalk,
+        pttKey: settings.pttKey,
+        muteToggleKey: settings.muteToggleKey,
+        onPTTDown: () => { setMicEnabled(true); playUnmuteSound(); signalrService.notifyMuteStatus(roomId, false); },
+        onPTTUp: () => { setMicEnabled(false); playMuteSound(); signalrService.notifyMuteStatus(roomId, true); },
+        onMuteToggle: () => { handleToggleMute(); },
+    });
+
     const hasRemoteVideo = Array.from(remoteStreams.values()).some(s => s.getVideoTracks().length > 0);
     const isMediaActive = isCameraOn || isScreenSharing || hasRemoteVideo;
 
@@ -1018,7 +1044,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                                                             <div className="relative group/msg" id={`compact-msg-${msg.id}`}>
                                                                 <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                                    {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
+                                                                {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
                                                                     <div className="whitespace-pre-wrap break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
+                                                                )}
                                                                 </div>
                                                                 <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
                                                                     <div className="px-2 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap"
@@ -1158,7 +1187,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                                                                 <div className="relative group/msg" id={`room-msg-${msg.id}`}>
                                                                     <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                                        {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
+                                                                    {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
                                                                         <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
+                                                                    )}
                                                                     </div>
                                                                     {/* Zaman damgası tooltip */}
                                                                     <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>

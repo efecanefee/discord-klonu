@@ -5,6 +5,8 @@ export interface Settings {
   microphoneId: string;
   speakerId: string;
   pushToTalk: boolean;
+  pttKey: string;          // Bas-konuş tuşu (KeyboardEvent.code)
+  muteToggleKey: string;   // Mikrofon aç/kapat kısayolu (KeyboardEvent.code)
   noiseSuppression: boolean;
   
   // Bildirimler
@@ -21,6 +23,8 @@ const defaultSettings: Settings = {
   microphoneId: 'default',
   speakerId: 'default',
   pushToTalk: false,
+  pttKey: 'Space',
+  muteToggleKey: 'PageUp',
   noiseSuppression: true,
   
   notificationSoundEnabled: true,

@@ -11,7 +11,7 @@ import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
-import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, ChevronLeft, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
@@ -67,7 +67,7 @@ function App() {
     try {
       const token = localStorage.getItem('token');
       if (token) {
-        await fetch(`${API_BASE_URL}/api/users/status`, {
+        await fetch(`${API_BASE_URL}/api/users/privacy`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -99,9 +99,9 @@ function App() {
 
   const [rooms, setRooms] = useState<RoomData[]>(defaultRooms);
   const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
-  // Kaydırmalı oda sayfası (0: Ana Odalar, 1: Topluluk Odaları)
+  // Kitap-çevirme oda sayfası (0: Ana Odalar, 1: Topluluk Odaları)
   const [roomPage, setRoomPage] = useState(0);
-  const roomPagesRef = useRef<HTMLDivElement>(null);
+  const [roomFlipDir, setRoomFlipDir] = useState(1); // 1: ileri (sola çevir), -1: geri
   // Topluluk odası arama
   const [roomSearchQuery, setRoomSearchQuery] = useState('');
   const [roomSearchResults, setRoomSearchResults] = useState<RoomData[] | null>(null);
@@ -696,6 +696,19 @@ function App() {
     const t = setTimeout(() => { handleRoomSearch(roomSearchQuery); }, 350);
     return () => clearTimeout(t);
   }, [roomSearchQuery, handleRoomSearch]);
+
+  // Ok tuşları ile oda sayfaları arasında geçiş (yazı alanı odakta değilken)
+  useEffect(() => {
+    if (authState !== 'rooms' || inRoom || inDMRoom) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      if (e.key === 'ArrowRight') { setRoomFlipDir(1); setRoomPage(1); }
+      else if (e.key === 'ArrowLeft') { setRoomFlipDir(-1); setRoomPage(0); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [authState, inRoom, inDMRoom]);
 
   const handleStartDM = (user: ModalUserData) => {
     // Oda içindeysek odadan çıkma — DM'yi overlay olarak aç
@@ -1422,7 +1435,7 @@ function App() {
                 </div>
               </div>
 
-              {/* Kaydırmalı iki sayfalı oda listesi */}
+              {/* Kitap-çevirme iki sayfalı oda listesi */}
               {(() => {
                 const fixedRooms = rooms.filter(r => r.id < 0 || r.name === 'Ana Salon' || r.name === 'Müzik Odası');
                 const communityRooms = rooms
@@ -1430,79 +1443,115 @@ function App() {
                   .slice()
                   .sort((a, b) => a.id - b.id);
                 const searchResults = roomSearchResults;
-                return (
-                  <>
-                    <div
-                      ref={roomPagesRef}
-                      onScroll={(e) => {
-                        const el = e.currentTarget;
-                        const page = Math.round(el.scrollLeft / el.clientWidth);
-                        if (page !== roomPage) setRoomPage(page);
-                      }}
-                      className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-1 px-1"
-                      style={{ scrollBehavior: 'smooth' }}
-                    >
-                      {/* Sayfa 1: Ana (sabit) Odalar */}
-                      <div className="snap-center shrink-0 w-full space-y-3 pr-1">
-                        {fixedRooms.map((room) => renderRoomCard(room))}
-                      </div>
+                const reduce = settings.reducedMotion;
+                const goRoomPage = (n: number) => { setRoomFlipDir(n > roomPage ? 1 : -1); setRoomPage(n); };
 
-                      {/* Sayfa 2: Topluluk Odaları */}
-                      <div className="snap-center shrink-0 w-full space-y-3 pl-1">
-                        {/* Arama çubuğu */}
-                        <div className="relative">
-                          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
-                          <input
-                            type="text"
-                            value={roomSearchQuery}
-                            onChange={(e) => setRoomSearchQuery(e.target.value)}
-                            placeholder="İsim veya oda kodu ile ara..."
-                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-10 pr-9 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#7C3AED]/50 transition-colors"
-                          />
-                          {roomSearchQuery && (
-                            <button onClick={() => setRoomSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors">
-                              <X size={15} />
-                            </button>
-                          )}
-                        </div>
+                const fixedPage = (
+                  <div className="space-y-3">
+                    {fixedRooms.map((room) => renderRoomCard(room))}
+                  </div>
+                );
 
-                        {/* Sonuçlar / liste */}
-                        {searchResults !== null ? (
-                          isSearching ? (
-                            <div className="text-center py-6 text-white/30 text-[12px]">Aranıyor...</div>
-                          ) : searchResults.length === 0 ? (
-                            <div className="text-center py-6 text-white/30 text-[12px] px-2">
-                              Sonuç bulunamadı. Gizli bir oda için tam kodu girmelisin.
-                            </div>
-                          ) : (
-                            searchResults.map((room) => renderRoomCard(room, { showMeta: true }))
-                          )
-                        ) : communityRooms.length === 0 ? (
-                          <div className="text-center py-6 text-white/30 text-[12px] px-2">
-                            Henüz topluluk odası yok. İlk odayı sen oluştur!
-                          </div>
-                        ) : (
-                          communityRooms.map((room) => renderRoomCard(room, { showMeta: true }))
-                        )}
-                      </div>
+                const communityPage = (
+                  <div className="space-y-3">
+                    {/* Arama çubuğu */}
+                    <div className="relative">
+                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                      <input
+                        type="text"
+                        value={roomSearchQuery}
+                        onChange={(e) => setRoomSearchQuery(e.target.value)}
+                        placeholder="İsim veya oda kodu ile ara..."
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-10 pr-9 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#7C3AED]/50 transition-colors"
+                      />
+                      {roomSearchQuery && (
+                        <button onClick={() => setRoomSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors">
+                          <X size={15} />
+                        </button>
+                      )}
                     </div>
 
-                    {/* Nokta göstergeleri + sayfa etiketi */}
-                    <div className="flex items-center justify-center gap-2 pt-2">
-                      {['Ana Odalar', 'Topluluk'].map((label, i) => (
-                        <button
-                          key={label}
-                          onClick={() => {
-                            const el = roomPagesRef.current;
-                            if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
-                            setRoomPage(i);
+                    {/* Sonuçlar / liste */}
+                    {searchResults !== null ? (
+                      isSearching ? (
+                        <div className="text-center py-6 text-white/30 text-[12px]">Aranıyor...</div>
+                      ) : searchResults.length === 0 ? (
+                        <div className="text-center py-6 text-white/30 text-[12px] px-2">
+                          Sonuç bulunamadı. Gizli bir oda için tam kodu girmelisin.
+                        </div>
+                      ) : (
+                        searchResults.map((room) => renderRoomCard(room, { showMeta: true }))
+                      )
+                    ) : communityRooms.length === 0 ? (
+                      <div className="text-center py-6 text-white/30 text-[12px] px-2">
+                        Henüz topluluk odası yok. İlk odayı sen oluştur!
+                      </div>
+                    ) : (
+                      communityRooms.map((room) => renderRoomCard(room, { showMeta: true }))
+                    )}
+                  </div>
+                );
+
+                return (
+                  <>
+                    <div className="relative" style={{ perspective: 1600 }}>
+                      <AnimatePresence mode="wait" custom={roomFlipDir} initial={false}>
+                        <motion.div
+                          key={roomPage}
+                          custom={roomFlipDir}
+                          initial={reduce ? { opacity: 0 } : { rotateY: roomFlipDir > 0 ? 78 : -78, opacity: 0 }}
+                          animate={reduce ? { opacity: 1 } : { rotateY: 0, opacity: 1 }}
+                          exit={reduce ? { opacity: 0 } : { rotateY: roomFlipDir > 0 ? -78 : 78, opacity: 0 }}
+                          transition={{ duration: reduce ? 0.12 : 0.45, ease: [0.4, 0.2, 0.2, 1] }}
+                          style={{ transformOrigin: roomFlipDir > 0 ? 'left center' : 'right center', transformStyle: 'preserve-3d' }}
+                          drag={reduce ? false : 'x'}
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.18}
+                          onDragEnd={(_, info) => {
+                            if (info.offset.x < -60 && roomPage === 0) goRoomPage(1);
+                            else if (info.offset.x > 60 && roomPage === 1) goRoomPage(0);
                           }}
-                          className="flex items-center gap-1.5 group"
                         >
+                          {roomPage === 0 ? fixedPage : communityPage}
+                        </motion.div>
+                      </AnimatePresence>
+
+                      {/* Sayfa köşesi ipucu (kıvrık köşe — dekoratif) */}
+                      {roomPage === 0 && !reduce && (
+                        <motion.div
+                          className="absolute -bottom-1 right-0 pointer-events-none"
+                          animate={{ opacity: [0.35, 0.7, 0.35] }}
+                          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          <div style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '0 0 18px 18px', borderColor: `transparent transparent rgba(124,58,237,0.5) transparent` }} />
+                        </motion.div>
+                      )}
+                    </div>
+
+                    {/* Sayfa kontrolleri: ok + nokta + etiket */}
+                    <div className="flex items-center justify-center gap-2 pt-3">
+                      <button
+                        onClick={() => goRoomPage(0)}
+                        disabled={roomPage === 0}
+                        className="p-1 rounded-lg text-white/40 hover:text-white disabled:opacity-20 disabled:cursor-default transition-colors"
+                        title="Ana Odalar"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      {[0, 1].map((i) => (
+                        <button key={i} onClick={() => goRoomPage(i)} className="group py-1" title={i === 0 ? 'Ana Odalar' : 'Topluluk Odaları'}>
                           <div className={`h-1.5 rounded-full transition-all duration-300 ${roomPage === i ? 'w-5 bg-[#7C3AED]' : 'w-1.5 bg-white/20 group-hover:bg-white/40'}`} />
                         </button>
                       ))}
-                      <span className="ml-2 text-[10px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                      <button
+                        onClick={() => goRoomPage(1)}
+                        disabled={roomPage === 1}
+                        className="p-1 rounded-lg text-white/40 hover:text-white disabled:opacity-20 disabled:cursor-default transition-colors"
+                        title="Topluluk Odaları"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                      <span className="ml-1 text-[10px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
                         {roomPage === 0 ? 'Ana Odalar' : 'Topluluk Odaları'}
                       </span>
                     </div>

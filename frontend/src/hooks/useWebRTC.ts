@@ -518,6 +518,17 @@ export function useWebRTC() {
         }
     }, []);
 
+    // Mikrofonu doğrudan aç/kapat (bas-konuş için — toggle değil, kesin durum)
+    const setMicEnabled = useCallback((enabled: boolean) => {
+        if (streamRef.current) {
+            const audioTrack = streamRef.current.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = enabled;
+                setIsMuted(!enabled);
+            }
+        }
+    }, []);
+
     return {
         localStream,
         localVideoStream,
@@ -527,6 +538,7 @@ export function useWebRTC() {
         isCameraOn,
         isScreenSharing,
         toggleMute,
+        setMicEnabled,
         toggleCamera,
         toggleScreenShare,
         switchMicrophone,

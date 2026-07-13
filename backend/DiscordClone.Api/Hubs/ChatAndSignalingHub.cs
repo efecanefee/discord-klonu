@@ -348,6 +348,47 @@ namespace DiscordClone.Api.Hubs
             await Clients.Users(new[] { senderId, receiverId }).SendAsync("ReceiveDirectMessage", dmData);
         }
 
+        // Özel mesajda dosya/görsel gönder
+        public async Task SendDirectFileMessage(string receiverId, string fileUrl, string fileName)
+        {
+            var senderId = Context.UserIdentifier;
+            if (string.IsNullOrEmpty(senderId) || string.IsNullOrWhiteSpace(fileUrl)) return;
+
+            var sender = await _db.Users.FindAsync(senderId);
+
+            var directMessage = new DirectMessage
+            {
+                SenderId = senderId,
+                ReceiverId = receiverId,
+                Content = $"[Dosya: {fileName}]",
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false,
+                FileUrl = fileUrl,
+                FileName = fileName
+            };
+
+            _db.DirectMessages.Add(directMessage);
+            await _db.SaveChangesAsync();
+
+            var dmData = new {
+                id = directMessage.Id,
+                senderId,
+                receiverId,
+                content = directMessage.Content,
+                createdAt = directMessage.CreatedAt,
+                isRead = directMessage.IsRead,
+                isEdited = directMessage.IsEdited,
+                replyToId = directMessage.ReplyToId,
+                fileUrl = directMessage.FileUrl,
+                fileName = directMessage.FileName,
+                senderUsername = sender?.Username,
+                senderAvatarId = sender?.AvatarId,
+                senderCustomStatus = sender?.CustomStatus
+            };
+
+            await Clients.Users(new[] { senderId, receiverId }).SendAsync("ReceiveDirectMessage", dmData);
+        }
+
         public async Task EditDirectMessage(long messageId, string newContent)
         {
             var userId = Context.UserIdentifier;
