@@ -4,6 +4,7 @@ import { Send, Check, CheckCheck, X, Pencil, Reply, Smile, Paperclip } from 'luc
 import { getAvatarEmoji } from '../constants/avatars';
 import signalrService from '../services/signalrService';
 import EmojiPicker from './EmojiPicker';
+import MessageFileAttachment from './MessageFileAttachment';
 
 interface DirectMessage {
   id: number;
@@ -15,6 +16,8 @@ interface DirectMessage {
   isDeleted: boolean;
   isEdited?: boolean;
   replyToId?: number;
+  fileUrl?: string;
+  fileName?: string;
   senderUsername?: string;
   senderAvatarId?: string;
   senderCustomStatus?: string;
@@ -45,6 +48,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   const [replyingToMessage, setReplyingToMessage] = useState<DirectMessage | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -163,6 +167,37 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
     signalrService.sendUserTyping(targetUser.id);
   };
 
+  const handleFileUpload = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Dosya boyutu 10MB\'ı geçemez.');
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      await signalrService.sendDirectFileMessage(targetUser.id, data.url, file.name);
+    } catch (err) {
+      console.error('DM dosya yükleme hatası:', err);
+      alert('Dosya yüklenemedi.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file);
+    e.target.value = '';
+  };
+
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#09090b] relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -252,9 +287,12 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                     <div 
                       className={`rounded-2xl px-5 py-3 cursor-pointer ${isMe ? 'bg-[#7C3AED] text-white rounded-br-none shadow-[0_4px_20px_rgba(124,58,237,0.3)]' : 'bg-white/5 text-white/90 rounded-bl-none border border-white/10 shadow-lg'}`}
                       title="Kopyalamak için tıkla"
-                      onClick={() => navigator.clipboard.writeText(msg.content)}
+                      onClick={() => { if (!msg.fileUrl) navigator.clipboard.writeText(msg.content); }}
                     >
-                      <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
+                      {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMe} />}
+                      {(!msg.fileUrl || !msg.content.startsWith('[Dosya:')) && (
+                        <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
+                      )}
                       <div className={`flex items-center gap-1.5 mt-2 text-[10px] ${isMe ? 'text-white/60 justify-end' : 'text-white/40'}`}>
                         <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         {msg.isEdited && <span>(Düzenlendi)</span>}
@@ -333,10 +371,10 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
               )}
             </AnimatePresence>
           </div>
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-white/30 hover:text-white transition-colors cursor-pointer">
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="p-3 text-white/30 hover:text-white transition-colors cursor-pointer disabled:opacity-50">
             <Paperclip size={20} />
           </button>
-          <input type="file" ref={fileInputRef} className="hidden" onChange={() => alert("Dosya yükleme yakında...")} />
+          <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
 
           <input
             type="text"
@@ -345,7 +383,8 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
               setNewMessage(e.target.value);
               handleTypingStart();
             }}
-            placeholder={`@${targetUser.username} kişisine mesaj gönder...`}
+            placeholder={isUploading ? 'Dosya yükleniyor...' : `@${targetUser.username} kişisine mesaj gönder...`}
+            disabled={isUploading}
             className="w-full bg-transparent py-4 text-[15px] text-white placeholder:text-white/30 outline-none flex-1"
           />
           <button

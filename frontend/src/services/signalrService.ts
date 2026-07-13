@@ -212,6 +212,15 @@ class SignalRService {
         }
     }
 
+    public async sendDirectFileMessage(receiverId: string, fileUrl: string, fileName: string) {
+        if (!this.connection) return;
+        try {
+            await this.connection.invoke("SendDirectFileMessage", receiverId, fileUrl, fileName);
+        } catch (err) {
+            console.error("Send DM File Error:", err);
+        }
+    }
+
     public async editDirectMessage(messageId: number, newContent: string) {
         if (!this.connection) return;
         try {

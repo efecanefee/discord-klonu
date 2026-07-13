@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mic, Bell, Monitor, CheckCircle2 } from 'lucide-react';
+import { X, Mic, Bell, Monitor, CheckCircle2, Info } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import KeybindInput from './KeybindInput';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -232,6 +233,47 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                       </div>
                     </div>
                   </label>
+
+                  {/* Tuş Atama */}
+                  <div className="rounded-xl border border-white/10 bg-white/5 divide-y divide-white/5">
+                    <AnimatePresence initial={false}>
+                      {settings.pushToTalk && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between p-4">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-white">Konuşma Tuşu</span>
+                              <span className="text-xs text-white/50 mt-1">Bas-konuş için basılı tutulacak tuş.</span>
+                            </div>
+                            <KeybindInput
+                              value={settings.pttKey}
+                              onChange={(code) => updateSettings({ pttKey: code, ...(code && code === settings.muteToggleKey ? { muteToggleKey: '' } : {}) })}
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-white">Mikrofon Aç/Kapat Kısayolu</span>
+                        <span className="text-xs text-white/50 mt-1">Tek basışla mikrofonu susturur/açar.</span>
+                      </div>
+                      <KeybindInput
+                        value={settings.muteToggleKey}
+                        onChange={(code) => updateSettings({ muteToggleKey: code, ...(code && code === settings.pttKey ? { pttKey: '' } : {}) })}
+                      />
+                    </div>
+
+                    <div className="flex items-start gap-2 p-3 text-[11px] text-white/40">
+                      <Info size={13} className="mt-0.5 shrink-0" />
+                      <span>Kısayollar yalnızca tarayıcı sekmesi odaktayken çalışır. Atarken <b>Esc</b> iptal eder, <b>Backspace</b> temizler.</span>
+                    </div>
+                  </div>
 
                   <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                     <div className="flex flex-col">
