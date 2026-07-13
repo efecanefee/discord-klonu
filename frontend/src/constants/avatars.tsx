@@ -1,5 +1,5 @@
 export const AVATARS = [
-  { id: 'default', emoji: '👤' },
+  { id: 'default', img: '/avatars/yuji.png' },
   { id: 'admin', emoji: '👔' },
   { id: 'robot', emoji: '🤖' },
   { id: 'rider', emoji: '🏍️' },
@@ -11,6 +11,9 @@ export const AVATARS = [
 ];
 
 export const getAvatarEmoji = (id: string) => {
-  const avatar = AVATARS.find(a => a.id === id);
-  return avatar ? avatar.emoji : AVATARS[0].emoji;
+  const avatar = AVATARS.find(a => a.id === id) || AVATARS[0];
+  if (avatar.img) {
+    return <img src={avatar.img} alt="avatar" className="w-full h-full object-cover" />;
+  }
+  return <span>{avatar.emoji}</span>;
 };
