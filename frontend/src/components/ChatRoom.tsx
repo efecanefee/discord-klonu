@@ -6,6 +6,7 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import { useSettings } from '../contexts/SettingsContext';
 import { getAvatarEmoji } from '../constants/avatars';
 
@@ -14,6 +15,8 @@ interface ChatRoomProps {
     avatarId?: string;
     roomId: string;
     onLeave: () => void;
+    onOpenDM?: (user: PopoverUser) => void;
+    onOpenProfile?: () => void;
 }
 
 interface Message {
@@ -96,9 +99,10 @@ const THEMES: { id: Theme; label: string }[] = [
     { id: 'oled', label: 'OLED' },
 ];
 
-const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roomId, onLeave }) => {
+const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roomId, onLeave, onOpenDM, onOpenProfile }) => {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string }[]>([]);
+    const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string }[]>([]);
+    const [popoverUserConnId, setPopoverUserConnId] = useState<string | null>(null);
     const [messageInput, setMessageInput] = useState('');
     const [masterVolume, setMasterVolume] = useState(1.0);
     const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
@@ -232,9 +236,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             ));
         };
 
-        const handleRoomUsers = (usersDict: Record<string, { username: string; avatarId: string }>) => {
+        const handleRoomUsers = (usersDict: Record<string, { username: string; avatarId: string; userId?: string }>) => {
             if (!isMounted) return;
-            setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId })));
+            setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId, userId: data.userId })));
         };
 
         const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string; replyToId?: number }[]) => {
@@ -1239,8 +1243,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
                                             return (
                                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={u.connectionId}
-                                                    className="flex flex-col gap-2 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200">
-                                                    <div className="flex items-center justify-between">
+                                                    className="relative flex flex-col gap-2 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200">
+                                                    <div className="flex items-center justify-between cursor-pointer"
+                                                        onClick={() => setPopoverUserConnId(prev => prev === u.connectionId ? null : u.connectionId)}>
                                                         <div className="flex items-center gap-3">
                                                             <div className="relative">
                                                                 {/* Dalga animasyonu — konuşunca */}
@@ -1282,6 +1287,23 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             </div>
                                                         </div>
                                                     </div>
+
+                                                    <AnimatePresence>
+                                                        {popoverUserConnId === u.connectionId && (
+                                                            <>
+                                                                <div className="fixed inset-0 z-40" onClick={() => setPopoverUserConnId(null)} />
+                                                                <div className="absolute right-full top-0 mr-3 z-50">
+                                                                    <UserPopoverCard
+                                                                        user={{ userId: u.userId, username: u.username, avatarId: u.avatarId, customStatus: 'online' }}
+                                                                        isSelf={u.username === username}
+                                                                        onSendMessage={() => { setPopoverUserConnId(null); onOpenDM?.({ userId: u.userId, username: u.username, avatarId: u.avatarId }); }}
+                                                                        onEditProfile={() => { setPopoverUserConnId(null); onOpenProfile?.(); }}
+                                                                    />
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </AnimatePresence>
+
                                                     {u.username !== username && (
                                                         <div className="flex items-center gap-2 pl-[52px] pr-2 opacity-60 hover:opacity-100 transition-opacity">
                                                             {(userVolumes[u.username] ?? 1.0) === 0 ? <VolumeX size={14} className="text-text-muted" /> : <Volume1 size={14} className="text-text-muted" />}

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import ChatRoom from './components/ChatRoom';
 import TextChatRoom from './components/TextChatRoom';
 import DMChatRoom from './components/DMChatRoom';
+import MiniDock from './components/MiniDock';
 import ProfileModal from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
@@ -45,6 +46,8 @@ function App() {
   const [inDMRoom, setInDMRoom] = useState(false);
   const [activeDMs, setActiveDMs] = useState<ModalUserData[]>([]);
   const [activeDMUser, setActiveDMUser] = useState<ModalUserData | null>(null);
+  // Oda içindeyken odadan çıkmadan açılan DM overlay'i
+  const [roomDMUser, setRoomDMUser] = useState<ModalUserData | null>(null);
   const [onlineUserList, setOnlineUserList] = useState<string[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
@@ -351,12 +354,13 @@ function App() {
       const contactId = isOutgoing ? dm.receiverId : dm.senderId;
 
       if (!isOutgoing) {
-        // Eğer o an o kullanıcının odasındaysak bildirim yapma
+        // Eğer o an o kullanıcının sohbetindeysek (tam DM veya oda içi overlay) bildirim yapma
         let isCurrentlyFocused = false;
         setActiveDMUser(prev => {
           if (inDMRoom && prev?.id === contactId) isCurrentlyFocused = true;
           return prev;
         });
+        if (roomDMUser?.id === contactId) isCurrentlyFocused = true;
 
         if (!isCurrentlyFocused) {
           playNotificationSound();
@@ -405,7 +409,7 @@ function App() {
       signalrService.offReceiveDirectMessage(handleReceiveDM);
       signalrService.offUserStatusChanged(handleUserStatusChanged);
     };
-  }, [userId, inDMRoom]);
+  }, [userId, inDMRoom, roomDMUser]);
 
   const fetchRecentDMs = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -694,11 +698,17 @@ function App() {
   }, [roomSearchQuery, handleRoomSearch]);
 
   const handleStartDM = (user: ModalUserData) => {
+    // Oda içindeysek odadan çıkma — DM'yi overlay olarak aç
+    if (inRoom) {
+      handleOpenRoomDM(user);
+      setIsNewMessageModalOpen(false);
+      return;
+    }
     setActiveDMUser(user);
     setInDMRoom(true);
     setInRoom(false);
     setRoomId('');
-    
+
     if (!activeDMs.some(u => u.id === user.id)) {
       setActiveDMs(prev => [user, ...prev]);
     }
@@ -709,6 +719,19 @@ function App() {
       return copy;
     });
     setIsNewMessageModalOpen(false);
+  };
+
+  // Oda içindeyken DM overlay'i aç (SignalR singleton olduğu için oda bağlantısı kopmaz)
+  const handleOpenRoomDM = (user: ModalUserData) => {
+    setRoomDMUser(user);
+    if (!activeDMs.some(u => u.id === user.id)) {
+      setActiveDMs(prev => [user, ...prev]);
+    }
+    setUnreadCounts(prev => {
+      const copy = { ...prev };
+      delete copy[user.id];
+      return copy;
+    });
   };
 
   const handleProfileSave = async (data: { username: string; firstName: string; lastName: string; avatarId: string }) => {
@@ -739,11 +762,96 @@ function App() {
     // Sabit odalar (Ana Salon, Müzik Odası) ve SES odaları → ChatRoom (WebRTC).
     // Topluluk YAZI odaları → TextChatRoom (sadece mesajlaşma).
     const isVoiceStyle = activeRoom.id < 0 || activeRoom.name === 'Ana Salon' || activeRoom.name === 'Müzik Odası' || activeRoom.type === 'voice';
-    const handleLeaveRoom = () => { setInRoom(false); setRoomId(''); setActiveRoom(null); };
-    if (isVoiceStyle) {
-      return <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={handleLeaveRoom} />;
-    }
-    return <TextChatRoom username={username} avatarId={avatarId} roomId={roomId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy }} onLeave={handleLeaveRoom} />;
+    const handleLeaveRoom = () => { setInRoom(false); setRoomId(''); setActiveRoom(null); setRoomDMUser(null); };
+    return (
+      <div className="flex h-[100dvh] overflow-hidden bg-bg-base">
+        {/* Sol Mini Dock */}
+        <MiniDock
+          avatarId={avatarId}
+          myCustomStatus={myCustomStatus}
+          activeDMs={activeDMs}
+          unreadCounts={unreadCounts}
+          activeDMUserId={roomDMUser?.id}
+          onLogoClick={handleLeaveRoom}
+          onSelectDM={handleOpenRoomDM}
+          onOpenProfile={() => setIsProfileModalOpen(true)}
+          onOpenSettings={() => setIsSettingsModalOpen(true)}
+          onNewMessage={() => setIsNewMessageModalOpen(true)}
+        />
+
+        {/* Oda içeriği */}
+        <div className="flex-1 min-w-0 relative">
+          {isVoiceStyle ? (
+            <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={handleLeaveRoom}
+              onOpenProfile={() => setIsProfileModalOpen(true)}
+              onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
+            />
+          ) : (
+            <TextChatRoom username={username} avatarId={avatarId} roomId={roomId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy }} onLeave={handleLeaveRoom}
+              onOpenProfile={() => setIsProfileModalOpen(true)}
+              onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
+            />
+          )}
+        </div>
+
+        {/* DM Overlay Paneli — oda bağlantısı kopmadan */}
+        <AnimatePresence>
+          {roomDMUser && (
+            <>
+              {/* Mobil karartma */}
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setRoomDMUser(null)}
+                className="fixed inset-0 bg-black/60 z-40 md:hidden"
+              />
+              <motion.div
+                initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="fixed top-0 right-0 h-full w-full md:w-[400px] z-50 shadow-2xl border-l border-white/10"
+              >
+                {/* Kapat butonu (overlay başlığı üzerinde) */}
+                <button
+                  onClick={() => setRoomDMUser(null)}
+                  title="DM panelini kapat"
+                  className="absolute top-3 right-3 z-[60] p-2 rounded-full bg-black/50 hover:bg-black/70 text-white/70 hover:text-white transition-colors"
+                >
+                  <X size={18} />
+                </button>
+                <DMChatRoom
+                  currentUser={{ id: userId, username }}
+                  targetUser={roomDMUser}
+                  API_BASE_URL={API_BASE_URL}
+                  onLeave={() => setRoomDMUser(null)}
+                />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Oda içinden erişilebilen modallar */}
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          currentUsername={username}
+          currentFirstName={firstName}
+          currentLastName={lastName}
+          currentAvatarId={avatarId}
+          onSave={handleProfileSave}
+        />
+        <SettingsModal
+          isOpen={isSettingsModalOpen}
+          onClose={() => setIsSettingsModalOpen(false)}
+          showLastSeen={myShowLastSeen}
+          onUpdatePrivacy={handleUpdatePrivacy}
+        />
+        <NewMessageModal
+          isOpen={isNewMessageModalOpen}
+          onClose={() => setIsNewMessageModalOpen(false)}
+          onSelectUser={handleStartDM}
+          API_BASE_URL={API_BASE_URL}
+        />
+      </div>
+    );
   }
   if (inDMRoom && activeDMUser) return <DMChatRoom currentUser={{ id: userId, username }} targetUser={activeDMUser} API_BASE_URL={API_BASE_URL} onLeave={() => { setInDMRoom(false); setActiveDMUser(null); }} />;
 
