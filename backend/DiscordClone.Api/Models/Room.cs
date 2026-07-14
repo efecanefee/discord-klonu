@@ -7,6 +7,8 @@ namespace DiscordClone.Api.Models
         public string Type { get; set; } = "text"; // "text" veya "voice"
         public string? Description { get; set; }
         public string CreatedBy { get; set; } = string.Empty;
+        // Sahiplik userId üzerinden tutulur (username değiştirilebilir → sahiplik kaybı riski).
+        public string? CreatedByUserId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public bool IsPrivate { get; set; } = false;
         public string? RoomCode { get; set; }

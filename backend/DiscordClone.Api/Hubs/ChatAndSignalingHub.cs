@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
 using DiscordClone.Api.Data;
 using DiscordClone.Api.Models;
+using DiscordClone.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -18,10 +19,12 @@ namespace DiscordClone.Api.Hubs
         private static readonly ConcurrentDictionary<string, bool> _muteStatus = new();
 
         private readonly AppDbContext _db;
+        private readonly IRoomAuthorizationService _roomAuth;
 
-        public ChatAndSignalingHub(AppDbContext db)
+        public ChatAndSignalingHub(AppDbContext db, IRoomAuthorizationService roomAuth)
         {
             _db = db;
+            _roomAuth = roomAuth;
         }
 
         public override async Task OnConnectedAsync()
@@ -120,6 +123,7 @@ namespace DiscordClone.Api.Hubs
             public string Username { get; set; } = string.Empty;
             public string AvatarId { get; set; } = "default";
             public string UserId { get; set; } = string.Empty;
+            public string Role { get; set; } = string.Empty; // "owner" | "moderator" | "member" | "" (sistem odası)
         }
 
         public async Task JoinRoom(string roomId, string requestedUsername)
@@ -127,6 +131,31 @@ namespace DiscordClone.Api.Hubs
             // Kullanıcı adını JWT token'ından al
             var username = Context.User?.Identity?.Name ?? requestedUsername;
             var avatarId = Context.User?.FindFirst("AvatarId")?.Value ?? "default";
+            var userId = Context.UserIdentifier ?? string.Empty;
+
+            // Kalıcı (topluluk) oda ise: ban kontrolü + üyelik + rol
+            // Sistem odaları (Ana Salon, Müzik Odası → created_by='system') rol sistemi dışında.
+            string role = string.Empty;
+            var room = await _db.Rooms.FirstOrDefaultAsync(r => r.Name == roomId);
+            var isSystemRoom = room == null || room.CreatedBy == "system";
+            if (room != null && !isSystemRoom && !string.IsNullOrEmpty(userId))
+            {
+                var banned = await _db.RoomBans.AnyAsync(b => b.RoomId == room.Id && b.UserId == userId);
+                if (banned)
+                {
+                    await Clients.Caller.SendAsync("JoinRejected", "banned");
+                    return;
+                }
+
+                var member = await _db.RoomMembers.FirstOrDefaultAsync(m => m.RoomId == room.Id && m.UserId == userId);
+                if (member == null)
+                {
+                    member = new RoomMember { RoomId = room.Id, UserId = userId, Role = RoomRoles.Member };
+                    _db.RoomMembers.Add(member);
+                    await _db.SaveChangesAsync();
+                }
+                role = member.Role;
+            }
 
             var usersInRoom = _roomUsers.GetOrAdd(roomId, _ => new ConcurrentDictionary<string, RoomUserDto>());
 
@@ -143,7 +172,7 @@ namespace DiscordClone.Api.Hubs
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
             _userConnections[Context.ConnectionId] = roomId;
 
-            usersInRoom[Context.ConnectionId] = new RoomUserDto { Username = username, AvatarId = avatarId, UserId = Context.UserIdentifier ?? string.Empty };
+            usersInRoom[Context.ConnectionId] = new RoomUserDto { Username = username, AvatarId = avatarId, UserId = userId, Role = role };
 
             var dictionary = usersInRoom.ToDictionary(k => k.Key, v => v.Value);
 
@@ -272,10 +301,15 @@ namespace DiscordClone.Api.Hubs
             if (msg == null) return;
 
             var userId = Context.UserIdentifier;
-            
-            // Sadece mesajı yazan silebilir
-            if (msg.UserId != userId && msg.Username != Context.User?.Identity?.Name) 
-                return;
+
+            // Kendi mesajı → serbest. Değilse: odada owner/moderator ise silebilir.
+            var isOwnMessage = msg.UserId == userId || msg.Username == Context.User?.Identity?.Name;
+            if (!isOwnMessage)
+            {
+                var room = await _db.Rooms.FirstOrDefaultAsync(r => r.Name == msg.RoomId);
+                if (room == null || string.IsNullOrEmpty(userId) || !await _roomAuth.CanManageAsync(room.Id, userId))
+                    return;
+            }
 
             msg.IsDeleted = true;
             await _db.SaveChangesAsync();

@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using DiscordClone.Api.Data;
 using DiscordClone.Api.Hubs;
 using DiscordClone.Api.Models;
+using DiscordClone.Api.Services;
+using System.Security.Claims;
 
 namespace DiscordClone.Api.Controllers
 {
@@ -15,12 +17,16 @@ namespace DiscordClone.Api.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IHubContext<ChatAndSignalingHub> _hubContext;
+        private readonly IRoomAuthorizationService _roomAuth;
 
-        public RoomsController(AppDbContext db, IHubContext<ChatAndSignalingHub> hubContext)
+        public RoomsController(AppDbContext db, IHubContext<ChatAndSignalingHub> hubContext, IRoomAuthorizationService roomAuth)
         {
             _db = db;
             _hubContext = hubContext;
+            _roomAuth = roomAuth;
         }
+
+        private string? CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         /// <summary>
         /// Tüm odaları listele
@@ -73,6 +79,7 @@ namespace DiscordClone.Api.Controllers
                 return BadRequest("Bu isimde bir oda zaten mevcut.");
 
             var username = User.Identity?.Name ?? "unknown";
+            var userId = CurrentUserId;
 
             var roomCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
 
@@ -82,6 +89,7 @@ namespace DiscordClone.Api.Controllers
                 Type = type,
                 Description = dto.Description?.Trim(),
                 CreatedBy = username,
+                CreatedByUserId = userId,
                 CreatedAt = DateTime.UtcNow,
                 IsPrivate = dto.IsPrivate,
                 RoomCode = roomCode
@@ -89,6 +97,13 @@ namespace DiscordClone.Api.Controllers
 
             _db.Rooms.Add(room);
             await _db.SaveChangesAsync();
+
+            // Kurucuyu owner olarak üye tablosuna ekle
+            if (!string.IsNullOrEmpty(userId))
+            {
+                _db.RoomMembers.Add(new RoomMember { RoomId = room.Id, UserId = userId, Role = RoomRoles.Owner });
+                await _db.SaveChangesAsync();
+            }
 
             var roomData = new
             {
@@ -115,12 +130,17 @@ namespace DiscordClone.Api.Controllers
         public async Task<IActionResult> DeleteRoom(int id)
         {
             var currentUsername = User.Identity?.Name;
+            var currentUserId = CurrentUserId;
             if (string.IsNullOrEmpty(currentUsername)) return Unauthorized();
 
             var room = await _db.Rooms.FindAsync(id);
             if (room == null) return NotFound("Oda bulunamadı.");
 
-            if (room.CreatedBy != currentUsername)
+            // Sahiplik userId üzerinden; eski (userId'siz) odalarda username'e düş
+            var isOwner = !string.IsNullOrEmpty(room.CreatedByUserId)
+                ? room.CreatedByUserId == currentUserId
+                : room.CreatedBy == currentUsername;
+            if (!isOwner)
                 return Forbid();
 
             // Odaya ait mesajları sil
@@ -165,6 +185,175 @@ namespace DiscordClone.Api.Controllers
                 .ToListAsync();
             
             return Ok(nameMatches);
+        }
+
+        // ============ ROL SİSTEMİ (Özellik 6) ============
+
+        /// <summary>
+        /// Oda üyeleri + rolleri (owner → moderator → member sırasıyla).
+        /// </summary>
+        [HttpGet("{id}/members")]
+        public async Task<IActionResult> GetMembers(int id)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (await _roomAuth.GetRoleAsync(id, CurrentUserId) == null) return Forbid();
+
+            var members = await _db.RoomMembers
+                .Where(m => m.RoomId == id)
+                .Join(_db.Users, m => m.UserId, u => u.Id, (m, u) => new
+                {
+                    userId = u.Id,
+                    username = u.Username,
+                    avatarId = u.AvatarId,
+                    role = m.Role,
+                    joinedAt = m.JoinedAt
+                })
+                .ToListAsync();
+
+            // owner(0) → moderator(1) → member(2), sonra isim
+            var ordered = members
+                .OrderBy(m => m.role == RoomRoles.Owner ? 0 : m.role == RoomRoles.Moderator ? 1 : 2)
+                .ThenBy(m => m.username)
+                .ToList();
+
+            return Ok(ordered);
+        }
+
+        public class SetRoleDto { public string Role { get; set; } = "member"; }
+
+        /// <summary>
+        /// Rol ata/al (sadece kurucu). 'moderator' veya 'member'.
+        /// </summary>
+        [HttpPut("{id}/members/{userId}/role")]
+        public async Task<IActionResult> SetRole(int id, string userId, [FromBody] SetRoleDto dto)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (!await _roomAuth.IsOwnerAsync(id, CurrentUserId)) return Forbid();
+
+            var role = dto.Role?.ToLower();
+            if (role != RoomRoles.Moderator && role != RoomRoles.Member)
+                return BadRequest("Rol 'moderator' veya 'member' olmalı.");
+            if (userId == CurrentUserId)
+                return BadRequest("Kendi rolünü değiştiremezsin.");
+
+            var member = await _db.RoomMembers.FirstOrDefaultAsync(m => m.RoomId == id && m.UserId == userId);
+            if (member == null) return NotFound("Kullanıcı bu odanın üyesi değil.");
+            if (member.Role == RoomRoles.Owner) return BadRequest("Kurucunun rolü değiştirilemez.");
+
+            member.Role = role!;
+            await _db.SaveChangesAsync();
+
+            var room = await _db.Rooms.FindAsync(id);
+            if (room != null)
+                await _hubContext.Clients.Group(room.Name).SendAsync("MemberRoleChanged", userId, role);
+
+            return Ok(new { userId, role });
+        }
+
+        /// <summary>
+        /// Kullanıcıyı odadan at (kick). Hiyerarşiye tabi.
+        /// </summary>
+        [HttpDelete("{id}/members/{userId}")]
+        public async Task<IActionResult> KickMember(int id, string userId)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (!await _roomAuth.CanModerateAsync(id, CurrentUserId, userId))
+                return Forbid();
+
+            var member = await _db.RoomMembers.FirstOrDefaultAsync(m => m.RoomId == id && m.UserId == userId);
+            if (member != null)
+            {
+                _db.RoomMembers.Remove(member);
+                await _db.SaveChangesAsync();
+            }
+
+            var room = await _db.Rooms.FindAsync(id);
+            if (room != null)
+                await _hubContext.Clients.Group(room.Name).SendAsync("MemberKicked", id, userId);
+
+            return NoContent();
+        }
+
+        public class BanDto { public string? Reason { get; set; } }
+
+        /// <summary>
+        /// Kullanıcıyı yasakla (ban) — üyelikten çıkar + tekrar giremez. Hiyerarşiye tabi.
+        /// </summary>
+        [HttpPost("{id}/bans/{userId}")]
+        public async Task<IActionResult> BanMember(int id, string userId, [FromBody] BanDto? dto)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (!await _roomAuth.CanModerateAsync(id, CurrentUserId, userId))
+                return Forbid();
+
+            var existing = await _db.RoomBans.FirstOrDefaultAsync(b => b.RoomId == id && b.UserId == userId);
+            if (existing == null)
+            {
+                _db.RoomBans.Add(new RoomBan
+                {
+                    RoomId = id,
+                    UserId = userId,
+                    BannedBy = CurrentUserId,
+                    Reason = dto?.Reason
+                });
+            }
+
+            var member = await _db.RoomMembers.FirstOrDefaultAsync(m => m.RoomId == id && m.UserId == userId);
+            if (member != null) _db.RoomMembers.Remove(member);
+
+            await _db.SaveChangesAsync();
+
+            var room = await _db.Rooms.FindAsync(id);
+            if (room != null)
+            {
+                await _hubContext.Clients.Group(room.Name).SendAsync("MemberBanned", id, userId);
+                await _hubContext.Clients.Group(room.Name).SendAsync("MemberKicked", id, userId);
+            }
+
+            return NoContent();
+        }
+
+        /// <summary>
+        /// Oda yasak listesi (owner/moderator).
+        /// </summary>
+        [HttpGet("{id}/bans")]
+        public async Task<IActionResult> GetBans(int id)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (!await _roomAuth.CanManageAsync(id, CurrentUserId)) return Forbid();
+
+            var bans = await _db.RoomBans
+                .Where(b => b.RoomId == id)
+                .Join(_db.Users, b => b.UserId, u => u.Id, (b, u) => new
+                {
+                    userId = u.Id,
+                    username = u.Username,
+                    avatarId = u.AvatarId,
+                    reason = b.Reason,
+                    bannedAt = b.BannedAt
+                })
+                .ToListAsync();
+
+            return Ok(bans);
+        }
+
+        /// <summary>
+        /// Yasağı kaldır (owner/moderator).
+        /// </summary>
+        [HttpDelete("{id}/bans/{userId}")]
+        public async Task<IActionResult> UnbanMember(int id, string userId)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (!await _roomAuth.CanManageAsync(id, CurrentUserId)) return Forbid();
+
+            var ban = await _db.RoomBans.FirstOrDefaultAsync(b => b.RoomId == id && b.UserId == userId);
+            if (ban != null)
+            {
+                _db.RoomBans.Remove(ban);
+                await _db.SaveChangesAsync();
+            }
+
+            return NoContent();
         }
     }
 }
