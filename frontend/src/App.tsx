@@ -711,8 +711,8 @@ function App() {
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
-      if (e.key === 'ArrowRight') { setRoomFlipDir(1); setRoomPage(1); }
-      else if (e.key === 'ArrowLeft') { setRoomFlipDir(-1); setRoomPage(0); }
+      if (e.key === 'ArrowRight') { setRoomPage(1); }
+      else if (e.key === 'ArrowLeft') { setRoomPage(0); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
