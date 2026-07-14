@@ -10,8 +10,8 @@ import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
 import { getAvatarEmoji } from '../constants/avatars';
-import { roomApi } from '../services/roomApi';
-import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
+import { roomApi, type RoomMemberDto } from '../services/roomApi';
+import { roleBadgeEmoji, sortByRole, roleRank, roleLabel } from '../utils/roles';
 
 export interface TextRoomInfo {
     name: string;
@@ -49,30 +49,89 @@ interface Message {
 const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'default', roomId, roomDbId, myUserId, roomInfo, onLeave, onOpenDM, onOpenProfile }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string; role?: string }[]>([]);
-    const [popoverUserConnId, setPopoverUserConnId] = useState<string | null>(null);
+    const [popoverUserKey, setPopoverUserKey] = useState<string | null>(null);
     const [popoverAnchor, setPopoverAnchor] = useState<DOMRect | null>(null);
 
     // Rol sistemi (Özellik 6)
     const myRole = usersInRoom.find(u => u.userId === myUserId)?.role;
     const canManageRoom = roleRank(myRole) >= 1;
-    const sortedUsers = [...usersInRoom].sort(sortByRole);
     const [showRoomSettings, setShowRoomSettings] = useState(false);
 
+    // Kalıcı üye listesi (Özellik 9 — "Odaya Katılanlar" çevrimiçi/çevrimdışı)
+    const [allMembers, setAllMembers] = useState<RoomMemberDto[]>([]);
+    const refreshMembers = useCallback(() => {
+        if (roomDbId > 0) roomApi.getMembers(roomDbId).then(setAllMembers).catch(() => { });
+    }, [roomDbId]);
+    useEffect(() => { refreshMembers(); }, [refreshMembers]);
+
+    // Anlık bağlı kullanıcıları (SignalR) kalıcı üyelerle birleştir → çevrimiçi/çevrimdışı
+    type MemberRow = { userId: string; username: string; avatarId?: string; role?: string; isOnline: boolean };
+    const onlineByUserId = new Map(usersInRoom.filter(u => u.userId).map(u => [u.userId as string, u]));
+    const memberRows: MemberRow[] = allMembers.map(m => ({
+        userId: m.userId, username: m.username, avatarId: m.avatarId, role: m.role, isOnline: onlineByUserId.has(m.userId),
+    }));
+    // Henüz kalıcı listede olmayan bağlı kullanıcılar (yeni katılan / sistem odası)
+    const extraOnline: MemberRow[] = usersInRoom
+        .filter(u => u.userId && !allMembers.some(m => m.userId === u.userId))
+        .map(u => ({ userId: u.userId as string, username: u.username, avatarId: u.avatarId, role: u.role, isOnline: true }));
+    const merged = [...memberRows, ...extraOnline];
+    const onlineMembers = merged.filter(r => r.isOnline).sort(sortByRole);
+    const offlineMembers = merged.filter(r => !r.isOnline).sort(sortByRole);
+
     const handleSetModerator = async (uId: string, make: boolean) => {
-        setPopoverUserConnId(null);
+        setPopoverUserKey(null);
         try { await roomApi.setRole(roomDbId, uId, make ? 'moderator' : 'member'); }
         catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
     };
     const handleKickUser = async (uId: string) => {
-        setPopoverUserConnId(null);
+        setPopoverUserKey(null);
         try { await roomApi.kick(roomDbId, uId); }
         catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
     };
     const handleBanUser = async (uId: string) => {
         if (!window.confirm('Bu kullanıcıyı odadan yasaklamak istediğine emin misin?')) return;
-        setPopoverUserConnId(null);
+        setPopoverUserKey(null);
         try { await roomApi.ban(roomDbId, uId); }
         catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
+    };
+
+    // Tek bir üye satırı (çevrimiçi + çevrimdışı gruplarında paylaşılır)
+    const renderMemberRow = (m: MemberRow) => {
+        const badge = roleBadgeEmoji(m.role);
+        const isSelf = m.userId === myUserId;
+        return (
+            <motion.div layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} key={m.userId}
+                onClick={(e) => { setPopoverAnchor(e.currentTarget.getBoundingClientRect()); setPopoverUserKey(prev => prev === m.userId ? null : m.userId); }}
+                className={`relative flex items-center gap-3 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200 cursor-pointer ${m.isOnline ? '' : 'opacity-60'}`}>
+                <div className="relative">
+                    <div className={`w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm text-xl ${m.isOnline ? 'border-[#7C3AED]' : 'border-border-main grayscale'}`}>
+                        {getAvatarEmoji(m.avatarId || 'default')}
+                    </div>
+                    <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-[2.5px] border-bg-card ${m.isOnline ? 'bg-emerald-500' : 'bg-gray-500'}`} />
+                </div>
+                <div className="min-w-0">
+                    <span className="font-semibold text-[14px] text-text-main truncate max-w-[150px] flex items-center gap-1">
+                        {m.username} {badge && <span title={roleLabel(m.role)}>{badge}</span>} {isSelf && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
+                    </span>
+                    <span className="text-[11px] text-text-muted">{m.isOnline ? 'Çevrimiçi' : 'Çevrimdışı'}</span>
+                </div>
+
+                {popoverUserKey === m.userId && (
+                    <PopoverPortal anchorRect={popoverAnchor} onClose={() => setPopoverUserKey(null)}>
+                        <UserPopoverCard
+                            user={{ userId: m.userId, username: m.username, avatarId: m.avatarId, customStatus: m.isOnline ? 'online' : 'offline', role: m.role }}
+                            isSelf={isSelf}
+                            viewerRole={myRole}
+                            onSendMessage={() => { setPopoverUserKey(null); onOpenDM?.({ userId: m.userId, username: m.username, avatarId: m.avatarId }); }}
+                            onEditProfile={() => { setPopoverUserKey(null); onOpenProfile?.(); }}
+                            onSetModerator={m.userId ? (make) => handleSetModerator(m.userId, make) : undefined}
+                            onKick={m.userId ? () => handleKickUser(m.userId) : undefined}
+                            onBan={m.userId ? () => handleBanUser(m.userId) : undefined}
+                        />
+                    </PopoverPortal>
+                )}
+            </motion.div>
+        );
     };
     const [messageInput, setMessageInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -125,6 +184,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             playJoinSound();
             setMessages(prev => [...prev, { id: ++messageIdCounter.current, username: 'System', text: `${u} odaya katıldı.`, type: 'system', timestamp: Date.now() }]);
             setUsersInRoom(prev => prev.find(x => x.connectionId === connId) ? prev : [...prev, { username: u, connectionId: connId }]);
+            // Yeni katılan kalıcı üye tablosuna eklendi → listeyi tazele (ayrılınca çevrimdışı görünsün)
+            refreshMembers();
         };
 
         const handleUserLeft = (u: string, connId: string) => {
@@ -783,55 +844,40 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                         </div>
                     </motion.div>
 
-                    {/* Users Sidebar */}
+                    {/* Katılanlar Sidebar — çevrimiçi/çevrimdışı (Özellik 9) */}
                     <motion.div variants={itemVariants} className="hidden md:flex w-72 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
                         <div className="p-5 border-b border-border-main bg-bg-surface/30">
                             <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center justify-between gap-2">
-                                <span className="flex items-center gap-2"><Users size={14} /> Odada Olanlar</span>
+                                <span className="flex items-center gap-2"><Users size={14} /> Odaya Katılanlar</span>
                                 <span className="bg-bg-surface px-2.5 py-1 rounded-[8px] border border-border-main text-text-main font-semibold text-[12px]">
-                                    {Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}
+                                    {merged.length || 1}
                                 </span>
                             </h3>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                            <AnimatePresence>
-                                {sortedUsers.map((u) => {
-                                    const badge = roleBadgeEmoji(u.role);
-                                    return (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={u.connectionId}
-                                        onClick={(e) => { setPopoverAnchor(e.currentTarget.getBoundingClientRect()); setPopoverUserConnId(prev => prev === u.connectionId ? null : u.connectionId); }}
-                                        className="relative flex items-center gap-3 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200 cursor-pointer">
-                                        <div className="relative">
-                                            <div className="w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 border-[#7C3AED] shadow-sm text-xl">
-                                                {getAvatarEmoji(u.avatarId || 'default')}
-                                            </div>
-                                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-[2.5px] border-bg-card" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <span className="font-semibold text-[14px] text-text-main truncate max-w-[150px] flex items-center gap-1">
-                                                {u.username} {badge && <span title={u.role === 'owner' ? 'Kurucu' : 'Moderatör'}>{badge}</span>} {u.connectionId === signalrService.connectionId && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
-                                            </span>
-                                            <span className="text-[11px] text-text-muted">Çevrimiçi</span>
-                                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                            {/* Çevrimiçi */}
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 px-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" style={{ boxShadow: '0 0 6px rgba(16,185,129,0.8)' }} />
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400/90">Çevrimiçi — {onlineMembers.length}</span>
+                                </div>
+                                <AnimatePresence>
+                                    {onlineMembers.map(renderMemberRow)}
+                                </AnimatePresence>
+                            </div>
 
-                                        {popoverUserConnId === u.connectionId && (
-                                            <PopoverPortal anchorRect={popoverAnchor} onClose={() => setPopoverUserConnId(null)}>
-                                                <UserPopoverCard
-                                                    user={{ userId: u.userId, username: u.username, avatarId: u.avatarId, customStatus: 'online', role: u.role }}
-                                                    isSelf={u.username === username}
-                                                    viewerRole={myRole}
-                                                    onSendMessage={() => { setPopoverUserConnId(null); onOpenDM?.({ userId: u.userId, username: u.username, avatarId: u.avatarId }); }}
-                                                    onEditProfile={() => { setPopoverUserConnId(null); onOpenProfile?.(); }}
-                                                    onSetModerator={u.userId ? (make) => handleSetModerator(u.userId!, make) : undefined}
-                                                    onKick={u.userId ? () => handleKickUser(u.userId!) : undefined}
-                                                    onBan={u.userId ? () => handleBanUser(u.userId!) : undefined}
-                                                />
-                                            </PopoverPortal>
-                                        )}
-                                    </motion.div>
-                                    );
-                                })}
-                            </AnimatePresence>
+                            {/* Çevrimdışı */}
+                            {offlineMembers.length > 0 && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 px-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">Çevrimdışı — {offlineMembers.length}</span>
+                                    </div>
+                                    <AnimatePresence>
+                                        {offlineMembers.map(renderMemberRow)}
+                                    </AnimatePresence>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 </div>
