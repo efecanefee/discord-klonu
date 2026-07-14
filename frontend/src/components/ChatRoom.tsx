@@ -9,6 +9,7 @@ import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
+import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
 import { useSettings } from '../contexts/SettingsContext';
 import { getAvatarEmoji } from '../constants/avatars';
@@ -111,6 +112,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const [messages, setMessages] = useState<Message[]>([]);
     const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string; role?: string }[]>([]);
     const [popoverUserConnId, setPopoverUserConnId] = useState<string | null>(null);
+    const [popoverAnchor, setPopoverAnchor] = useState<DOMRect | null>(null);
 
     // Rol sistemi (Özellik 6): mevcut kullanıcının bu odadaki rolü + yönetim işlemleri
     const myRole = usersInRoom.find(u => u.userId === myUserId)?.role;
@@ -1372,7 +1374,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={u.connectionId}
                                                     className="relative flex flex-col gap-2 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200">
                                                     <div className="flex items-center justify-between cursor-pointer"
-                                                        onClick={() => setPopoverUserConnId(prev => prev === u.connectionId ? null : u.connectionId)}>
+                                                        onClick={(e) => { setPopoverAnchor(e.currentTarget.getBoundingClientRect()); setPopoverUserConnId(prev => prev === u.connectionId ? null : u.connectionId); }}>
                                                         <div className="flex items-center gap-3">
                                                             <div className="relative">
                                                                 {/* Dalga animasyonu — konuşunca */}
@@ -1415,25 +1417,20 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                         </div>
                                                     </div>
 
-                                                    <AnimatePresence>
-                                                        {popoverUserConnId === u.connectionId && (
-                                                            <>
-                                                                <div className="fixed inset-0 z-40" onClick={() => setPopoverUserConnId(null)} />
-                                                                <div className="absolute right-full top-0 mr-3 z-50">
-                                                                    <UserPopoverCard
-                                                                        user={{ userId: u.userId, username: u.username, avatarId: u.avatarId, customStatus: 'online', role: u.role }}
-                                                                        isSelf={u.username === username}
-                                                                        viewerRole={myRole}
-                                                                        onSendMessage={() => { setPopoverUserConnId(null); onOpenDM?.({ userId: u.userId, username: u.username, avatarId: u.avatarId }); }}
-                                                                        onEditProfile={() => { setPopoverUserConnId(null); onOpenProfile?.(); }}
-                                                                        onSetModerator={u.userId ? (make) => handleSetModerator(u.userId!, make) : undefined}
-                                                                        onKick={u.userId ? () => handleKickUser(u.userId!) : undefined}
-                                                                        onBan={u.userId ? () => handleBanUser(u.userId!) : undefined}
-                                                                    />
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                    </AnimatePresence>
+                                                    {popoverUserConnId === u.connectionId && (
+                                                        <PopoverPortal anchorRect={popoverAnchor} onClose={() => setPopoverUserConnId(null)}>
+                                                            <UserPopoverCard
+                                                                user={{ userId: u.userId, username: u.username, avatarId: u.avatarId, customStatus: 'online', role: u.role }}
+                                                                isSelf={u.username === username}
+                                                                viewerRole={myRole}
+                                                                onSendMessage={() => { setPopoverUserConnId(null); onOpenDM?.({ userId: u.userId, username: u.username, avatarId: u.avatarId }); }}
+                                                                onEditProfile={() => { setPopoverUserConnId(null); onOpenProfile?.(); }}
+                                                                onSetModerator={u.userId ? (make) => handleSetModerator(u.userId!, make) : undefined}
+                                                                onKick={u.userId ? () => handleKickUser(u.userId!) : undefined}
+                                                                onBan={u.userId ? () => handleBanUser(u.userId!) : undefined}
+                                                            />
+                                                        </PopoverPortal>
+                                                    )}
 
                                                     {u.username !== username && (
                                                         <div className="flex items-center gap-2 pl-[52px] pr-2 opacity-60 hover:opacity-100 transition-opacity">
