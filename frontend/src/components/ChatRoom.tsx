@@ -271,12 +271,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
         const handleRoomUsers = (usersDict: Record<string, { username: string; avatarId: string; userId?: string; role?: string }>) => {
             if (!isMounted) return;
-            setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId, userId: data.userId, role: data.role })));
+            setUsersInRoom(Object.entries(usersDict || {}).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId, userId: data.userId, role: data.role })));
         };
 
         const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string; replyToId?: number }[]) => {
             if (!isMounted) return;
-            setMessages(history.map(m => ({
+            setMessages((history || []).map(m => ({
                 id: m.id,
                 serverId: m.id,
                 username: m.username,
