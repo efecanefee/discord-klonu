@@ -11,7 +11,7 @@ import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
-import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, ChevronLeft, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
@@ -99,9 +99,9 @@ function App() {
 
   const [rooms, setRooms] = useState<RoomData[]>(defaultRooms);
   const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
-  // Kitap-çevirme oda sayfası (0: Ana Odalar, 1: Topluluk Odaları)
+  // Oda sayfası (0: Ana Odalar, 1: Topluluk Odaları) — spring slayt geçişi
   const [roomPage, setRoomPage] = useState(0);
-  const [roomFlipDir, setRoomFlipDir] = useState(1); // 1: ileri (sola çevir), -1: geri
+  const roomPagerRef = useRef<HTMLDivElement>(null); // slayt genişliği ölçümü (swipe eşiği)
   // Topluluk odası arama
   const [roomSearchQuery, setRoomSearchQuery] = useState('');
   const [roomSearchResults, setRoomSearchResults] = useState<RoomData[] | null>(null);
@@ -1444,7 +1444,8 @@ function App() {
                   .sort((a, b) => a.id - b.id);
                 const searchResults = roomSearchResults;
                 const reduce = settings.reducedMotion;
-                const goRoomPage = (n: number) => { setRoomFlipDir(n > roomPage ? 1 : -1); setRoomPage(n); };
+                const goRoomPage = (n: number) => setRoomPage(n);
+                const tabs = [{ label: 'Ana Odalar', key: 0 }, { label: 'Topluluk Odaları', key: 1 }];
 
                 const fixedPage = (
                   <div className="space-y-3">
@@ -1494,66 +1495,72 @@ function App() {
 
                 return (
                   <>
-                    <div className="relative" style={{ perspective: 1600 }}>
-                      <AnimatePresence mode="wait" custom={roomFlipDir} initial={false}>
-                        <motion.div
-                          key={roomPage}
-                          custom={roomFlipDir}
-                          initial={reduce ? { opacity: 0 } : { rotateY: roomFlipDir > 0 ? 78 : -78, opacity: 0 }}
-                          animate={reduce ? { opacity: 1 } : { rotateY: 0, opacity: 1 }}
-                          exit={reduce ? { opacity: 0 } : { rotateY: roomFlipDir > 0 ? -78 : 78, opacity: 0 }}
-                          transition={{ duration: reduce ? 0.12 : 0.45, ease: [0.4, 0.2, 0.2, 1] }}
-                          style={{ transformOrigin: roomFlipDir > 0 ? 'left center' : 'right center', transformStyle: 'preserve-3d' }}
-                          drag={reduce ? false : 'x'}
-                          dragConstraints={{ left: 0, right: 0 }}
-                          dragElastic={0.18}
-                          onDragEnd={(_, info) => {
-                            if (info.offset.x < -60 && roomPage === 0) goRoomPage(1);
-                            else if (info.offset.x > 60 && roomPage === 1) goRoomPage(0);
-                          }}
+                    {/* Segment kontrol — arkada kayan mor hap (layoutId) */}
+                    <div className="flex p-1 mb-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                      {tabs.map((t) => (
+                        <button
+                          key={t.key}
+                          onClick={() => goRoomPage(t.key)}
+                          className="relative flex-1 py-2 text-[13px] font-semibold rounded-xl transition-colors duration-200"
+                          style={{ color: roomPage === t.key ? '#fff' : 'rgba(255,255,255,0.4)' }}
                         >
-                          {roomPage === 0 ? fixedPage : communityPage}
-                        </motion.div>
-                      </AnimatePresence>
-
-                      {/* Sayfa köşesi ipucu (kıvrık köşe — dekoratif) */}
-                      {roomPage === 0 && !reduce && (
-                        <motion.div
-                          className="absolute -bottom-1 right-0 pointer-events-none"
-                          animate={{ opacity: [0.35, 0.7, 0.35] }}
-                          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                        >
-                          <div style={{ width: 0, height: 0, borderStyle: 'solid', borderWidth: '0 0 18px 18px', borderColor: `transparent transparent rgba(124,58,237,0.5) transparent` }} />
-                        </motion.div>
-                      )}
-                    </div>
-
-                    {/* Sayfa kontrolleri: ok + nokta + etiket */}
-                    <div className="flex items-center justify-center gap-2 pt-3">
-                      <button
-                        onClick={() => goRoomPage(0)}
-                        disabled={roomPage === 0}
-                        className="p-1 rounded-lg text-white/40 hover:text-white disabled:opacity-20 disabled:cursor-default transition-colors"
-                        title="Ana Odalar"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      {[0, 1].map((i) => (
-                        <button key={i} onClick={() => goRoomPage(i)} className="group py-1" title={i === 0 ? 'Ana Odalar' : 'Topluluk Odaları'}>
-                          <div className={`h-1.5 rounded-full transition-all duration-300 ${roomPage === i ? 'w-5 bg-[#7C3AED]' : 'w-1.5 bg-white/20 group-hover:bg-white/40'}`} />
+                          {roomPage === t.key && (
+                            <motion.div
+                              layoutId="roomTabPill"
+                              className="absolute inset-0 rounded-xl"
+                              style={{ background: 'rgba(124,58,237,0.9)', boxShadow: '0 4px 16px rgba(124,58,237,0.35)' }}
+                              transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 34 }}
+                            />
+                          )}
+                          <span className="relative z-10">{t.label}</span>
                         </button>
                       ))}
-                      <button
-                        onClick={() => goRoomPage(1)}
-                        disabled={roomPage === 1}
-                        className="p-1 rounded-lg text-white/40 hover:text-white disabled:opacity-20 disabled:cursor-default transition-colors"
-                        title="Topluluk Odaları"
+                    </div>
+
+                    {/* İçerik: yatay spring slayt şeridi (translateX — GPU dostu) */}
+                    <div ref={roomPagerRef} className="relative overflow-hidden">
+                      <motion.div
+                        className="flex"
+                        style={{ width: '200%' }}
+                        animate={{ x: roomPage === 0 ? '0%' : '-50%' }}
+                        transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 32 }}
+                        drag={reduce ? false : 'x'}
+                        dragConstraints={{ left: 0, right: 0 }}
+                        dragElastic={0.15}
+                        onDragEnd={(_, info) => {
+                          const width = roomPagerRef.current?.offsetWidth ?? 320;
+                          // Hız bazlı eşik: kısa ama hızlı kaydırma da algılansın
+                          const swiped = Math.abs(info.velocity.x) > 400 || Math.abs(info.offset.x) > width * 0.3;
+                          if (!swiped) return;
+                          if (info.offset.x < 0 && roomPage === 0) goRoomPage(1);
+                          else if (info.offset.x > 0 && roomPage === 1) goRoomPage(0);
+                        }}
                       >
-                        <ChevronRight size={16} />
-                      </button>
-                      <span className="ml-1 text-[10px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                        {roomPage === 0 ? 'Ana Odalar' : 'Topluluk Odaları'}
-                      </span>
+                        {/* Ayrılan sayfa hafif küçülür + soluklaşır → ucuz derinlik hissi */}
+                        <motion.div
+                          className="w-1/2 shrink-0 pr-0.5"
+                          animate={reduce ? {} : { scale: roomPage === 0 ? 1 : 0.96, opacity: roomPage === 0 ? 1 : 0.6 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          {fixedPage}
+                        </motion.div>
+                        <motion.div
+                          className="w-1/2 shrink-0 pl-0.5"
+                          animate={reduce ? {} : { scale: roomPage === 1 ? 1 : 0.96, opacity: roomPage === 1 ? 1 : 0.6 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          {communityPage}
+                        </motion.div>
+                      </motion.div>
+                    </div>
+
+                    {/* Sayfa göstergesi: alta iki nokta (swipe ipucu) */}
+                    <div className="flex items-center justify-center gap-2 pt-3">
+                      {tabs.map((t) => (
+                        <button key={t.key} onClick={() => goRoomPage(t.key)} className="group py-1" title={t.label} aria-label={t.label}>
+                          <div className={`h-1.5 rounded-full transition-all duration-300 ${roomPage === t.key ? 'w-5 bg-[#7C3AED]' : 'w-1.5 bg-white/20 group-hover:bg-white/40'}`} />
+                        </button>
+                      ))}
                     </div>
                   </>
                 );
