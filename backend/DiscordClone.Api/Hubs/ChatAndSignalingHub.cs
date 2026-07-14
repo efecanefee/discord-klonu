@@ -109,6 +109,16 @@ namespace DiscordClone.Api.Hubs
 
         public static int GetActiveUserCount() => _activeUserCount;
 
+        // Rol değişince bellekteki RoomUserDto'yu güncelle (yeni katılımlarda eski rol yayınlanmasın).
+        public static void UpdateUserRoleInMemory(string roomName, string userId, string role)
+        {
+            if (_roomUsers.TryGetValue(roomName, out var users))
+            {
+                foreach (var kv in users)
+                    if (kv.Value.UserId == userId) kv.Value.Role = role;
+            }
+        }
+
         public static object GetUsersInRoom(string roomId)
         {
             if (_roomUsers.TryGetValue(roomId, out var usersInRoom))

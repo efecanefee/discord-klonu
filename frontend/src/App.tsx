@@ -795,12 +795,12 @@ function App() {
         {/* Oda içeriği */}
         <div className="flex-1 min-w-0 relative">
           {isVoiceStyle ? (
-            <ChatRoom username={username} avatarId={avatarId} roomId={roomId} onLeave={handleLeaveRoom}
+            <ChatRoom username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} onLeave={handleLeaveRoom}
               onOpenProfile={() => setIsProfileModalOpen(true)}
               onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
             />
           ) : (
-            <TextChatRoom username={username} avatarId={avatarId} roomId={roomId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy }} onLeave={handleLeaveRoom}
+            <TextChatRoom username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy }} onLeave={handleLeaveRoom}
               onOpenProfile={() => setIsProfileModalOpen(true)}
               onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
             />

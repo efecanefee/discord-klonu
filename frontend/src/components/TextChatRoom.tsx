@@ -8,6 +8,8 @@ import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import { getAvatarEmoji } from '../constants/avatars';
+import { roomApi } from '../services/roomApi';
+import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
 
 export interface TextRoomInfo {
     name: string;
@@ -19,6 +21,8 @@ interface TextChatRoomProps {
     username: string;
     avatarId?: string;
     roomId: string;
+    roomDbId: number;
+    myUserId: string;
     roomInfo?: TextRoomInfo;
     onLeave: () => void;
     onOpenDM?: (user: PopoverUser) => void;
@@ -40,10 +44,32 @@ interface Message {
     replyToId?: number;
 }
 
-const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'default', roomId, roomInfo, onLeave, onOpenDM, onOpenProfile }) => {
+const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'default', roomId, roomDbId, myUserId, roomInfo, onLeave, onOpenDM, onOpenProfile }) => {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string }[]>([]);
+    const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string; role?: string }[]>([]);
     const [popoverUserConnId, setPopoverUserConnId] = useState<string | null>(null);
+
+    // Rol sistemi (Özellik 6)
+    const myRole = usersInRoom.find(u => u.userId === myUserId)?.role;
+    const canManageRoom = roleRank(myRole) >= 1;
+    const sortedUsers = [...usersInRoom].sort(sortByRole);
+
+    const handleSetModerator = async (uId: string, make: boolean) => {
+        setPopoverUserConnId(null);
+        try { await roomApi.setRole(roomDbId, uId, make ? 'moderator' : 'member'); }
+        catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
+    };
+    const handleKickUser = async (uId: string) => {
+        setPopoverUserConnId(null);
+        try { await roomApi.kick(roomDbId, uId); }
+        catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
+    };
+    const handleBanUser = async (uId: string) => {
+        if (!window.confirm('Bu kullanıcıyı odadan yasaklamak istediğine emin misin?')) return;
+        setPopoverUserConnId(null);
+        try { await roomApi.ban(roomDbId, uId); }
+        catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
+    };
     const [messageInput, setMessageInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
@@ -136,9 +162,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             ));
         };
 
-        const handleRoomUsers = (usersDict: Record<string, { username: string; avatarId: string; userId?: string }>) => {
+        const handleRoomUsers = (usersDict: Record<string, { username: string; avatarId: string; userId?: string; role?: string }>) => {
             if (!isMounted) return;
-            setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId, userId: data.userId })));
+            setUsersInRoom(Object.entries(usersDict).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId, userId: data.userId, role: data.role })));
         };
 
         const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string; replyToId?: number }[]) => {
@@ -199,7 +225,34 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             window.location.reload();
         };
 
+        // ===== Rol sistemi (Özellik 6) =====
+        let wasBanned = false;
+        const handleMemberBanned = (_roomId: number, uId: string) => {
+            if (uId === myUserId) wasBanned = true;
+        };
+        const handleMemberKicked = (_roomId: number, uId: string) => {
+            if (!isMounted) return;
+            if (uId === myUserId) {
+                alert(wasBanned ? 'Bu odadan yasaklandınız.' : 'Odadan atıldınız.');
+                onLeave();
+            } else {
+                setUsersInRoom(prev => prev.filter(u => u.userId !== uId));
+            }
+        };
+        const handleMemberRoleChanged = (uId: string, role: string) => {
+            if (!isMounted) return;
+            setUsersInRoom(prev => prev.map(u => u.userId === uId ? { ...u, role } : u));
+        };
+        const handleJoinRejected = (reason: string) => {
+            alert(reason === 'banned' ? 'Bu odaya girişiniz yasaklı.' : 'Odaya giriş reddedildi.');
+            onLeave();
+        };
+
         signalrService.onForceDisconnect(handleForceDisconnect);
+        signalrService.onMemberBanned(handleMemberBanned);
+        signalrService.onMemberKicked(handleMemberKicked);
+        signalrService.onMemberRoleChanged(handleMemberRoleChanged);
+        signalrService.onJoinRejected(handleJoinRejected);
         signalrService.onUserJoined(handleUserJoined);
         signalrService.onUserLeft(handleUserLeft);
         signalrService.onReceiveMessage(handleReceiveMessage);
@@ -225,8 +278,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             signalrService.offMessageDeleted(handleMessageDeleted);
             signalrService.offMessageEdited(handleMessageEdited);
             signalrService.offReceiveFileMessage(handleReceiveFileMessage);
+            signalrService.offMemberBanned(handleMemberBanned);
+            signalrService.offMemberKicked(handleMemberKicked);
+            signalrService.offMemberRoleChanged(handleMemberRoleChanged);
+            signalrService.offJoinRejected(handleJoinRejected);
         };
-    }, [roomId, username, playJoinSound, playLeaveSound, playReceiveSound, onLeave]);
+    }, [roomId, username, myUserId, playJoinSound, playLeaveSound, playReceiveSound, onLeave]);
 
     // Mesaj kopyalama
     const handleCopyMessage = async (text: string, e: React.MouseEvent) => {
@@ -670,6 +727,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                                         <X size={10} className="text-white" />
                                                                     </button>
                                                                 )}
+                                                                {!isMine && canManageRoom && msg.serverId && !msg.pending && (
+                                                                    <button onClick={() => signalrService.deleteMessage(msg.serverId!)} className="w-6 h-6 rounded-full bg-red-500/80 hover:bg-red-500 flex items-center justify-center cursor-pointer" title="Mesajı sil (yönetici)">
+                                                                        <X size={10} className="text-white" />
+                                                                    </button>
+                                                                )}
                                                                 {!msg.pending && (
                                                                     <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer" title="Yanıtla">
                                                                         <Reply size={12} className="text-text-main" />
@@ -710,7 +772,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
                             <AnimatePresence>
-                                {usersInRoom.map((u) => (
+                                {sortedUsers.map((u) => {
+                                    const badge = roleBadgeEmoji(u.role);
+                                    return (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={u.connectionId}
                                         onClick={() => setPopoverUserConnId(prev => prev === u.connectionId ? null : u.connectionId)}
                                         className="relative flex items-center gap-3 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200 cursor-pointer">
@@ -722,7 +786,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                         </div>
                                         <div className="min-w-0">
                                             <span className="font-semibold text-[14px] text-text-main truncate max-w-[150px] flex items-center gap-1">
-                                                {u.username} {u.connectionId === signalrService.connectionId && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
+                                                {u.username} {badge && <span title={u.role === 'owner' ? 'Kurucu' : 'Moderatör'}>{badge}</span>} {u.connectionId === signalrService.connectionId && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
                                             </span>
                                             <span className="text-[11px] text-text-muted">Çevrimiçi</span>
                                         </div>
@@ -733,17 +797,22 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                     <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setPopoverUserConnId(null); }} />
                                                     <div className="absolute right-full top-0 mr-3 z-50">
                                                         <UserPopoverCard
-                                                            user={{ userId: u.userId, username: u.username, avatarId: u.avatarId, customStatus: 'online' }}
+                                                            user={{ userId: u.userId, username: u.username, avatarId: u.avatarId, customStatus: 'online', role: u.role }}
                                                             isSelf={u.username === username}
+                                                            viewerRole={myRole}
                                                             onSendMessage={() => { setPopoverUserConnId(null); onOpenDM?.({ userId: u.userId, username: u.username, avatarId: u.avatarId }); }}
                                                             onEditProfile={() => { setPopoverUserConnId(null); onOpenProfile?.(); }}
+                                                            onSetModerator={u.userId ? (make) => handleSetModerator(u.userId!, make) : undefined}
+                                                            onKick={u.userId ? () => handleKickUser(u.userId!) : undefined}
+                                                            onBan={u.userId ? () => handleBanUser(u.userId!) : undefined}
                                                         />
                                                     </div>
                                                 </>
                                             )}
                                         </AnimatePresence>
                                     </motion.div>
-                                ))}
+                                    );
+                                })}
                             </AnimatePresence>
                         </div>
                     </motion.div>
