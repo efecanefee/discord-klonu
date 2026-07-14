@@ -627,7 +627,7 @@ function App() {
     setInRoom(true);
   };
 
-  const handleCreateRoom = async (data: { name: string; type: string; description?: string; isPrivate: boolean }) => {
+  const handleCreateRoom = async (data: { name: string; description?: string; isPrivate: boolean }) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`${API_BASE_URL}/api/rooms`, {
       method: 'POST',
@@ -888,7 +888,7 @@ function App() {
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-bg-base">
+    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden overflow-y-auto py-12 font-sans bg-bg-base">
 
       {/* Premium Background */}
       <div className="absolute inset-0 bg-mesh-gradient" />
@@ -1590,8 +1590,8 @@ function App() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-        className="absolute bottom-8 flex items-center justify-center pointer-events-none w-full">
-        <span 
+        className="relative z-10 mt-10 mb-2 flex items-center justify-center pointer-events-none w-full shrink-0">
+        <span
           className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
           style={{ 
             fontFamily: "'Orbitron', sans-serif",
