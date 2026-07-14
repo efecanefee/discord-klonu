@@ -183,6 +183,38 @@ class SignalRService {
     }
 
     // ==========================================
+    // ROL SİSTEMİ (Özellik 6)
+    // ==========================================
+    // Kullanıcı odadan atıldı (kick veya ban sonrası düşürme)
+    public onMemberKicked(callback: (roomId: number, userId: string) => void) {
+        this.connection?.on('MemberKicked', callback);
+    }
+    public offMemberKicked(callback: (roomId: number, userId: string) => void) {
+        this.connection?.off('MemberKicked', callback);
+    }
+    // Kullanıcı yasaklandı
+    public onMemberBanned(callback: (roomId: number, userId: string) => void) {
+        this.connection?.on('MemberBanned', callback);
+    }
+    public offMemberBanned(callback: (roomId: number, userId: string) => void) {
+        this.connection?.off('MemberBanned', callback);
+    }
+    // Kullanıcının rolü değişti
+    public onMemberRoleChanged(callback: (userId: string, role: string) => void) {
+        this.connection?.on('MemberRoleChanged', callback);
+    }
+    public offMemberRoleChanged(callback: (userId: string, role: string) => void) {
+        this.connection?.off('MemberRoleChanged', callback);
+    }
+    // Odaya giriş reddedildi (ör. yasaklı)
+    public onJoinRejected(callback: (reason: string) => void) {
+        this.connection?.on('JoinRejected', callback);
+    }
+    public offJoinRejected(callback: (reason: string) => void) {
+        this.connection?.off('JoinRejected', callback);
+    }
+
+    // ==========================================
     // ÖZEL MESAJLAR (DIRECT MESSAGES) - FAZ 1
     // ==========================================
     

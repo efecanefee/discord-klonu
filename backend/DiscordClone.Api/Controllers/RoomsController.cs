@@ -245,7 +245,10 @@ namespace DiscordClone.Api.Controllers
 
             var room = await _db.Rooms.FindAsync(id);
             if (room != null)
+            {
+                ChatAndSignalingHub.UpdateUserRoleInMemory(room.Name, userId, role!);
                 await _hubContext.Clients.Group(room.Name).SendAsync("MemberRoleChanged", userId, role);
+            }
 
             return Ok(new { userId, role });
         }
