@@ -13,6 +13,7 @@ namespace DiscordClone.Api.Data
         public DbSet<DirectMessage> DirectMessages { get; set; }
         public DbSet<RoomMember> RoomMembers { get; set; }
         public DbSet<RoomBan> RoomBans { get; set; }
+        public DbSet<Channel> Channels { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -142,6 +143,28 @@ namespace DiscordClone.Api.Data
                 .Property(m => m.FileUrl).HasColumnName("file_url");
             modelBuilder.Entity<DirectMessage>()
                 .Property(m => m.FileName).HasColumnName("file_name");
+
+            // Kanallar (oda = sunucu, metin + ses kanalları)
+            modelBuilder.Entity<Channel>()
+                .ToTable("channels");
+            modelBuilder.Entity<Channel>()
+                .Property(c => c.Id).HasColumnName("id");
+            modelBuilder.Entity<Channel>()
+                .Property(c => c.RoomId).HasColumnName("room_id");
+            modelBuilder.Entity<Channel>()
+                .Property(c => c.Name).HasColumnName("name");
+            modelBuilder.Entity<Channel>()
+                .Property(c => c.Type).HasColumnName("type");
+            modelBuilder.Entity<Channel>()
+                .Property(c => c.Position).HasColumnName("position");
+            modelBuilder.Entity<Channel>()
+                .Property(c => c.MessageKey).HasColumnName("message_key");
+            modelBuilder.Entity<Channel>()
+                .Property(c => c.CreatedBy).HasColumnName("created_by");
+            modelBuilder.Entity<Channel>()
+                .Property(c => c.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<Channel>()
+                .HasIndex(c => c.RoomId);
 
             // Oda üyeleri / rolleri
             modelBuilder.Entity<RoomMember>()

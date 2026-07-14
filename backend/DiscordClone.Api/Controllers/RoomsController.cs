@@ -105,6 +105,11 @@ namespace DiscordClone.Api.Controllers
                 await _db.SaveChangesAsync();
             }
 
+            // Oda oluşunca varsayılan 2 kanal: metin (#genel) + ses (Sesli Sohbet)
+            var channels = CreateDefaultChannels(room, username);
+            _db.Channels.AddRange(channels);
+            await _db.SaveChangesAsync();
+
             var roomData = new
             {
                 room.Id,
@@ -114,7 +119,8 @@ namespace DiscordClone.Api.Controllers
                 room.CreatedBy,
                 room.CreatedAt,
                 room.IsPrivate,
-                room.RoomCode
+                room.RoomCode,
+                channels = channels.Select(c => new { c.Id, c.Name, c.Type, c.Position, c.MessageKey })
             };
 
             // SignalR ile tüm bağlı istemcilere yeni oda bilgisini yayınla
@@ -185,6 +191,64 @@ namespace DiscordClone.Api.Controllers
                 .ToListAsync();
             
             return Ok(nameMatches);
+        }
+
+        // ============ KANALLAR (Özellik 8 — Faz 1) ============
+
+        /// <summary>
+        /// Bir odanın varsayılan metin + ses kanallarını üretir.
+        /// Metin kanalının anahtarı = oda adı (mevcut mesajlarla uyumlu kalması için).
+        /// </summary>
+        private static List<Channel> CreateDefaultChannels(Room room, string createdBy)
+        {
+            return new List<Channel>
+            {
+                new Channel
+                {
+                    RoomId = room.Id,
+                    Name = "genel",
+                    Type = "text",
+                    Position = 0,
+                    MessageKey = room.Name,
+                    CreatedBy = createdBy,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new Channel
+                {
+                    RoomId = room.Id,
+                    Name = "Sesli Sohbet",
+                    Type = "voice",
+                    Position = 1,
+                    MessageKey = $"voice:{room.Id}",
+                    CreatedBy = createdBy,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+        }
+
+        /// <summary>
+        /// Bir odanın kanallarını listele. Kanal yoksa (eski oda) varsayılanları üretip döner.
+        /// </summary>
+        [HttpGet("{roomId}/channels")]
+        public async Task<IActionResult> GetChannels(int roomId)
+        {
+            var room = await _db.Rooms.FindAsync(roomId);
+            if (room == null) return NotFound("Oda bulunamadı.");
+
+            var channels = await _db.Channels
+                .Where(c => c.RoomId == roomId)
+                .OrderBy(c => c.Position).ThenBy(c => c.Id)
+                .ToListAsync();
+
+            // Kanal sistemi öncesi oluşturulmuş odalar için tembel geri-doldurma
+            if (channels.Count == 0)
+            {
+                channels = CreateDefaultChannels(room, room.CreatedBy);
+                _db.Channels.AddRange(channels);
+                await _db.SaveChangesAsync();
+            }
+
+            return Ok(channels.Select(c => new { c.Id, c.Name, c.Type, c.Position, c.MessageKey }));
         }
 
         // ============ ROL SİSTEMİ (Özellik 6) ============

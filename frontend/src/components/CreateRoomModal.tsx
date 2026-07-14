@@ -11,7 +11,7 @@ interface CreatedRoomInfo {
 interface CreateRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateRoom: (data: { name: string; type: string; description?: string; isPrivate: boolean }) => Promise<CreatedRoomInfo | void>;
+  onCreateRoom: (data: { name: string; description?: string; isPrivate: boolean }) => Promise<CreatedRoomInfo | void>;
 }
 
 const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
@@ -20,7 +20,6 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   onCreateRoom
 }) => {
   const [name, setName] = useState('');
-  const [type, setType] = useState<'text' | 'voice'>('text');
   const [description, setDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +31,6 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setName('');
-      setType('text');
       setDescription('');
       setIsPrivate(false);
       setError('');
@@ -77,7 +75,6 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
     try {
       const result = await onCreateRoom({
         name: trimmedName,
-        type,
         description: description.trim() || undefined,
         isPrivate
       });
@@ -244,80 +241,34 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               </div>
             </div>
 
-            {/* Oda Türü */}
+            {/* Kanallar — oda türü seçimi kaldırıldı; her oda metin + ses kanalıyla açılır */}
             <div className="space-y-2">
               <label className="text-xs text-white/50 uppercase tracking-wider font-semibold">
-                Oda Türü
+                Kanallar
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setType('text')}
-                  disabled={isLoading}
-                  className={`relative flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 ${
-                    type === 'text'
-                      ? 'bg-[#7C3AED]/10 border-[#7C3AED]/50 shadow-[0_0_20px_rgba(124,58,237,0.15)]'
-                      : 'bg-[#18181b] border-[#334155] hover:border-[#7C3AED]/30'
-                  } disabled:opacity-50`}
-                >
-                  <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
-                      type === 'text'
-                        ? 'bg-[#7C3AED]/20'
-                        : 'bg-white/5'
-                    }`}
-                  >
-                    <Hash size={18} className={type === 'text' ? 'text-[#7C3AED]' : 'text-white/40'} />
+              <div className="rounded-xl border border-[#334155] bg-[#18181b] p-3 space-y-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#7C3AED]/15 flex items-center justify-center shrink-0">
+                    <Hash size={16} className="text-[#7C3AED]" />
                   </div>
                   <div className="text-left">
-                    <div className={`text-sm font-semibold ${type === 'text' ? 'text-white' : 'text-white/60'}`}>
-                      Yazı
-                    </div>
-                    <div className="text-[10px] text-white/30">Mesajlaşma</div>
+                    <div className="text-sm font-semibold text-white/90">genel</div>
+                    <div className="text-[10px] text-white/30">Metin kanalı — mesajlaşma</div>
                   </div>
-                  {type === 'text' && (
-                    <motion.div
-                      layoutId="typeIndicator"
-                      className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#7C3AED]"
-                      style={{ boxShadow: '0 0 8px rgba(124, 58, 237, 0.8)' }}
-                    />
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setType('voice')}
-                  disabled={isLoading}
-                  className={`relative flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 ${
-                    type === 'voice'
-                      ? 'bg-[#10b981]/10 border-[#10b981]/50 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-                      : 'bg-[#18181b] border-[#334155] hover:border-[#10b981]/30'
-                  } disabled:opacity-50`}
-                >
-                  <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
-                      type === 'voice'
-                        ? 'bg-[#10b981]/20'
-                        : 'bg-white/5'
-                    }`}
-                  >
-                    <Volume2 size={18} className={type === 'voice' ? 'text-[#10b981]' : 'text-white/40'} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#10b981]/15 flex items-center justify-center shrink-0">
+                    <Volume2 size={16} className="text-[#10b981]" />
                   </div>
                   <div className="text-left">
-                    <div className={`text-sm font-semibold ${type === 'voice' ? 'text-white' : 'text-white/60'}`}>
-                      Ses
-                    </div>
-                    <div className="text-[10px] text-white/30">Sesli sohbet</div>
+                    <div className="text-sm font-semibold text-white/90">Sesli Sohbet</div>
+                    <div className="text-[10px] text-white/30">Ses kanalı — sesli sohbet</div>
                   </div>
-                  {type === 'voice' && (
-                    <motion.div
-                      layoutId="typeIndicator"
-                      className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#10b981]"
-                      style={{ boxShadow: '0 0 8px rgba(16, 185, 129, 0.8)' }}
-                    />
-                  )}
-                </button>
+                </div>
               </div>
+              <p className="text-[11px] text-white/30 leading-relaxed">
+                Odan bir metin ve bir ses kanalıyla açılır. Sonradan yeni kanallar ekleyebilirsin.
+              </p>
             </div>
 
             {/* Açıklama */}
