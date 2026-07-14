@@ -182,6 +182,14 @@ class SignalRService {
         this.connection?.off('RoomDeleted', callback);
     }
 
+    // Oda güncellendi (açıklama)
+    public onRoomUpdated(callback: (data: { id: number; description?: string }) => void) {
+        this.connection?.on('RoomUpdated', callback);
+    }
+    public offRoomUpdated(callback: (data: { id: number; description?: string }) => void) {
+        this.connection?.off('RoomUpdated', callback);
+    }
+
     // ==========================================
     // ROL SİSTEMİ (Özellik 6)
     // ==========================================

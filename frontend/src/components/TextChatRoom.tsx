@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info } from 'lucide-react';
+import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
+import RoomSettingsModal from './RoomSettingsModal';
 import { getAvatarEmoji } from '../constants/avatars';
 import { roomApi } from '../services/roomApi';
 import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
@@ -53,6 +54,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const myRole = usersInRoom.find(u => u.userId === myUserId)?.role;
     const canManageRoom = roleRank(myRole) >= 1;
     const sortedUsers = [...usersInRoom].sort(sortByRole);
+    const [showRoomSettings, setShowRoomSettings] = useState(false);
 
     const handleSetModerator = async (uId: string, make: boolean) => {
         setPopoverUserConnId(null);
@@ -644,6 +646,14 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             </button>
                         </div>
 
+                        {/* Oda ayarları — sadece kurucu */}
+                        {myRole === 'owner' && (
+                            <button onClick={() => setShowRoomSettings(true)} title="Oda ayarları"
+                                className="flex items-center justify-center p-2.5 rounded-xl border bg-bg-base border-border-main text-text-muted hover:text-primary-main hover:border-primary-main/40 transition-colors cursor-pointer">
+                                <Settings size={18} />
+                            </button>
+                        )}
+
                         {/* Ayrıl */}
                         <button onClick={onLeave}
                             className="flex items-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border-main hover:border-red-500/30 rounded-xl text-sm font-semibold transition-colors cursor-pointer">
@@ -651,6 +661,17 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                         </button>
                     </div>
                 </motion.div>
+
+                <AnimatePresence>
+                    {showRoomSettings && (
+                        <RoomSettingsModal
+                            roomDbId={roomDbId}
+                            roomName={roomInfo?.name || roomId}
+                            initialDescription={roomInfo?.description}
+                            onClose={() => setShowRoomSettings(false)}
+                        />
+                    )}
+                </AnimatePresence>
 
                 {/* ===== İÇERİK ===== */}
                 <div className="flex flex-1 overflow-hidden gap-6 mb-6">

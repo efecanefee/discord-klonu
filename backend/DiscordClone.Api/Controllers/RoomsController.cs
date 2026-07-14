@@ -189,6 +189,31 @@ namespace DiscordClone.Api.Controllers
 
         // ============ ROL SİSTEMİ (Özellik 6) ============
 
+        public class UpdateRoomDto { public string? Description { get; set; } }
+
+        /// <summary>
+        /// Oda ayarlarını güncelle (açıklama). Yalnızca kurucu.
+        /// Not: Oda adı SignalR grup anahtarı + mesaj room_id olduğundan burada değiştirilmez.
+        /// </summary>
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateRoom(int id, [FromBody] UpdateRoomDto dto)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (!await _roomAuth.IsOwnerAsync(id, CurrentUserId)) return Forbid();
+
+            if (dto.Description?.Length > 200)
+                return BadRequest("Açıklama en fazla 200 karakter olabilir.");
+
+            var room = await _db.Rooms.FindAsync(id);
+            if (room == null) return NotFound("Oda bulunamadı.");
+
+            room.Description = dto.Description?.Trim();
+            await _db.SaveChangesAsync();
+
+            await _hubContext.Clients.All.SendAsync("RoomUpdated", new { room.Id, room.Description });
+            return Ok(new { room.Id, room.Description });
+        }
+
         /// <summary>
         /// Oda üyeleri + rolleri (owner → moderator → member sırasıyla).
         /// </summary>
