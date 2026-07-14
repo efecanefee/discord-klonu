@@ -344,6 +344,14 @@ function App() {
       });
     };
     signalrService.onRoomDeleted(handleRoomDeleted);
+
+    // Oda güncellendiğinde (açıklama) dinle
+    const handleRoomUpdated = (data: { id: number; description?: string }) => {
+      setRooms(prev => prev.map(r => r.id === data.id ? { ...r, description: data.description } : r));
+      setRoomSearchResults(prev => prev ? prev.map(r => r.id === data.id ? { ...r, description: data.description } : r) : prev);
+      setActiveRoom(prev => prev && prev.id === data.id ? { ...prev, description: data.description } : prev);
+    };
+    signalrService.onRoomUpdated(handleRoomUpdated);
   };
 
   useEffect(() => {
@@ -795,7 +803,7 @@ function App() {
         {/* Oda içeriği */}
         <div className="flex-1 min-w-0 relative">
           {isVoiceStyle ? (
-            <ChatRoom username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} onLeave={handleLeaveRoom}
+            <ChatRoom username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} roomDescription={activeRoom.description} onLeave={handleLeaveRoom}
               onOpenProfile={() => setIsProfileModalOpen(true)}
               onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
             />

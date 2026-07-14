@@ -9,6 +9,7 @@ import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
+import RoomSettingsModal from './RoomSettingsModal';
 import { useSettings } from '../contexts/SettingsContext';
 import { getAvatarEmoji } from '../constants/avatars';
 import { roomApi } from '../services/roomApi';
@@ -20,6 +21,7 @@ interface ChatRoomProps {
     roomId: string;
     roomDbId: number;
     myUserId: string;
+    roomDescription?: string;
     onLeave: () => void;
     onOpenDM?: (user: PopoverUser) => void;
     onOpenProfile?: () => void;
@@ -105,7 +107,7 @@ const THEMES: { id: Theme; label: string }[] = [
     { id: 'oled', label: 'OLED' },
 ];
 
-const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roomId, roomDbId, myUserId, onLeave, onOpenDM, onOpenProfile }) => {
+const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roomId, roomDbId, myUserId, roomDescription, onLeave, onOpenDM, onOpenProfile }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string; role?: string }[]>([]);
     const [popoverUserConnId, setPopoverUserConnId] = useState<string | null>(null);
@@ -114,6 +116,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const myRole = usersInRoom.find(u => u.userId === myUserId)?.role;
     const canManageRoom = roleRank(myRole) >= 1; // owner veya moderator
     const sortedUsers = [...usersInRoom].sort(sortByRole);
+    const [showRoomSettings, setShowRoomSettings] = useState(false);
 
     const handleSetModerator = async (uId: string, make: boolean) => {
         setPopoverUserConnId(null);
@@ -958,6 +961,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                         {isCameraOn && <video ref={localVideoRef} autoPlay muted className="w-9 h-9 rounded-xl object-cover border border-border-main" />}
 
+                        {/* Oda ayarları — sadece kurucu */}
+                        {myRole === 'owner' && (
+                            <button onClick={() => setShowRoomSettings(true)} title="Oda ayarları"
+                                className="flex items-center gap-2 px-3 py-2.5 bg-bg-base hover:bg-primary-main/10 text-text-muted hover:text-primary-main border border-border-main hover:border-primary-main/30 rounded-xl text-sm font-semibold transition-colors cursor-pointer">
+                                <Settings size={17} />
+                            </button>
+                        )}
+
                         {/* Ayrıl */}
                         <button onClick={onLeave}
                             className="flex items-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border-main hover:border-red-500/30 rounded-xl text-sm font-semibold transition-colors cursor-pointer">
@@ -965,6 +976,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                         </button>
                     </div>
                 </motion.div>
+
+                <AnimatePresence>
+                    {showRoomSettings && (
+                        <RoomSettingsModal
+                            roomDbId={roomDbId}
+                            roomName={roomId}
+                            initialDescription={roomDescription}
+                            onClose={() => setShowRoomSettings(false)}
+                        />
+                    )}
+                </AnimatePresence>
 
                 {/* ===== MEDYA MODU ===== */}
                 {isMediaActive ? (

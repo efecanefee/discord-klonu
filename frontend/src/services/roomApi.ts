@@ -75,4 +75,13 @@ export const roomApi = {
     });
     await ok(res);
   },
+
+  async updateRoom(roomId: number, description: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ description }),
+    });
+    await ok(res);
+  },
 };
