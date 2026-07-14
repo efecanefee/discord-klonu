@@ -36,11 +36,18 @@ const PopoverPortal: React.FC<PopoverPortalProps> = ({ anchorRect, onClose, chil
 
   if (!anchorRect) return null;
 
+  // Not: Portal içeriği React ağacında tetikleyici satırın çocuğudur; DOM'da body'ye
+  // taşınsa da olaylar React ağacında yukarı sızar. stopPropagation olmazsa arka plana
+  // tıklamak, onClose'dan sonra satırın onClick'ini de tetikler ve popover yeniden açılır.
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[90]" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-[90]"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+      />
       <div
         ref={ref}
+        onClick={(e) => e.stopPropagation()}
         style={{
           position: 'fixed',
           top: pos?.top ?? anchorRect.top,
