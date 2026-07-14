@@ -22,6 +22,7 @@ builder.Services.AddResend(options =>
     options.ApiToken = builder.Configuration["Resend:ApiKey"] ?? "re_fallback";
 });
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IRoomAuthorizationService, RoomAuthorizationService>();
 
 // JWT Kimlik Doğrulama Konfigürasyonu
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKey123!_DiscordClone_UpdatedForForceLogout_2026";
@@ -207,6 +208,46 @@ using (var scope = app.Services.CreateScope())
         // Seed: Varsayılan odaları ekle (varsa atla)
         try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Ana Salon', 'text', 'Sohbet Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("INSERT INTO rooms (name, type, description, created_by) VALUES ('Müzik Odası', 'text', 'Dinleme Odası', 'system') ON CONFLICT (name) DO NOTHING;"); } catch { }
+
+        // ============ ROL SİSTEMİ (Özellik 6) ============
+        // Sahiplik username yerine userId üzerinden tutulur
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE rooms ADD COLUMN IF NOT EXISTS created_by_user_id text;"); } catch { }
+        // Mevcut odalar için username → userId eşleştir (sistem odaları hariç, onlar null kalır)
+        try { await db.Database.ExecuteSqlRawAsync(@"
+            UPDATE rooms SET created_by_user_id = u.id
+            FROM users u
+            WHERE rooms.created_by_user_id IS NULL AND rooms.created_by = u.username;
+        "); } catch { }
+
+        // Oda üyeleri / rolleri tablosu
+        try { await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS room_members (
+                room_id int NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+                user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                role text NOT NULL DEFAULT 'member',
+                joined_at timestamptz NOT NULL DEFAULT now(),
+                CONSTRAINT ""PK_room_members"" PRIMARY KEY (room_id, user_id)
+            );
+        "); } catch { }
+
+        // Oda yasakları tablosu
+        try { await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS room_bans (
+                room_id int NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+                user_id text NOT NULL,
+                banned_by text NOT NULL,
+                reason text,
+                banned_at timestamptz NOT NULL DEFAULT now(),
+                CONSTRAINT ""PK_room_bans"" PRIMARY KEY (room_id, user_id)
+            );
+        "); } catch { }
+
+        // Mevcut odaların kurucularını owner olarak room_members'a yaz
+        try { await db.Database.ExecuteSqlRawAsync(@"
+            INSERT INTO room_members (room_id, user_id, role)
+            SELECT id, created_by_user_id, 'owner' FROM rooms WHERE created_by_user_id IS NOT NULL
+            ON CONFLICT (room_id, user_id) DO NOTHING;
+        "); } catch { }
 
         // 8. Users tablosuna Faz 1 ve Faz 2 DM/Durum alanlarını ekle
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen timestamp with time zone NOT NULL DEFAULT now();"); } catch { }

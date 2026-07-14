@@ -11,6 +11,8 @@ namespace DiscordClone.Api.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Room> Rooms { get; set; }
         public DbSet<DirectMessage> DirectMessages { get; set; }
+        public DbSet<RoomMember> RoomMembers { get; set; }
+        public DbSet<RoomBan> RoomBans { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -104,6 +106,8 @@ namespace DiscordClone.Api.Data
             modelBuilder.Entity<Room>()
                 .Property(r => r.CreatedBy).HasColumnName("created_by");
             modelBuilder.Entity<Room>()
+                .Property(r => r.CreatedByUserId).HasColumnName("created_by_user_id");
+            modelBuilder.Entity<Room>()
                 .Property(r => r.CreatedAt).HasColumnName("created_at");
             modelBuilder.Entity<Room>()
                 .Property(r => r.IsPrivate).HasColumnName("is_private").HasDefaultValue(false);
@@ -138,6 +142,36 @@ namespace DiscordClone.Api.Data
                 .Property(m => m.FileUrl).HasColumnName("file_url");
             modelBuilder.Entity<DirectMessage>()
                 .Property(m => m.FileName).HasColumnName("file_name");
+
+            // Oda üyeleri / rolleri
+            modelBuilder.Entity<RoomMember>()
+                .ToTable("room_members");
+            modelBuilder.Entity<RoomMember>()
+                .HasKey(m => new { m.RoomId, m.UserId });
+            modelBuilder.Entity<RoomMember>()
+                .Property(m => m.RoomId).HasColumnName("room_id");
+            modelBuilder.Entity<RoomMember>()
+                .Property(m => m.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<RoomMember>()
+                .Property(m => m.Role).HasColumnName("role");
+            modelBuilder.Entity<RoomMember>()
+                .Property(m => m.JoinedAt).HasColumnName("joined_at");
+
+            // Oda yasakları
+            modelBuilder.Entity<RoomBan>()
+                .ToTable("room_bans");
+            modelBuilder.Entity<RoomBan>()
+                .HasKey(b => new { b.RoomId, b.UserId });
+            modelBuilder.Entity<RoomBan>()
+                .Property(b => b.RoomId).HasColumnName("room_id");
+            modelBuilder.Entity<RoomBan>()
+                .Property(b => b.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<RoomBan>()
+                .Property(b => b.BannedBy).HasColumnName("banned_by");
+            modelBuilder.Entity<RoomBan>()
+                .Property(b => b.Reason).HasColumnName("reason");
+            modelBuilder.Entity<RoomBan>()
+                .Property(b => b.BannedAt).HasColumnName("banned_at");
         }
     }
 }
