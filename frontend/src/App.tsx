@@ -1146,7 +1146,7 @@ function App() {
       </AnimatePresence>
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
+        className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 flex flex-col bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
         style={{
           padding: '36px 32px 24px 32px',
         }}>
@@ -1580,7 +1580,7 @@ function App() {
         </div>
 
         {/* MADE BY EFECAN */}
-        <div className="mt-8 flex items-center justify-center pointer-events-none w-full">
+        <div className="mt-auto pt-6 flex items-center justify-center pointer-events-none w-full">
           <span
             className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
             style={{ 
