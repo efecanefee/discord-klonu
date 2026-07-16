@@ -900,7 +900,7 @@ function App() {
 
 
 
-      <div className="relative z-10 w-full flex flex-col md:flex-row md:items-start justify-center gap-6 md:gap-8 max-w-full md:max-w-[1400px] md:px-6">
+      <div className="relative z-10 w-full flex flex-col md:flex-row md:items-start justify-center gap-4 md:gap-3 max-w-full md:max-w-[1180px] md:px-6">
 
       {authState === 'rooms' && (
         <>
@@ -921,8 +921,8 @@ function App() {
           )}
 
           {/* Sidebar */}
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
-            className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-6 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+            className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
           >
             {/* Close Button (Mobile) */}
             <div className="flex md:hidden justify-end mb-[-10px]">
@@ -1147,7 +1147,7 @@ function App() {
       </AnimatePresence>
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className="relative z-10 w-full max-w-[400px] mx-4"
+        className="relative z-10 w-full max-w-[400px] mx-4 md:mx-0"
         style={{
           background: 'rgba(20,20,26,0.55)',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -1593,13 +1593,33 @@ function App() {
       </motion.div>
 
       {authState === 'rooms' && (
-        <MyServersPanel
-          refreshSignal={rooms.length}
-          onSelectRoom={(r) => {
-            const full = rooms.find(x => x.id === r.id);
-            handleJoinRoom(full ?? { id: r.id, name: r.name, type: 'text', description: r.description, createdBy: '', createdAt: new Date().toISOString(), isPrivate: r.isPrivate, roomCode: r.roomCode });
-          }}
-        />
+        <div className="hidden md:flex md:flex-col gap-3 md:shrink-0 w-[280px]">
+          <MyServersPanel
+            refreshSignal={rooms.length}
+            onSelectRoom={(r) => {
+              const full = rooms.find(x => x.id === r.id);
+              handleJoinRoom(full ?? { id: r.id, name: r.name, type: 'text', description: r.description, createdBy: '', createdAt: new Date().toISOString(), isPrivate: r.isPrivate, roomCode: r.roomCode });
+            }}
+          />
+
+          {/* Sağ Alt Bölme — Sosyal İkonlar */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 28 }}
+            className="shrink-0 flex items-center justify-center gap-3 rounded-3xl p-4"
+            style={{ background: 'rgba(30,30,38,0.45)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 20px 50px rgba(0,0,0,0.35)' }}>
+            <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer"
+               className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] transition-all duration-300">
+              <Github size={20} />
+            </a>
+            <a href="https://www.linkedin.com/in/efecanefee/" target="_blank" rel="noopener noreferrer"
+               className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-[#0a66c2]/50 hover:shadow-[0_0_15px_rgba(10,102,194,0.6)] transition-all duration-300">
+              <Linkedin size={20} />
+            </a>
+            <a href="https://www.instagram.com/efecan.efeee/" target="_blank" rel="noopener noreferrer"
+               className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-[#e1306c]/50 hover:shadow-[0_0_15px_rgba(225,48,108,0.6)] transition-all duration-300">
+              <Instagram size={20} />
+            </a>
+          </motion.div>
+        </div>
       )}
 
       </div>
@@ -1617,9 +1637,9 @@ function App() {
         </span>
       </motion.div>
 
-      {/* Sabit Sosyal Medya İkonları */}
+      {/* Sabit Sosyal Medya İkonları (yalnızca mobil) */}
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
-        className="fixed bottom-5 right-5 flex flex-col gap-3 z-50">
+        className="md:hidden fixed bottom-5 right-5 flex flex-col gap-3 z-50">
         <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer" 
            className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] transition-all duration-300">
           <Github size={20} />
