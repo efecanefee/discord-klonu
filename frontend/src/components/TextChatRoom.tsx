@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2 } from 'lucide-react';
+import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
@@ -11,6 +11,7 @@ import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
 import { getAvatarEmoji } from '../constants/avatars';
 import { roomApi, type RoomMemberDto, type ChannelDto } from '../services/roomApi';
+import { useVoiceChannel } from '../hooks/useVoiceChannel';
 import { roleBadgeEmoji, sortByRole, roleRank, roleLabel } from '../utils/roles';
 
 export interface TextRoomInfo {
@@ -59,7 +60,6 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const [showAddChannel, setShowAddChannel] = useState(false);
     const [newChannelName, setNewChannelName] = useState('');
     const [newChannelType, setNewChannelType] = useState<'text' | 'voice'>('text');
-    const [voiceNoticeId, setVoiceNoticeId] = useState<number | null>(null);
 
     // Rol sistemi (Özellik 6)
     const myRole = usersInRoom.find(u => u.userId === myUserId)?.role;
@@ -175,7 +175,13 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     }, [roomDbId, roomId, activeChannelId]);
 
     const switchChannel = (ch: ChannelDto) => {
-        if (ch.type === 'voice') { setVoiceNoticeId(ch.id); setTimeout(() => setVoiceNoticeId(null), 2500); return; }
+        if (ch.type === 'voice') {
+            const connId = signalrService.connectionId;
+            if (!connId) return;
+            if (voice.activeVoiceKey === ch.messageKey) { voice.leaveVoice(); return; }
+            voice.joinVoice(ch.messageKey, { connectionId: connId, username, avatarId, userId: myUserId });
+            return;
+        }
         if (ch.id === activeChannelId) return;
         setActiveChannelId(ch.id);
         setActiveChannelKey(ch.messageKey);
@@ -236,6 +242,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
     const { playJoinSound, playLeaveSound, playSendSound, playReceiveSound } = useAudioNotifications();
+    const voice = useVoiceChannel();
 
     // Tema — koyu tema değişkenleri (ChatRoom ile aynı varsayılan)
     useEffect(() => {
@@ -874,28 +881,72 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             {voiceChannels.length > 0 && (
                                 <div className="space-y-1">
                                     <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted/70 px-1.5 mb-1">Ses Kanalları</div>
-                                    {voiceChannels.map(ch => (
+                                    {voiceChannels.map(ch => {
+                                        const connected = voice.activeVoiceKey === ch.messageKey;
+                                        return (
                                         <div key={ch.id} className="group relative">
                                             <button onClick={() => switchChannel(ch)}
-                                                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] text-text-muted hover:bg-bg-surface hover:text-text-main transition-colors">
-                                                <Volume2 size={15} className="shrink-0 opacity-70" />
+                                                className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] transition-colors ${connected ? 'bg-emerald-500/15 text-text-main' : 'text-text-muted hover:bg-bg-surface hover:text-text-main'}`}>
+                                                <Volume2 size={15} className={`shrink-0 ${connected ? 'text-emerald-400' : 'opacity-70'}`} />
                                                 <span className="truncate">{ch.name}</span>
+                                                {connected && <span className="ml-auto text-[10px] text-emerald-400 font-semibold">bağlı</span>}
                                             </button>
-                                            {voiceNoticeId === ch.id && (
-                                                <div className="px-2.5 pb-1 text-[10px] text-text-muted/80">🎧 Sesli sohbet yakında</div>
-                                            )}
                                             {canManageRoom && (
                                                 <button onClick={() => handleDeleteChannel(ch)} title="Kanalı sil"
                                                     className="absolute right-1.5 top-2 p-1 rounded-md text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <Trash2 size={13} />
                                                 </button>
                                             )}
+                                            {/* Ses kanalındaki katılımcılar (Discord tarzı) */}
+                                            {connected && voice.participants.length > 0 && (
+                                                <div className="pl-7 pr-1 py-1 space-y-1">
+                                                    <AnimatePresence>
+                                                        {voice.participants.map(p => {
+                                                            const speaking = voice.speakingConnIds.has(p.connectionId);
+                                                            return (
+                                                                <motion.div key={p.connectionId} layout
+                                                                    initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
+                                                                    className="flex items-center gap-1.5">
+                                                                    <span className={`text-base leading-none rounded-full transition-shadow ${speaking ? 'ring-2 ring-emerald-400' : ''}`}>{getAvatarEmoji(p.avatarId || 'default')}</span>
+                                                                    <span className={`text-[12px] truncate ${speaking ? 'text-emerald-400' : 'text-text-muted'}`}>
+                                                                        {p.username}{p.userId === myUserId ? ' (Sen)' : ''}
+                                                                    </span>
+                                                                </motion.div>
+                                                            );
+                                                        })}
+                                                    </AnimatePresence>
+                                                </div>
+                                            )}
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
+
+                        {/* Ses kontrol çubuğu — bir ses kanalına bağlıyken */}
+                        {voice.activeVoiceKey && (
+                            <div className="p-2.5 border-t border-border-main bg-bg-surface/40 flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" style={{ boxShadow: '0 0 6px rgba(16,185,129,0.8)' }} />
+                                    <span className="text-[12px] text-text-muted truncate">Sesli sohbet · {voice.participants.length}</span>
+                                </div>
+                                <button onClick={voice.toggleMute} title={voice.isMuted ? 'Mikrofonu aç' : 'Mikrofonu kapat'}
+                                    className={`p-1.5 rounded-lg transition-colors ${voice.isMuted ? 'text-red-400 bg-red-500/10' : 'text-text-muted hover:text-text-main hover:bg-bg-surface'}`}>
+                                    {voice.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+                                </button>
+                                <button onClick={voice.leaveVoice} title="Ses kanalından ayrıl"
+                                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+                                    <PhoneOff size={16} />
+                                </button>
+                            </div>
+                        )}
                     </motion.div>
+
+                    {/* Uzak katılımcıların sesi (gizli audio öğeleri) */}
+                    {Array.from(voice.remoteStreams.entries()).map(([connId, stream]) => (
+                        <audio key={connId} autoPlay playsInline ref={el => { if (el && el.srcObject !== stream) el.srcObject = stream; }} />
+                    ))}
 
                     {/* Chat alanı */}
                     <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">

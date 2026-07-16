@@ -17,6 +17,8 @@ namespace DiscordClone.Api.Hubs
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, RoomUserDto>> _roomUsers = new();
         // Mute durumu: connectionId -> isMuted
         private static readonly ConcurrentDictionary<string, bool> _muteStatus = new();
+        // Ses kanalları: voiceKey -> (connectionId -> VoiceUserDto). Metin kanalı presence'ından bağımsız.
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, VoiceUserDto>> _voiceUsers = new();
 
         private readonly AppDbContext _db;
         private readonly IRoomAuthorizationService _roomAuth;
@@ -101,6 +103,15 @@ namespace DiscordClone.Api.Hubs
                     {
                         await Clients.Group(roomId).SendAsync("UserLeft", userDto.Username, Context.ConnectionId);
                     }
+                }
+            }
+
+            // Bağlantı koptuğunda bulunduğu tüm ses kanallarından çıkar
+            foreach (var kv in _voiceUsers)
+            {
+                if (kv.Value.TryRemove(Context.ConnectionId, out _))
+                {
+                    await Clients.Group(kv.Key).SendAsync("VoiceUserLeft", kv.Key, Context.ConnectionId);
                 }
             }
 
@@ -349,6 +360,53 @@ namespace DiscordClone.Api.Hubs
         {
             await Clients.Client(targetConnectionId)
                 .SendAsync("ReceiveSignal", Context.ConnectionId, signalData);
+        }
+
+        // ==========================================
+        // SES KANALLARI (Özellik 8 — Faz 2b/voice)
+        // Metin presence'ından bağımsız; sinyalleşme SendSignalToUser/ReceiveSignal ile.
+        // ==========================================
+        public class VoiceUserDto
+        {
+            public string ConnectionId { get; set; } = string.Empty;
+            public string Username { get; set; } = string.Empty;
+            public string AvatarId { get; set; } = "default";
+            public string UserId { get; set; } = string.Empty;
+        }
+
+        public async Task JoinVoice(string voiceKey)
+        {
+            var username = Context.User?.Identity?.Name ?? "";
+            var avatarId = Context.User?.FindFirst("AvatarId")?.Value ?? "default";
+            var userId = Context.UserIdentifier ?? string.Empty;
+
+            var users = _voiceUsers.GetOrAdd(voiceKey, _ => new ConcurrentDictionary<string, VoiceUserDto>());
+
+            // Aynı kullanıcının eski bağlantısını bu ses kanalından düşür
+            foreach (var kvp in users.Where(x => x.Value.UserId == userId && x.Key != Context.ConnectionId).ToList())
+            {
+                if (users.TryRemove(kvp.Key, out _))
+                    await Clients.Group(voiceKey).SendAsync("VoiceUserLeft", voiceKey, kvp.Key);
+            }
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, voiceKey);
+            var me = new VoiceUserDto { ConnectionId = Context.ConnectionId, Username = username, AvatarId = avatarId, UserId = userId };
+            users[Context.ConnectionId] = me;
+
+            // Caller'a mevcut katılımcı listesini gönder (kendisi hariç) → onlara offer açar
+            var others = users.Values.Where(u => u.ConnectionId != Context.ConnectionId).ToList();
+            await Clients.Caller.SendAsync("VoiceParticipants", voiceKey, others);
+
+            // Diğerlerine yeni katılımcıyı bildir
+            await Clients.OthersInGroup(voiceKey).SendAsync("VoiceUserJoined", voiceKey, me);
+        }
+
+        public async Task LeaveVoice(string voiceKey)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, voiceKey);
+            if (_voiceUsers.TryGetValue(voiceKey, out var users))
+                users.TryRemove(Context.ConnectionId, out _);
+            await Clients.Group(voiceKey).SendAsync("VoiceUserLeft", voiceKey, Context.ConnectionId);
         }
 
         // ==========================================
