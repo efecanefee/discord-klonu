@@ -892,7 +892,7 @@ function App() {
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden overflow-y-auto py-12 font-sans bg-bg-base">
+    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
 
       {/* Premium Background */}
       <div className="absolute inset-0 bg-mesh-gradient" />
@@ -900,7 +900,7 @@ function App() {
 
 
 
-      <div className="relative z-10 w-full md:w-auto flex flex-col md:flex-row md:items-stretch justify-center gap-4 md:gap-0 max-w-full md:rounded-[28px] md:border md:border-white/10 md:bg-[rgba(18,18,24,0.6)] md:backdrop-blur-[18px] md:shadow-[0_32px_80px_rgba(0,0,0,0.5)]">
+      <div className="relative z-10 w-full flex flex-col md:flex-row md:items-stretch justify-center gap-4 md:gap-0 max-w-full md:max-w-[1600px] md:rounded-[28px] md:border md:border-white/10 md:bg-[rgba(18,18,24,0.6)] md:backdrop-blur-[18px] md:shadow-[0_32px_80px_rgba(0,0,0,0.5)]">
 
       {authState === 'rooms' && (
         <>
@@ -1147,7 +1147,7 @@ function App() {
       </AnimatePresence>
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className="relative z-10 w-full max-w-[400px] mx-4 md:mx-0 md:w-[400px] bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] md:bg-transparent md:border-y-0 md:border-l md:border-r md:border-white/10 md:rounded-none md:shadow-none md:backdrop-blur-none"
+        className="relative z-10 w-full max-w-[400px] mx-4 md:mx-0 md:w-auto md:max-w-none md:flex-1 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] md:bg-transparent md:border-y-0 md:border-l md:border-r md:border-white/10 md:rounded-none md:shadow-none md:backdrop-blur-none"
         style={{
           padding: '36px 32px',
         }}>
