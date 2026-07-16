@@ -1146,7 +1146,7 @@ function App() {
       </AnimatePresence>
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 flex flex-col bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
+        className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 flex flex-col max-h-screen md:max-h-[calc(100vh-40px)] bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
         style={{
           padding: '36px 32px 24px 32px',
         }}>
@@ -1220,7 +1220,7 @@ function App() {
           </p>
         </motion.div>
 
-        <div className="space-y-5">
+        <div className="space-y-5 flex-1 flex flex-col min-h-0">
           {errorMsg && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} 
               className="p-3 rounded-lg text-sm text-center" 
@@ -1455,13 +1455,13 @@ function App() {
                 const tabs = [{ label: 'Ana Odalar', key: 0 }, { label: 'Topluluk Odaları', key: 1 }];
 
                 const fixedPage = (
-                  <div className="space-y-3 max-h-[45vh] overflow-y-auto custom-scrollbar pr-2 pb-2">
+                  <div className="space-y-3 h-full overflow-y-auto custom-scrollbar pr-2 pb-2">
                     {fixedRooms.map((room) => renderRoomCard(room))}
                   </div>
                 );
 
                 const communityPage = (
-                  <div className="flex flex-col">
+                  <div className="flex flex-col h-full">
                     {/* Arama çubuğu */}
                     <div className="relative mb-3 shrink-0">
                       <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
@@ -1480,7 +1480,7 @@ function App() {
                     </div>
 
                     {/* Sonuçlar / liste */}
-                    <div className="space-y-3 max-h-[45vh] overflow-y-auto custom-scrollbar pr-2 pb-2">
+                    <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2 pb-2">
                       {searchResults !== null ? (
                         isSearching ? (
                           <div className="text-center py-6 text-white/30 text-[12px]">Aranıyor...</div>
@@ -1526,11 +1526,12 @@ function App() {
                       ))}
                     </div>
 
-                    {/* İçerik: aynı anda tek sayfa — Yumuşak Fade & Scale Animasyonu. */}
-                    <div ref={roomPagerRef} className="relative">
-                      <AnimatePresence mode="wait" initial={false}>
+                    {/* İçerik: aynı anda tek sayfa — Crossfade Animasyonu. */}
+                    <div ref={roomPagerRef} className="relative flex-1 min-h-0 flex flex-col">
+                      <AnimatePresence mode="popLayout" initial={false}>
                         <motion.div
                           key={roomPage}
+                          className="h-full flex flex-col"
                           initial={{ opacity: 0, scale: 0.96, y: 5 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.96, y: -5 }}
