@@ -144,8 +144,9 @@ function App() {
         whileTap={{ scale: 0.98 }}
         className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative overflow-hidden"
         style={{
-          background: hoveredRoom === room.name ? `${visuals.color}14` : 'rgba(255,255,255,0.03)',
-          border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid rgba(255,255,255,0.06)',
+          background: hoveredRoom === room.name ? `${visuals.color}14` : 'transparent',
+          border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid transparent',
+          borderBottom: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid rgba(255,255,255,0.05)',
           boxShadow: hoveredRoom === room.name ? `0 8px 32px ${visuals.glow}` : 'none',
         }}>
 
@@ -168,7 +169,7 @@ function App() {
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
-              <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>{visuals.sub}</span>
+              <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>{visuals.sub}</span>
             </div>
             {showMeta && room.createdBy && room.createdBy !== 'system' && (
               <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
@@ -1156,7 +1157,7 @@ function App() {
 
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-        <motion.div variants={itemVariants} className="text-center mb-10">
+        <motion.div variants={itemVariants} className="text-center mb-7">
           <div className="relative mb-5 group inline-block cursor-pointer" onClick={() => setIsMainLogoFlipped(!isMainLogoFlipped)}>
             <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl pointer-events-none"
               style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.4) 0%, transparent 70%)' }} />
@@ -1220,7 +1221,7 @@ function App() {
                 </motion.span>
             ))}
           </h1>
-          <p className="text-[14px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <p className="text-[14px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
             {authState === 'rooms' ? `Hoş geldin, ${username}` : (authState === 'login' ? 'Hesabına giriş yap' : 'Yeni hesap oluştur')}
           </p>
         </motion.div>
