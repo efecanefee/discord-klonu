@@ -900,7 +900,7 @@ function App() {
 
 
 
-      <div className="relative z-10 w-full flex flex-col md:flex-row md:items-start justify-center gap-4 md:gap-3 max-w-full md:max-w-[1180px] md:px-6">
+      <div className="relative z-10 w-full md:w-auto flex flex-col md:flex-row md:items-stretch justify-center gap-4 md:gap-0 max-w-full md:rounded-[28px] md:border md:border-white/10 md:bg-[rgba(18,18,24,0.6)] md:backdrop-blur-[18px] md:shadow-[0_32px_80px_rgba(0,0,0,0.5)]">
 
       {authState === 'rooms' && (
         <>
@@ -922,7 +922,7 @@ function App() {
 
           {/* Sidebar */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+            className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 md:gap-0 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
           >
             {/* Close Button (Mobile) */}
             <div className="flex md:hidden justify-end mb-[-10px]">
@@ -931,7 +931,7 @@ function App() {
               </button>
             </div>
           
-          <div className="flex items-center gap-1 bg-bg-surface/80 border border-white/10 p-1.5 rounded-full w-full shrink-0 relative">
+          <div className="flex items-center gap-1 bg-bg-surface/80 border border-white/10 p-1.5 rounded-full w-full shrink-0 relative md:bg-transparent md:border-t-0 md:border-l-0 md:border-r-0 md:rounded-none md:p-4">
             <button 
               ref={profileButtonRef}
               onClick={(e) => {
@@ -992,7 +992,7 @@ function App() {
           <motion.div 
             layout 
             transition={{ layout: { type: 'spring', stiffness: 350, damping: 25 } }}
-            className={`flex flex-col min-h-0 bg-bg-surface/60 border border-white/10 rounded-3xl p-4 overflow-hidden ${isDMOpen ? 'flex-1' : ''}`}
+            className={`flex flex-col min-h-0 bg-bg-surface/60 border border-white/10 rounded-3xl p-4 overflow-hidden md:bg-transparent md:border-0 md:rounded-none md:flex-1 ${isDMOpen ? 'flex-1' : ''}`}
           >
             <motion.button 
               layout
@@ -1147,15 +1147,9 @@ function App() {
       </AnimatePresence>
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className="relative z-10 w-full max-w-[400px] mx-4 md:mx-0"
+        className="relative z-10 w-full max-w-[400px] mx-4 md:mx-0 md:w-[400px] bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] md:bg-transparent md:border-y-0 md:border-l md:border-r md:border-white/10 md:rounded-none md:shadow-none md:backdrop-blur-none"
         style={{
-          background: 'rgba(20,20,26,0.55)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '28px',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.1)',
           padding: '36px 32px',
-          backdropFilter: 'blur(18px)',
-          WebkitBackdropFilter: 'blur(18px)',
         }}>
 
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
@@ -1593,7 +1587,7 @@ function App() {
       </motion.div>
 
       {authState === 'rooms' && (
-        <div className="hidden md:flex md:flex-col gap-3 md:shrink-0 w-[280px]">
+        <div className="hidden md:flex md:flex-col gap-0 md:shrink-0 w-[280px]">
           <MyServersPanel
             refreshSignal={rooms.length}
             onSelectRoom={(r) => {
@@ -1604,8 +1598,7 @@ function App() {
 
           {/* Sağ Alt Bölme — Sosyal İkonlar */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 28 }}
-            className="shrink-0 flex items-center justify-center gap-3 rounded-3xl p-4"
-            style={{ background: 'rgba(30,30,38,0.45)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 20px 50px rgba(0,0,0,0.35)' }}>
+            className="shrink-0 flex items-center justify-center gap-3 p-4 border-t border-white/10">
             <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer"
                className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] transition-all duration-300">
               <Github size={20} />
