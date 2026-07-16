@@ -251,6 +251,82 @@ namespace DiscordClone.Api.Controllers
             return Ok(channels.Select(c => new { c.Id, c.Name, c.Type, c.Position, c.MessageKey }));
         }
 
+        public class CreateChannelBody { public string Name { get; set; } = ""; public string Type { get; set; } = "text"; }
+
+        /// <summary>
+        /// Yeni kanal ekle (yalnızca kurucu/moderatör).
+        /// </summary>
+        [HttpPost("{roomId}/channels")]
+        public async Task<IActionResult> CreateChannel(int roomId, [FromBody] CreateChannelBody body)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (!await _roomAuth.CanManageAsync(roomId, CurrentUserId)) return Forbid();
+
+            var room = await _db.Rooms.FindAsync(roomId);
+            if (room == null) return NotFound("Oda bulunamadı.");
+
+            var name = (body.Name ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(name)) return BadRequest("Kanal adı boş olamaz.");
+            if (name.Length > 50) return BadRequest("Kanal adı en fazla 50 karakter olabilir.");
+            var type = body.Type?.ToLower() == "voice" ? "voice" : "text";
+
+            var dup = await _db.Channels.AnyAsync(c => c.RoomId == roomId && c.Name == name && c.Type == type);
+            if (dup) return BadRequest("Bu isimde bir kanal zaten var.");
+
+            var maxPos = await _db.Channels.Where(c => c.RoomId == roomId).Select(c => (int?)c.Position).MaxAsync() ?? -1;
+
+            var channel = new Channel
+            {
+                RoomId = roomId,
+                Name = name,
+                Type = type,
+                Position = maxPos + 1,
+                MessageKey = "", // id gerektiği için kayıttan sonra atanır
+                CreatedBy = User.Identity?.Name ?? "",
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Channels.Add(channel);
+            await _db.SaveChangesAsync();
+
+            channel.MessageKey = type == "voice" ? $"voice:ch:{channel.Id}" : $"ch:{channel.Id}";
+            await _db.SaveChangesAsync();
+
+            var dto = new { channel.Id, channel.Name, channel.Type, channel.Position, channel.MessageKey };
+            await _hubContext.Clients.Group(room.Name).SendAsync("ChannelCreated", roomId, dto);
+            return Ok(dto);
+        }
+
+        /// <summary>
+        /// Kanal sil (yalnızca kurucu/moderatör). Son metin kanalı silinemez.
+        /// </summary>
+        [HttpDelete("{roomId}/channels/{channelId}")]
+        public async Task<IActionResult> DeleteChannel(int roomId, int channelId)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            if (!await _roomAuth.CanManageAsync(roomId, CurrentUserId)) return Forbid();
+
+            var room = await _db.Rooms.FindAsync(roomId);
+            if (room == null) return NotFound("Oda bulunamadı.");
+
+            var channel = await _db.Channels.FirstOrDefaultAsync(c => c.Id == channelId && c.RoomId == roomId);
+            if (channel == null) return NotFound("Kanal bulunamadı.");
+
+            if (channel.Type == "text")
+            {
+                var textCount = await _db.Channels.CountAsync(c => c.RoomId == roomId && c.Type == "text");
+                if (textCount <= 1) return BadRequest("Son metin kanalı silinemez.");
+            }
+
+            // Kanalın mesajlarını da temizle
+            var msgs = _db.Messages.Where(m => m.RoomId == channel.MessageKey);
+            _db.Messages.RemoveRange(msgs);
+            _db.Channels.Remove(channel);
+            await _db.SaveChangesAsync();
+
+            await _hubContext.Clients.Group(room.Name).SendAsync("ChannelDeleted", roomId, channelId);
+            return NoContent();
+        }
+
         // ============ ROL SİSTEMİ (Özellik 6) ============
 
         public class UpdateRoomDto { public string? Description { get; set; } }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings } from 'lucide-react';
+import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
@@ -10,7 +10,7 @@ import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
 import { getAvatarEmoji } from '../constants/avatars';
-import { roomApi, type RoomMemberDto } from '../services/roomApi';
+import { roomApi, type RoomMemberDto, type ChannelDto } from '../services/roomApi';
 import { roleBadgeEmoji, sortByRole, roleRank, roleLabel } from '../utils/roles';
 
 export interface TextRoomInfo {
@@ -51,6 +51,15 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string; role?: string }[]>([]);
     const [popoverUserKey, setPopoverUserKey] = useState<string | null>(null);
     const [popoverAnchor, setPopoverAnchor] = useState<DOMRect | null>(null);
+
+    // Kanallar (Özellik 8 — Faz 2b). Varsayılan aktif kanal = #genel (messageKey === oda adı = roomId)
+    const [channels, setChannels] = useState<ChannelDto[]>([]);
+    const [activeChannelKey, setActiveChannelKey] = useState<string>(roomId);
+    const [activeChannelId, setActiveChannelId] = useState<number | null>(null);
+    const [showAddChannel, setShowAddChannel] = useState(false);
+    const [newChannelName, setNewChannelName] = useState('');
+    const [newChannelType, setNewChannelType] = useState<'text' | 'voice'>('text');
+    const [voiceNoticeId, setVoiceNoticeId] = useState<number | null>(null);
 
     // Rol sistemi (Özellik 6)
     const myRole = usersInRoom.find(u => u.userId === myUserId)?.role;
@@ -133,6 +142,72 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             </motion.div>
         );
     };
+    // ===== Kanallar (Özellik 8 — Faz 2b) =====
+    const refreshChannels = useCallback(() => {
+        if (roomDbId > 0) roomApi.getChannels(roomDbId).then(setChannels).catch(() => { });
+    }, [roomDbId]);
+    useEffect(() => { refreshChannels(); }, [refreshChannels]);
+
+    // Kanallar yüklenince aktif kanal id'sini işaretle (anahtar zaten roomId = #genel)
+    useEffect(() => {
+        if (activeChannelId != null || channels.length === 0) return;
+        const def = channels.find(c => c.messageKey === activeChannelKey) || channels.find(c => c.type === 'text');
+        if (def) { setActiveChannelId(def.id); setActiveChannelKey(def.messageKey); }
+    }, [channels, activeChannelId, activeChannelKey]);
+
+    // Kanal oluşturma / silme canlı bildirimleri
+    useEffect(() => {
+        const onCreated = (rid: number, ch: ChannelDto) => {
+            if (rid !== roomDbId) return;
+            setChannels(prev => prev.some(c => c.id === ch.id) ? prev : [...prev, ch].sort((a, b) => a.position - b.position));
+        };
+        const onDeleted = (rid: number, cid: number) => {
+            if (rid !== roomDbId) return;
+            setChannels(prev => prev.filter(c => c.id !== cid));
+            if (cid === activeChannelId) { setActiveChannelId(null); setActiveChannelKey(roomId); }
+        };
+        signalrService.onChannelCreated(onCreated);
+        signalrService.onChannelDeleted(onDeleted);
+        return () => {
+            signalrService.offChannelCreated(onCreated);
+            signalrService.offChannelDeleted(onDeleted);
+        };
+    }, [roomDbId, roomId, activeChannelId]);
+
+    const switchChannel = (ch: ChannelDto) => {
+        if (ch.type === 'voice') { setVoiceNoticeId(ch.id); setTimeout(() => setVoiceNoticeId(null), 2500); return; }
+        if (ch.id === activeChannelId) return;
+        setActiveChannelId(ch.id);
+        setActiveChannelKey(ch.messageKey);
+    };
+
+    const handleAddChannel = async () => {
+        const name = newChannelName.trim();
+        if (!name) return;
+        try {
+            const ch = await roomApi.createChannel(roomDbId, name, newChannelType);
+            setChannels(prev => prev.some(c => c.id === ch.id) ? prev : [...prev, ch].sort((a, b) => a.position - b.position));
+            setNewChannelName('');
+            setShowAddChannel(false);
+        } catch (e) { alert(e instanceof Error ? e.message : 'Kanal oluşturulamadı.'); }
+    };
+
+    const handleDeleteChannel = async (ch: ChannelDto) => {
+        if (!window.confirm(`"${ch.name}" kanalını silmek istediğine emin misin?`)) return;
+        try {
+            await roomApi.deleteChannel(roomDbId, ch.id);
+            setChannels(prev => prev.filter(c => c.id !== ch.id));
+            if (activeChannelId === ch.id) {
+                const fallback = channels.find(c => c.type === 'text' && c.id !== ch.id);
+                setActiveChannelId(fallback?.id ?? null);
+                setActiveChannelKey(fallback?.messageKey ?? roomId);
+            }
+        } catch (e) { alert(e instanceof Error ? e.message : 'Kanal silinemedi.'); }
+    };
+
+    const textChannels = channels.filter(c => c.type === 'text');
+    const voiceChannels = channels.filter(c => c.type === 'voice');
+
     const [messageInput, setMessageInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
@@ -328,11 +403,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         signalrService.onMessageEdited(handleMessageEdited);
         signalrService.onReceiveFileMessage(handleReceiveFileMessage);
 
-        signalrService.startConnection(roomId, username);
+        setMessages([]); // kanal değişince eski mesajlar temizlenir, geçmiş yeniden yüklenir
+        signalrService.startConnection(activeChannelKey, username);
 
         return () => {
             isMounted = false;
-            signalrService.leaveRoom(roomId, username);
+            signalrService.leaveRoom(activeChannelKey, username);
             signalrService.offForceDisconnect(handleForceDisconnect);
             signalrService.offUserJoined(handleUserJoined);
             signalrService.offUserLeft(handleUserLeft);
@@ -348,7 +424,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             signalrService.offMemberRoleChanged(handleMemberRoleChanged);
             signalrService.offJoinRejected(handleJoinRejected);
         };
-    }, [roomId, username, myUserId, playJoinSound, playLeaveSound, playReceiveSound, onLeave]);
+    }, [activeChannelKey, username, myUserId, playJoinSound, playLeaveSound, playReceiveSound, onLeave]);
 
     // Mesaj kopyalama
     const handleCopyMessage = async (text: string, e: React.MouseEvent) => {
@@ -445,7 +521,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         setMessageInput('');
         setReplyingToMessage(null);
 
-        signalrService.sendMessage(roomId, username, text, replyingToMessage?.serverId || replyingToMessage?.id);
+        signalrService.sendMessage(activeChannelKey, username, text, replyingToMessage?.serverId || replyingToMessage?.id);
 
         setTimeout(() => {
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: false } : m));
@@ -485,7 +561,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             }]);
             playSendSound();
 
-            signalrService.sendFileMessage(roomId, username, data.url, file.name);
+            signalrService.sendFileMessage(activeChannelKey, username, data.url, file.name);
             setTimeout(() => {
                 setMessages(prev => prev.map(m => m.id === tempId ? { ...m, pending: false } : m));
             }, 500);
@@ -494,7 +570,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             alert('Dosya yüklenemedi.');
         }
         setIsUploading(false);
-    }, [roomId, username, avatarId, playSendSound, API_BASE_URL]);
+    }, [activeChannelKey, username, avatarId, playSendSound, API_BASE_URL]);
 
     // Drag & drop
     const handleDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); }, []);
@@ -738,6 +814,89 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
                 {/* ===== İÇERİK ===== */}
                 <div className="flex flex-1 overflow-hidden gap-6 mb-6">
+                    {/* Kanal Sidebar (Özellik 8 — Faz 2b) */}
+                    <motion.div variants={itemVariants} className="hidden md:flex w-60 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
+                        <div className="p-4 border-b border-border-main bg-bg-surface/30 flex items-center justify-between">
+                            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2"><Hash size={14} /> Kanallar</h3>
+                            {canManageRoom && (
+                                <button onClick={() => setShowAddChannel(v => !v)} title="Kanal ekle"
+                                    className="p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-surface transition-colors">
+                                    <Plus size={16} />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
+                            {/* Ekleme formu */}
+                            <AnimatePresence>
+                                {showAddChannel && canManageRoom && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                                        className="overflow-hidden">
+                                        <div className="p-2.5 rounded-xl bg-bg-surface border border-border-main space-y-2">
+                                            <input value={newChannelName} onChange={e => setNewChannelName(e.target.value)} maxLength={50}
+                                                onKeyDown={e => { if (e.key === 'Enter') handleAddChannel(); if (e.key === 'Escape') setShowAddChannel(false); }}
+                                                placeholder="kanal-adı" autoFocus
+                                                className="w-full bg-bg-base border border-border-main rounded-lg px-2.5 py-1.5 text-[13px] text-text-main outline-none focus:border-primary-main" />
+                                            <div className="flex gap-1.5">
+                                                <button onClick={() => setNewChannelType('text')} className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[12px] font-medium border transition-colors ${newChannelType === 'text' ? 'bg-primary-main/15 border-primary-main/50 text-text-main' : 'border-border-main text-text-muted'}`}><Hash size={12} /> Metin</button>
+                                                <button onClick={() => setNewChannelType('voice')} className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[12px] font-medium border transition-colors ${newChannelType === 'voice' ? 'bg-emerald-500/15 border-emerald-500/50 text-text-main' : 'border-border-main text-text-muted'}`}><Volume2 size={12} /> Ses</button>
+                                            </div>
+                                            <div className="flex gap-1.5">
+                                                <button onClick={handleAddChannel} disabled={!newChannelName.trim()} className="flex-1 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-primary-main disabled:opacity-40">Ekle</button>
+                                                <button onClick={() => { setShowAddChannel(false); setNewChannelName(''); }} className="px-3 py-1.5 rounded-lg text-[12px] text-text-muted hover:text-text-main border border-border-main">İptal</button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* Metin kanalları */}
+                            <div className="space-y-1">
+                                <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted/70 px-1.5 mb-1">Metin Kanalları</div>
+                                {textChannels.map(ch => (
+                                    <div key={ch.id} className="group relative">
+                                        <button onClick={() => switchChannel(ch)}
+                                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] transition-colors ${ch.id === activeChannelId ? 'bg-primary-main/15 text-text-main font-medium' : 'text-text-muted hover:bg-bg-surface hover:text-text-main'}`}>
+                                            <Hash size={15} className="shrink-0 opacity-70" />
+                                            <span className="truncate">{ch.name}</span>
+                                        </button>
+                                        {canManageRoom && textChannels.length > 1 && (
+                                            <button onClick={() => handleDeleteChannel(ch)} title="Kanalı sil"
+                                                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 size={13} />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Ses kanalları */}
+                            {voiceChannels.length > 0 && (
+                                <div className="space-y-1">
+                                    <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted/70 px-1.5 mb-1">Ses Kanalları</div>
+                                    {voiceChannels.map(ch => (
+                                        <div key={ch.id} className="group relative">
+                                            <button onClick={() => switchChannel(ch)}
+                                                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] text-text-muted hover:bg-bg-surface hover:text-text-main transition-colors">
+                                                <Volume2 size={15} className="shrink-0 opacity-70" />
+                                                <span className="truncate">{ch.name}</span>
+                                            </button>
+                                            {voiceNoticeId === ch.id && (
+                                                <div className="px-2.5 pb-1 text-[10px] text-text-muted/80">🎧 Sesli sohbet yakında</div>
+                                            )}
+                                            {canManageRoom && (
+                                                <button onClick={() => handleDeleteChannel(ch)} title="Kanalı sil"
+                                                    className="absolute right-1.5 top-2 p-1 rounded-md text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+
                     {/* Chat alanı */}
                     <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
                         <div ref={chatScrollRef} onScroll={handleChatScroll} className="relative flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">

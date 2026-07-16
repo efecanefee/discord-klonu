@@ -182,6 +182,22 @@ class SignalRService {
         this.connection?.off('RoomDeleted', callback);
     }
 
+    // Yeni kanal oluşturuldu
+    public onChannelCreated(callback: (roomId: number, channel: { id: number; name: string; type: string; position: number; messageKey: string }) => void) {
+        this.connection?.on('ChannelCreated', callback);
+    }
+    public offChannelCreated(callback: (roomId: number, channel: { id: number; name: string; type: string; position: number; messageKey: string }) => void) {
+        this.connection?.off('ChannelCreated', callback);
+    }
+
+    // Kanal silindi
+    public onChannelDeleted(callback: (roomId: number, channelId: number) => void) {
+        this.connection?.on('ChannelDeleted', callback);
+    }
+    public offChannelDeleted(callback: (roomId: number, channelId: number) => void) {
+        this.connection?.off('ChannelDeleted', callback);
+    }
+
     // Oda güncellendi (açıklama)
     public onRoomUpdated(callback: (data: { id: number; description?: string }) => void) {
         this.connection?.on('RoomUpdated', callback);
