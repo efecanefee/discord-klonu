@@ -30,7 +30,7 @@ const MyServersPanel: React.FC<MyServersPanelProps> = ({ refreshSignal, onSelect
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.35, type: 'spring', stiffness: 260, damping: 28 }}
-      className="hidden md:block md:static md:flex-1 z-40 w-[280px] max-h-[calc(100vh-40px)] overflow-hidden"
+      className="hidden md:block md:static md:flex-1 z-40 w-full max-h-[calc(100vh-40px)] overflow-hidden"
     >
       {/* üst gradient çizgi */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-[#7C3AED]/40 to-transparent" />
