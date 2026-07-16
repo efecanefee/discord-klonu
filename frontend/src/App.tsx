@@ -1455,15 +1455,15 @@ function App() {
                 const tabs = [{ label: 'Ana Odalar', key: 0 }, { label: 'Topluluk Odaları', key: 1 }];
 
                 const fixedPage = (
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[45vh] overflow-y-auto custom-scrollbar pr-2 pb-2">
                     {fixedRooms.map((room) => renderRoomCard(room))}
                   </div>
                 );
 
                 const communityPage = (
-                  <div className="space-y-3">
+                  <div className="flex flex-col">
                     {/* Arama çubuğu */}
-                    <div className="relative">
+                    <div className="relative mb-3 shrink-0">
                       <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
                       <input
                         type="text"
@@ -1480,23 +1480,25 @@ function App() {
                     </div>
 
                     {/* Sonuçlar / liste */}
-                    {searchResults !== null ? (
-                      isSearching ? (
-                        <div className="text-center py-6 text-white/30 text-[12px]">Aranıyor...</div>
-                      ) : searchResults.length === 0 ? (
+                    <div className="space-y-3 max-h-[45vh] overflow-y-auto custom-scrollbar pr-2 pb-2">
+                      {searchResults !== null ? (
+                        isSearching ? (
+                          <div className="text-center py-6 text-white/30 text-[12px]">Aranıyor...</div>
+                        ) : searchResults.length === 0 ? (
+                          <div className="text-center py-6 text-white/30 text-[12px] px-2">
+                            Sonuç bulunamadı. Gizli bir oda için tam kodu girmelisin.
+                          </div>
+                        ) : (
+                          searchResults.map((room) => renderRoomCard(room, { showMeta: true }))
+                        )
+                      ) : communityRooms.length === 0 ? (
                         <div className="text-center py-6 text-white/30 text-[12px] px-2">
-                          Sonuç bulunamadı. Gizli bir oda için tam kodu girmelisin.
+                          Henüz topluluk odası yok. İlk odayı sen oluştur!
                         </div>
                       ) : (
-                        searchResults.map((room) => renderRoomCard(room, { showMeta: true }))
-                      )
-                    ) : communityRooms.length === 0 ? (
-                      <div className="text-center py-6 text-white/30 text-[12px] px-2">
-                        Henüz topluluk odası yok. İlk odayı sen oluştur!
-                      </div>
-                    ) : (
-                      communityRooms.map((room) => renderRoomCard(room, { showMeta: true }))
-                    )}
+                        communityRooms.map((room) => renderRoomCard(room, { showMeta: true }))
+                      )}
+                    </div>
                   </div>
                 );
 
