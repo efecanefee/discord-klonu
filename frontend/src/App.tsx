@@ -1142,15 +1142,16 @@ function App() {
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 w-full max-w-[440px] lg:max-w-none flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 px-4">
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className="relative z-10 w-full max-w-[440px]"
+        className="relative z-10 w-full max-w-[400px] mx-4"
         style={{
-          background: 'rgba(9,9,11,0.85)',
+          background: 'rgba(20,20,26,0.55)',
           border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '28px',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.1)',
-          padding: '40px 36px',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.1)',
+          padding: '36px 32px',
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
         }}>
 
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
@@ -1596,7 +1597,6 @@ function App() {
           }}
         />
       )}
-      </div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
         className="relative z-10 mt-10 mb-2 flex items-center justify-center pointer-events-none w-full shrink-0">
