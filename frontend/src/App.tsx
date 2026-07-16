@@ -1148,7 +1148,7 @@ function App() {
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
         className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
         style={{
-          padding: '36px 32px',
+          padding: '36px 32px 24px 32px',
         }}>
 
         <motion.div variants={itemVariants} className="text-center mb-7">
@@ -1579,6 +1579,18 @@ function App() {
           )}
         </div>
 
+        {/* MADE BY EFECAN */}
+        <div className="mt-8 flex items-center justify-center pointer-events-none w-full">
+          <span
+            className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
+            style={{ 
+              fontFamily: "'Orbitron', sans-serif",
+              color: '#F8FAFC',
+              textShadow: '0 0 5px rgba(124,58,237,0.8), 0 0 10px rgba(124,58,237,0.6)'
+            }}>
+            MADE BY EFECAN
+          </span>
+        </div>
       </motion.div>
 
       {authState === 'rooms' && (
@@ -1614,19 +1626,7 @@ function App() {
 
       </div>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-        className="relative z-10 mt-10 mb-2 flex items-center justify-center pointer-events-none w-full shrink-0">
-        <span
-          className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
-          style={{ 
-            fontFamily: "'Orbitron', sans-serif",
-            color: '#F8FAFC',
-            textShadow: '0 0 5px rgba(124,58,237,0.8), 0 0 10px rgba(124,58,237,0.6)'
-          }}>
-          MADE BY EFECAN
-        </span>
-      </motion.div>
-
+      {/* Removed external MADE BY EFECAN */}
       {/* Sabit Sosyal Medya İkonları (yalnızca mobil) */}
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
         className="md:hidden fixed bottom-5 right-5 flex flex-col gap-3 z-50">
