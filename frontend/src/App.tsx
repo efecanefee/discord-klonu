@@ -142,7 +142,7 @@ function App() {
         onMouseLeave={handleRoomLeave}
         whileHover={{ scale: 1.02, y: -2 }}
         whileTap={{ scale: 0.98 }}
-        className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-[background,border-color,box-shadow] duration-300 relative"
+        className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative"
         style={{
           background: hoveredRoom === room.name ? `${visuals.color}14` : 'transparent',
           border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid transparent',
@@ -892,7 +892,7 @@ function App() {
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden overflow-y-auto p-4 md:p-2 font-sans bg-bg-base">
+    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
 
       {/* Premium Background */}
       <div className="absolute inset-0 bg-mesh-gradient" />
@@ -900,8 +900,7 @@ function App() {
 
 
 
-      <div className="relative z-10 w-full flex flex-col max-w-full md:max-w-[2000px] md:rounded-[28px] md:border-2 md:border-white/15 md:bg-[rgba(18,18,24,0.6)] md:backdrop-blur-[18px] md:shadow-[0_32px_80px_rgba(0,0,0,0.5)]">
-      <div className="relative w-full flex flex-col md:flex-row md:items-stretch justify-center gap-4 md:gap-0">
+      <div className="relative z-10 w-full flex flex-col md:flex-row md:items-stretch justify-center gap-4 md:gap-0 max-w-full md:max-w-[1600px] md:rounded-[28px] md:border md:border-white/10 md:bg-[rgba(18,18,24,0.6)] md:backdrop-blur-[18px] md:shadow-[0_32px_80px_rgba(0,0,0,0.5)]">
 
       {authState === 'rooms' && (
         <>
@@ -923,7 +922,7 @@ function App() {
 
           {/* Sidebar */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 md:gap-0 w-72 md:w-auto md:flex-1 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+            className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 md:gap-0 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
           >
             {/* Close Button (Mobile) */}
             <div className="flex md:hidden justify-end mb-[-10px]">
@@ -932,7 +931,7 @@ function App() {
               </button>
             </div>
           
-          <div className="flex items-center gap-1 bg-bg-surface/80 border border-white/10 p-1.5 rounded-full w-full shrink-0 relative md:bg-transparent md:border-t-0 md:border-l-0 md:border-r-0 md:border-b-2 md:border-white/15 md:rounded-none md:p-4">
+          <div className="flex items-center gap-1 bg-bg-surface/80 border border-white/10 p-1.5 rounded-full w-full shrink-0 relative md:bg-transparent md:border-t-0 md:border-l-0 md:border-r-0 md:rounded-none md:p-4">
             <button 
               ref={profileButtonRef}
               onClick={(e) => {
@@ -1148,7 +1147,7 @@ function App() {
       </AnimatePresence>
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className="relative z-10 w-full max-w-[400px] mx-4 md:mx-0 md:w-auto md:max-w-none md:flex-[1.35] bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] md:bg-transparent md:border-y-0 md:border-l-2 md:border-r-2 md:border-white/15 md:rounded-none md:shadow-none md:backdrop-blur-none"
+        className="relative z-10 w-full max-w-[400px] mx-4 md:mx-0 md:w-auto md:max-w-none md:flex-1 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] md:bg-transparent md:border-y-0 md:border-l md:border-r md:border-white/10 md:rounded-none md:shadow-none md:backdrop-blur-none"
         style={{
           padding: '36px 32px',
         }}>
@@ -1588,7 +1587,7 @@ function App() {
       </motion.div>
 
       {authState === 'rooms' && (
-        <div className="hidden md:flex md:flex-col gap-0 md:flex-1 w-auto">
+        <div className="hidden md:flex md:flex-col gap-0 md:shrink-0 w-[280px]">
           <MyServersPanel
             refreshSignal={rooms.length}
             onSelectRoom={(r) => {
@@ -1599,7 +1598,7 @@ function App() {
 
           {/* Sağ Alt Bölme — Sosyal İkonlar */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 28 }}
-            className="shrink-0 flex items-center justify-center gap-3 p-4 border-t-2 border-white/15">
+            className="shrink-0 flex items-center justify-center gap-3 p-4 border-t border-white/10">
             <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer"
                className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] transition-all duration-300">
               <Github size={20} />
@@ -1618,12 +1617,11 @@ function App() {
 
       </div>
 
-      {/* Alt bilgi şeridi — pano içi footer */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
-        className="relative z-10 mt-6 md:mt-0 py-4 md:border-t-2 md:border-white/15 flex items-center justify-center pointer-events-none w-full shrink-0">
+        className="relative z-10 mt-10 mb-2 flex items-center justify-center pointer-events-none w-full shrink-0">
         <span
           className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
-          style={{
+          style={{ 
             fontFamily: "'Orbitron', sans-serif",
             color: '#F8FAFC',
             textShadow: '0 0 5px rgba(124,58,237,0.8), 0 0 10px rgba(124,58,237,0.6)'
@@ -1631,8 +1629,6 @@ function App() {
           MADE BY EFECAN
         </span>
       </motion.div>
-
-      </div>
 
       {/* Sabit Sosyal Medya İkonları (yalnızca mobil) */}
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
