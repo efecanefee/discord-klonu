@@ -158,7 +158,6 @@ function App() {
             style={{
               background: `${visuals.color}15`,
               border: `1px solid ${visuals.color}30`,
-              boxShadow: hoveredRoom === room.name ? `0 0 20px ${visuals.glow}` : 'none',
             }}>
             <RoomIcon size={18} style={{ color: visuals.color }} />
           </div>
