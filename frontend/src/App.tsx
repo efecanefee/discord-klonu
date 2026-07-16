@@ -142,7 +142,7 @@ function App() {
         onMouseLeave={handleRoomLeave}
         whileHover={{ scale: 1.02, y: -2 }}
         whileTap={{ scale: 0.98 }}
-        className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative overflow-hidden"
+        className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative"
         style={{
           background: hoveredRoom === room.name ? `${visuals.color}14` : 'transparent',
           border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid transparent',
@@ -150,8 +150,10 @@ function App() {
           boxShadow: hoveredRoom === room.name ? `0 8px 32px ${visuals.glow}` : 'none',
         }}>
 
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          style={{ background: `radial-gradient(circle at 20% 50%, ${visuals.glow} 0%, transparent 60%)` }} />
+        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            style={{ background: `radial-gradient(circle at 20% 50%, ${visuals.glow} 0%, transparent 60%)` }} />
+        </div>
 
         <div className="relative flex items-center gap-4 min-w-0">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
