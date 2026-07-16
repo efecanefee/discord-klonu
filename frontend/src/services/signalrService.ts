@@ -1,5 +1,12 @@
 import * as signalR from '@microsoft/signalr';
 
+export interface VoiceUser {
+    connectionId: string;
+    username: string;
+    avatarId: string;
+    userId: string;
+}
+
 class SignalRService {
     private connection: signalR.HubConnection;
     private connectionPromise: Promise<void> | null = null;
@@ -198,6 +205,14 @@ class SignalRService {
         this.connection?.off('ChannelDeleted', callback);
     }
 
+    // ===== Ses kanalı presence =====
+    public onVoiceParticipants(cb: (voiceKey: string, users: VoiceUser[]) => void) { this.connection?.on('VoiceParticipants', cb); }
+    public offVoiceParticipants(cb: (voiceKey: string, users: VoiceUser[]) => void) { this.connection?.off('VoiceParticipants', cb); }
+    public onVoiceUserJoined(cb: (voiceKey: string, user: VoiceUser) => void) { this.connection?.on('VoiceUserJoined', cb); }
+    public offVoiceUserJoined(cb: (voiceKey: string, user: VoiceUser) => void) { this.connection?.off('VoiceUserJoined', cb); }
+    public onVoiceUserLeft(cb: (voiceKey: string, connectionId: string) => void) { this.connection?.on('VoiceUserLeft', cb); }
+    public offVoiceUserLeft(cb: (voiceKey: string, connectionId: string) => void) { this.connection?.off('VoiceUserLeft', cb); }
+
     // Oda güncellendi (açıklama)
     public onRoomUpdated(callback: (data: { id: number; description?: string }) => void) {
         this.connection?.on('RoomUpdated', callback);
@@ -365,6 +380,18 @@ class SignalRService {
     public async sendSignalToUser(signalData: string, targetConnectionId: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             await this.connection.invoke('SendSignalToUser', signalData, targetConnectionId);
+        }
+    }
+
+    // ===== Ses kanalları =====
+    public async joinVoice(voiceKey: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('JoinVoice', voiceKey);
+        }
+    }
+    public async leaveVoice(voiceKey: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            try { await this.connection.invoke('LeaveVoice', voiceKey); } catch { /* bağlantı kapanıyor olabilir */ }
         }
     }
 
