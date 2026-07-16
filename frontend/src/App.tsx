@@ -900,6 +900,8 @@ function App() {
 
 
 
+      <div className="relative z-10 w-full flex flex-col md:flex-row md:items-start justify-center gap-6 md:gap-8 max-w-full md:max-w-[1400px] md:px-6">
+
       {authState === 'rooms' && (
         <>
           {/* Hamburger Menu Button (Mobile) */}
@@ -920,7 +922,7 @@ function App() {
 
           {/* Sidebar */}
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }}
-            className={`fixed md:absolute top-0 left-0 h-full md:h-auto md:top-5 md:left-5 z-50 flex flex-col gap-6 w-72 md:w-64 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+            className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-6 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 border-r border-white/10 md:border-none transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
           >
             {/* Close Button (Mobile) */}
             <div className="flex md:hidden justify-end mb-[-10px]">
@@ -1599,6 +1601,8 @@ function App() {
           }}
         />
       )}
+
+      </div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
         className="relative z-10 mt-10 mb-2 flex items-center justify-center pointer-events-none w-full shrink-0">
