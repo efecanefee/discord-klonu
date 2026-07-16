@@ -30,7 +30,7 @@ const MyServersPanel: React.FC<MyServersPanelProps> = ({ refreshSignal, onSelect
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.35, type: 'spring', stiffness: 260, damping: 28 }}
-      className="hidden md:block fixed top-5 right-5 z-40 w-[280px] max-h-[calc(100vh-40px)] rounded-3xl overflow-hidden"
+      className="hidden md:block md:static md:shrink-0 z-40 w-[280px] max-h-[calc(100vh-40px)] rounded-3xl overflow-hidden"
       style={{ background: 'rgba(30,30,38,0.45)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 20px 50px rgba(0,0,0,0.35)' }}
     >
       {/* üst gradient çizgi */}
