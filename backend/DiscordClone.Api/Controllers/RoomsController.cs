@@ -54,6 +54,37 @@ namespace DiscordClone.Api.Controllers
         }
 
         /// <summary>
+        /// Kullanıcının üye olduğu odalar + o odadaki rolü ("Sunucularım" paneli).
+        /// </summary>
+        [HttpGet("mine")]
+        public async Task<IActionResult> GetMyRooms()
+        {
+            if (CurrentUserId == null) return Unauthorized();
+
+            var mine = await _db.RoomMembers
+                .Where(m => m.UserId == CurrentUserId)
+                .Join(_db.Rooms, m => m.RoomId, r => r.Id, (m, r) => new
+                {
+                    r.Id,
+                    r.Name,
+                    r.Description,
+                    r.IsPrivate,
+                    r.RoomCode,
+                    role = m.Role,
+                    joinedAt = m.JoinedAt
+                })
+                .ToListAsync();
+
+            // owner → moderator → member, sonra isim
+            var ordered = mine
+                .OrderBy(m => m.role == RoomRoles.Owner ? 0 : m.role == RoomRoles.Moderator ? 1 : 2)
+                .ThenBy(m => m.Name)
+                .ToList();
+
+            return Ok(ordered);
+        }
+
+        /// <summary>
         /// Yeni oda oluştur
         /// </summary>
         [HttpPost]
