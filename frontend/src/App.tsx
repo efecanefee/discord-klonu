@@ -1389,7 +1389,7 @@ function App() {
               </div>
             </form>
           ) : (
-            <motion.div variants={itemVariants} className="space-y-3 pt-2">
+            <motion.div variants={itemVariants} className="space-y-3 pt-2 flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
                   Aktif Odalar
@@ -1505,7 +1505,7 @@ function App() {
                 return (
                   <>
                     {/* Segment kontrol — arkada kayan mor hap (layoutId) */}
-                    <div className="flex p-1 mb-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+                    <div className="flex p-1 mb-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] shrink-0">
                       {tabs.map((t) => (
                         <button
                           key={t.key}
@@ -1543,7 +1543,7 @@ function App() {
                     </div>
 
                     {/* Sayfa göstergesi: alta iki nokta (swipe ipucu) */}
-                    <div className="flex items-center justify-center gap-2 pt-3">
+                    <div className="flex items-center justify-center gap-2 pt-3 shrink-0">
                       {tabs.map((t) => (
                         <button key={t.key} onClick={() => goRoomPage(t.key)} className="group py-1" title={t.label} aria-label={t.label}>
                           <div className={`h-1.5 rounded-full transition-all duration-300 ${roomPage === t.key ? 'w-5 bg-[#7C3AED]' : 'w-1.5 bg-white/20 group-hover:bg-white/40'}`} />
@@ -1554,7 +1554,7 @@ function App() {
                 );
               })()}
 
-              <div className="text-center pt-3">
+              <div className="text-center pt-3 shrink-0">
                 <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Yeni bir oda mı açmak istiyorsun? </span>
                 <button onClick={() => setIsCreateRoomModalOpen(true)}
                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
