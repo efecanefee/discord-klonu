@@ -12,7 +12,7 @@ namespace DiscordClone.Api.Hubs
     [Authorize] // Sadece JWT'si geçerli olanlar bağlanabilir
     public class ChatAndSignalingHub : Hub
     {
-        private static int _activeUserCount = 0;
+        private static readonly ConcurrentDictionary<string, int> _userConnectionCounts = new();
         private static readonly ConcurrentDictionary<string, string> _userConnections = new();
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, RoomUserDto>> _roomUsers = new();
         // Mute durumu: connectionId -> isMuted
@@ -31,8 +31,9 @@ namespace DiscordClone.Api.Hubs
 
         public override async Task OnConnectedAsync()
         {
-            var count = Interlocked.Increment(ref _activeUserCount);
-            await Clients.All.SendAsync("ActiveUserCountUpdated", count);
+            var uid = Context.UserIdentifier ?? Context.ConnectionId;
+            _userConnectionCounts.AddOrUpdate(uid, 1, (_, count) => count + 1);
+            await Clients.All.SendAsync("ActiveUserCountUpdated", _userConnectionCounts.Count);
             
             var userId = Context.UserIdentifier;
             if (!string.IsNullOrEmpty(userId))
@@ -65,8 +66,15 @@ namespace DiscordClone.Api.Hubs
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var count = Interlocked.Decrement(ref _activeUserCount);
-            await Clients.All.SendAsync("ActiveUserCountUpdated", count);
+            var uid = Context.UserIdentifier ?? Context.ConnectionId;
+            if (_userConnectionCounts.TryGetValue(uid, out var currentCount))
+            {
+                if (currentCount <= 1)
+                    _userConnectionCounts.TryRemove(uid, out _);
+                else
+                    _userConnectionCounts[uid] = currentCount - 1;
+            }
+            await Clients.All.SendAsync("ActiveUserCountUpdated", _userConnectionCounts.Count);
 
             var userId = Context.UserIdentifier;
             if (!string.IsNullOrEmpty(userId))
@@ -118,7 +126,7 @@ namespace DiscordClone.Api.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        public static int GetActiveUserCount() => _activeUserCount;
+        public static int GetActiveUserCount() => _userConnectionCounts.Count;
 
         // Rol değişince bellekteki RoomUserDto'yu güncelle (yeni katılımlarda eski rol yayınlanmasın).
         public static void UpdateUserRoleInMemory(string roomName, string userId, string role)
