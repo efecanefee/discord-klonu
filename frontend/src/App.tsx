@@ -1526,31 +1526,15 @@ function App() {
                       ))}
                     </div>
 
-                    {/* İçerik: aynı anda tek sayfa — AnimatePresence ile yönlü slayt. */}
+                    {/* İçerik: aynı anda tek sayfa — Yumuşak Fade & Scale Animasyonu. */}
                     <div ref={roomPagerRef} className="relative">
-                      <AnimatePresence mode="popLayout" custom={roomDir} initial={false}>
+                      <AnimatePresence mode="wait" initial={false}>
                         <motion.div
                           key={roomPage}
-                          custom={roomDir}
-                          variants={{
-                            enter: (d: number) => ({ x: reduce ? 0 : (d >= 0 ? '100%' : '-100%'), opacity: reduce ? 1 : 0 }),
-                            center: { x: 0, opacity: 1 },
-                            exit: (d: number) => ({ x: reduce ? 0 : (d >= 0 ? '-100%' : '100%'), opacity: reduce ? 1 : 0 }),
-                          }}
-                          initial="enter"
-                          animate="center"
-                          exit="exit"
-                          transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 34 }}
-                          drag={reduce ? false : 'x'}
-                          dragConstraints={{ left: 0, right: 0 }}
-                          dragElastic={0.12}
-                          onDragEnd={(_, info) => {
-                            const width = roomPagerRef.current?.offsetWidth ?? 320;
-                            const swiped = Math.abs(info.velocity.x) > 400 || Math.abs(info.offset.x) > width * 0.3;
-                            if (!swiped) return;
-                            if (info.offset.x < 0 && roomPage === 0) goRoomPage(1);
-                            else if (info.offset.x > 0 && roomPage === 1) goRoomPage(0);
-                          }}
+                          initial={{ opacity: 0, scale: 0.96, y: 5 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.96, y: -5 }}
+                          transition={{ duration: 0.15, ease: "easeOut" }}
                         >
                           {roomPage === 0 ? fixedPage : communityPage}
                         </motion.div>
