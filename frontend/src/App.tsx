@@ -5,6 +5,7 @@ import DMChatRoom from './components/DMChatRoom';
 import MiniDock from './components/MiniDock';
 import ProfileModal from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
+import MyServersPanel from './components/MyServersPanel';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
 import SettingsModal from './components/SettingsModal';
 import StatusMenu from './components/StatusMenu';
@@ -101,6 +102,7 @@ function App() {
   const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
   // Oda sayfası (0: Ana Odalar, 1: Topluluk Odaları) — spring slayt geçişi
   const [roomPage, setRoomPage] = useState(0);
+  const [roomDir, setRoomDir] = useState(0); // slayt yönü (AnimatePresence için)
   const roomPagerRef = useRef<HTMLDivElement>(null); // slayt genişliği ölçümü (swipe eşiği)
   // Topluluk odası arama
   const [roomSearchQuery, setRoomSearchQuery] = useState('');
@@ -1140,8 +1142,9 @@ function App() {
         )}
       </AnimatePresence>
 
+      <div className="relative z-10 w-full max-w-[440px] lg:max-w-none flex flex-col lg:flex-row items-center lg:items-start justify-center gap-5 px-4">
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className="relative z-10 w-full max-w-[440px] mx-4"
+        className="relative z-10 w-full max-w-[440px]"
         style={{
           background: 'rgba(9,9,11,0.85)',
           border: '1px solid rgba(255,255,255,0.08)',
@@ -1452,7 +1455,7 @@ function App() {
                   .sort((a, b) => a.id - b.id);
                 const searchResults = roomSearchResults;
                 const reduce = settings.reducedMotion;
-                const goRoomPage = (n: number) => setRoomPage(n);
+                const goRoomPage = (n: number) => { if (n === roomPage) return; setRoomDir(n > roomPage ? 1 : -1); setRoomPage(n); };
                 const tabs = [{ label: 'Ana Odalar', key: 0 }, { label: 'Topluluk Odaları', key: 1 }];
 
                 const fixedPage = (
@@ -1525,41 +1528,36 @@ function App() {
                       ))}
                     </div>
 
-                    {/* İçerik: yatay spring slayt şeridi (translateX — GPU dostu) */}
+                    {/* İçerik: aynı anda tek sayfa — AnimatePresence ile yönlü slayt.
+                        (Önceki 200%'lik şerit + drag/animate çakışması ve yükseklik uyuşmazlığı giderildi.) */}
                     <div ref={roomPagerRef} className="relative overflow-hidden">
-                      <motion.div
-                        className="flex"
-                        style={{ width: '200%' }}
-                        animate={{ x: roomPage === 0 ? '0%' : '-50%' }}
-                        transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 300, damping: 32 }}
-                        drag={reduce ? false : 'x'}
-                        dragConstraints={{ left: 0, right: 0 }}
-                        dragElastic={0.15}
-                        onDragEnd={(_, info) => {
-                          const width = roomPagerRef.current?.offsetWidth ?? 320;
-                          // Hız bazlı eşik: kısa ama hızlı kaydırma da algılansın
-                          const swiped = Math.abs(info.velocity.x) > 400 || Math.abs(info.offset.x) > width * 0.3;
-                          if (!swiped) return;
-                          if (info.offset.x < 0 && roomPage === 0) goRoomPage(1);
-                          else if (info.offset.x > 0 && roomPage === 1) goRoomPage(0);
-                        }}
-                      >
-                        {/* Ayrılan sayfa hafif küçülür + soluklaşır → ucuz derinlik hissi */}
+                      <AnimatePresence mode="popLayout" custom={roomDir} initial={false}>
                         <motion.div
-                          className="w-1/2 shrink-0 pr-0.5"
-                          animate={reduce ? {} : { scale: roomPage === 0 ? 1 : 0.96, opacity: roomPage === 0 ? 1 : 0.6 }}
-                          transition={{ duration: 0.3 }}
+                          key={roomPage}
+                          custom={roomDir}
+                          variants={{
+                            enter: (d: number) => ({ x: reduce ? 0 : (d >= 0 ? '100%' : '-100%'), opacity: reduce ? 1 : 0 }),
+                            center: { x: 0, opacity: 1 },
+                            exit: (d: number) => ({ x: reduce ? 0 : (d >= 0 ? '-100%' : '100%'), opacity: reduce ? 1 : 0 }),
+                          }}
+                          initial="enter"
+                          animate="center"
+                          exit="exit"
+                          transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 34 }}
+                          drag={reduce ? false : 'x'}
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.12}
+                          onDragEnd={(_, info) => {
+                            const width = roomPagerRef.current?.offsetWidth ?? 320;
+                            const swiped = Math.abs(info.velocity.x) > 400 || Math.abs(info.offset.x) > width * 0.3;
+                            if (!swiped) return;
+                            if (info.offset.x < 0 && roomPage === 0) goRoomPage(1);
+                            else if (info.offset.x > 0 && roomPage === 1) goRoomPage(0);
+                          }}
                         >
-                          {fixedPage}
+                          {roomPage === 0 ? fixedPage : communityPage}
                         </motion.div>
-                        <motion.div
-                          className="w-1/2 shrink-0 pl-0.5"
-                          animate={reduce ? {} : { scale: roomPage === 1 ? 1 : 0.96, opacity: roomPage === 1 ? 1 : 0.6 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          {communityPage}
-                        </motion.div>
-                      </motion.div>
+                      </AnimatePresence>
                     </div>
 
                     {/* Sayfa göstergesi: alta iki nokta (swipe ipucu) */}
@@ -1588,6 +1586,17 @@ function App() {
 
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
       </motion.div>
+
+      {authState === 'rooms' && (
+        <MyServersPanel
+          refreshSignal={rooms.length}
+          onSelectRoom={(r) => {
+            const full = rooms.find(x => x.id === r.id);
+            handleJoinRoom(full ?? { id: r.id, name: r.name, type: 'text', description: r.description, createdBy: '', createdAt: new Date().toISOString(), isPrivate: r.isPrivate, roomCode: r.roomCode });
+          }}
+        />
+      )}
+      </div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}
         className="relative z-10 mt-10 mb-2 flex items-center justify-center pointer-events-none w-full shrink-0">

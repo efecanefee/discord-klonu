@@ -14,6 +14,16 @@ export interface RoomMemberDto {
   joinedAt: string;
 }
 
+export interface MyRoomDto {
+  id: number;
+  name: string;
+  description?: string;
+  isPrivate: boolean;
+  roomCode?: string;
+  role: string;      // 'owner' | 'moderator' | 'member'
+  joinedAt: string;
+}
+
 export interface ChannelDto {
   id: number;
   name: string;
@@ -38,6 +48,12 @@ async function ok(res: Response): Promise<void> {
 }
 
 export const roomApi = {
+  async getMyRooms(): Promise<MyRoomDto[]> {
+    const res = await fetch(`${API_BASE_URL}/api/rooms/mine`, { headers: authHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  },
+
   async getChannels(roomId: number): Promise<ChannelDto[]> {
     const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/channels`, { headers: authHeaders() });
     if (!res.ok) return [];
