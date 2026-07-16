@@ -14,6 +14,14 @@ export interface RoomMemberDto {
   joinedAt: string;
 }
 
+export interface ChannelDto {
+  id: number;
+  name: string;
+  type: string;      // 'text' | 'voice'
+  position: number;
+  messageKey: string;
+}
+
 export interface RoomBanDto {
   userId: string;
   username: string;
@@ -30,6 +38,30 @@ async function ok(res: Response): Promise<void> {
 }
 
 export const roomApi = {
+  async getChannels(roomId: number): Promise<ChannelDto[]> {
+    const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/channels`, { headers: authHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  },
+
+  async createChannel(roomId: number, name: string, type: 'text' | 'voice'): Promise<ChannelDto> {
+    const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/channels`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name, type }),
+    });
+    await ok(res);
+    return res.json();
+  },
+
+  async deleteChannel(roomId: number, channelId: number): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/channels/${channelId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    await ok(res);
+  },
+
   async getMembers(roomId: number): Promise<RoomMemberDto[]> {
     const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/members`, { headers: authHeaders() });
     if (!res.ok) return [];
