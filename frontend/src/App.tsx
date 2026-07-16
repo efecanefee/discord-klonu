@@ -142,11 +142,10 @@ function App() {
         onMouseLeave={handleRoomLeave}
         whileHover={{ scale: 1.02, y: -2 }}
         whileTap={{ scale: 0.98 }}
-        className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative"
+        className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative mb-3"
         style={{
-          background: hoveredRoom === room.name ? `${visuals.color}14` : 'transparent',
-          border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid transparent',
-          borderBottom: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid rgba(255,255,255,0.05)',
+          background: hoveredRoom === room.name ? `${visuals.color}14` : 'rgba(255,255,255,0.03)',
+          border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid rgba(255,255,255,0.05)',
           boxShadow: hoveredRoom === room.name ? `0 8px 32px ${visuals.glow}` : 'none',
         }}>
 
@@ -1021,7 +1020,7 @@ function App() {
               className={`flex flex-col overflow-hidden transition-opacity duration-300 ${isDMOpen ? 'flex-1 opacity-100 mt-2' : 'h-0 opacity-0 mt-0 pointer-events-none'}`}
             >
               {/* DM Listesi */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 pr-2">
+              <div className="max-h-[60vh] flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4 pt-2 -mx-2 px-2">
                 {activeDMs.length === 0 ? (
                   <div className="text-center py-6 text-white/30 text-[11px] px-2">
                     Henüz özel mesaj yok. Yeni bir mesaj başlat!
@@ -1525,9 +1524,8 @@ function App() {
                       ))}
                     </div>
 
-                    {/* İçerik: aynı anda tek sayfa — AnimatePresence ile yönlü slayt.
-                        (Önceki 200%'lik şerit + drag/animate çakışması ve yükseklik uyuşmazlığı giderildi.) */}
-                    <div ref={roomPagerRef} className="relative overflow-hidden">
+                    {/* İçerik: aynı anda tek sayfa — AnimatePresence ile yönlü slayt. */}
+                    <div ref={roomPagerRef} className="relative">
                       <AnimatePresence mode="popLayout" custom={roomDir} initial={false}>
                         <motion.div
                           key={roomPage}
