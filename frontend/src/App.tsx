@@ -102,7 +102,7 @@ function App() {
   const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
   // Oda sayfası (0: Ana Odalar, 1: Topluluk Odaları) — spring slayt geçişi
   const [roomPage, setRoomPage] = useState(0);
-  const [roomDir, setRoomDir] = useState(0); // slayt yönü (AnimatePresence için)
+
   const roomPagerRef = useRef<HTMLDivElement>(null); // slayt genişliği ölçümü (swipe eşiği)
   // Topluluk odası arama
   const [roomSearchQuery, setRoomSearchQuery] = useState('');
@@ -1451,7 +1451,7 @@ function App() {
                   .sort((a, b) => a.id - b.id);
                 const searchResults = roomSearchResults;
                 const reduce = settings.reducedMotion;
-                const goRoomPage = (n: number) => { if (n === roomPage) return; setRoomDir(n > roomPage ? 1 : -1); setRoomPage(n); };
+                const goRoomPage = (n: number) => { if (n === roomPage) return; setRoomPage(n); };
                 const tabs = [{ label: 'Ana Odalar', key: 0 }, { label: 'Topluluk Odaları', key: 1 }];
 
                 const fixedPage = (
