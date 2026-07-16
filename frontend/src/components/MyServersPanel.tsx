@@ -27,16 +27,16 @@ const MyServersPanel: React.FC<MyServersPanelProps> = ({ refreshSignal, onSelect
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 24 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.35, type: 'spring', stiffness: 260, damping: 28 }}
-      className="relative w-full max-w-[440px] lg:max-w-none lg:w-[300px] shrink-0 rounded-3xl overflow-hidden"
-      style={{ background: 'rgba(9,9,11,0.75)', border: '1px solid #1e293b', backdropFilter: 'blur(12px)' }}
+      className="hidden md:block fixed top-5 right-5 z-40 w-[280px] max-h-[calc(100vh-40px)] rounded-3xl overflow-hidden"
+      style={{ background: 'rgba(30,30,38,0.45)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 20px 50px rgba(0,0,0,0.35)' }}
     >
       {/* üst gradient çizgi */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-[#7C3AED]/40 to-transparent" />
 
-      <div className="p-5">
+      <div className="p-5 max-h-[calc(100vh-40px)] overflow-y-auto custom-scrollbar">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)' }}>
