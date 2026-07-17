@@ -76,7 +76,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
                 value={tempMessage}
                 onChange={(e) => setTempMessage(e.target.value)}
                 placeholder="Bugün ne yapıyorsun?"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#7C3AED]"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-main"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSaveMessage();
                   if (e.key === 'Escape') {
@@ -87,7 +87,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
               />
               <div className="flex justify-end gap-1">
                 <button onClick={() => { setIsEditingMessage(false); setTempMessage(currentMessage); }} className="p-1 text-white/50 hover:text-white bg-white/5 rounded-md"><X size={14}/></button>
-                <button onClick={handleSaveMessage} className="p-1 text-white bg-[#7C3AED] hover:bg-[#6D28D9] rounded-md"><Check size={14}/></button>
+                <button onClick={handleSaveMessage} className="p-1 text-white bg-primary-main hover:bg-primary-hover rounded-md"><Check size={14}/></button>
               </div>
             </div>
           ) : (
@@ -95,7 +95,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
               onClick={() => setIsEditingMessage(true)}
               className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
             >
-              <MessageSquare size={16} className="text-white/40 group-hover:text-[#7C3AED]" />
+              <MessageSquare size={16} className="text-white/40 group-hover:text-primary-main" />
               <span className="text-sm text-white/80 group-hover:text-white truncate flex-1">
                 {currentMessage || "Özel durum belirle"}
               </span>
@@ -113,7 +113,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
               <button
                 key={s.id}
                 onClick={() => handleStatusSelect(s.id)}
-                className={`flex items-center justify-between p-2 rounded-lg transition-colors ${isActive ? 'bg-[#7C3AED]/20' : 'hover:bg-white/5'}`}
+                className={`flex items-center justify-between p-2 rounded-lg transition-colors ${isActive ? 'bg-primary-main/20' : 'hover:bg-white/5'}`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-5 flex justify-center">

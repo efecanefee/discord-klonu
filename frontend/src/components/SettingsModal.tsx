@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mic, Bell, Monitor, CheckCircle2, Info } from 'lucide-react';
-import { useSettings, THEMES } from '../contexts/SettingsContext';
+import { useSettings, THEMES, ACCENTS } from '../contexts/SettingsContext';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 import KeybindInput from './KeybindInput';
 
@@ -150,11 +150,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
               onClick={() => setActiveTab('audio')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
                 activeTab === 'audio' 
-                  ? 'bg-[#7C3AED]/20 text-white border border-[#7C3AED]/30' 
+                  ? 'bg-primary-main/20 text-white border border-primary-main/30' 
                   : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              <Mic size={18} className={activeTab === 'audio' ? 'text-[#7C3AED]' : ''} />
+              <Mic size={18} className={activeTab === 'audio' ? 'text-primary-main' : ''} />
               Ses ve Görüntü
             </button>
             
@@ -162,11 +162,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
               onClick={() => setActiveTab('notifications')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
                 activeTab === 'notifications' 
-                  ? 'bg-[#7C3AED]/20 text-white border border-[#7C3AED]/30' 
+                  ? 'bg-primary-main/20 text-white border border-primary-main/30' 
                   : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              <Bell size={18} className={activeTab === 'notifications' ? 'text-[#7C3AED]' : ''} />
+              <Bell size={18} className={activeTab === 'notifications' ? 'text-primary-main' : ''} />
               Bildirimler
             </button>
             
@@ -174,11 +174,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
               onClick={() => setActiveTab('ui')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
                 activeTab === 'ui' 
-                  ? 'bg-[#7C3AED]/20 text-white border border-[#7C3AED]/30' 
+                  ? 'bg-primary-main/20 text-white border border-primary-main/30' 
                   : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              <Monitor size={18} className={activeTab === 'ui' ? 'text-[#7C3AED]' : ''} />
+              <Monitor size={18} className={activeTab === 'ui' ? 'text-primary-main' : ''} />
               Görünüm
             </button>
             
@@ -186,11 +186,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
               onClick={() => setActiveTab('privacy')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
                 activeTab === 'privacy' 
-                  ? 'bg-[#7C3AED]/20 text-white border border-[#7C3AED]/30' 
+                  ? 'bg-primary-main/20 text-white border border-primary-main/30' 
                   : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={activeTab === 'privacy' ? 'text-[#7C3AED]' : ''}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={activeTab === 'privacy' ? 'text-primary-main' : ''}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Gizlilik
             </button>
           </div>
@@ -199,10 +199,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
           <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                {activeTab === 'audio' && <><Mic size={24} className="text-[#7C3AED]"/> Ses ve Görüntü Ayarları</>}
-                {activeTab === 'notifications' && <><Bell size={24} className="text-[#7C3AED]"/> Bildirim Ayarları</>}
-                {activeTab === 'ui' && <><Monitor size={24} className="text-[#7C3AED]"/> Görünüm Ayarları</>}
-                {activeTab === 'privacy' && <><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#7C3AED]"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Gizlilik Ayarları</>}
+                {activeTab === 'audio' && <><Mic size={24} className="text-primary-main"/> Ses ve Görüntü Ayarları</>}
+                {activeTab === 'notifications' && <><Bell size={24} className="text-primary-main"/> Bildirim Ayarları</>}
+                {activeTab === 'ui' && <><Monitor size={24} className="text-primary-main"/> Görünüm Ayarları</>}
+                {activeTab === 'privacy' && <><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-main"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Gizlilik Ayarları</>}
               </h3>
               <button 
                 onClick={onClose}
@@ -216,11 +216,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
             {activeTab === 'audio' && (
               <div className="space-y-6">
                 {!permissionGranted && (
-                  <div className="bg-[#7C3AED]/10 border border-[#7C3AED]/30 rounded-xl p-4 flex flex-col gap-3">
+                  <div className="bg-primary-main/10 border border-primary-main/30 rounded-xl p-4 flex flex-col gap-3">
                     <p className="text-sm text-white/80">Mikrofon cihazlarınızı görebilmek için tarayıcı iznine ihtiyacımız var.</p>
                     <button 
                       onClick={requestAudioPermission}
-                      className="bg-[#7C3AED] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#6D28D9] transition-colors self-start"
+                      className="bg-primary-main text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-hover transition-colors self-start"
                     >
                       İzin Ver
                     </button>
@@ -233,7 +233,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                     <select 
                       value={settings.microphoneId}
                       onChange={(e) => updateSettings({ microphoneId: e.target.value })}
-                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
+                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-main transition-colors appearance-none"
                     >
                       <option value="default">Varsayılan Mikrofon</option>
                       {microphones.map(mic => (
@@ -249,7 +249,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                     <select 
                       value={settings.speakerId}
                       onChange={(e) => updateSettings({ speakerId: e.target.value })}
-                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
+                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-main transition-colors appearance-none"
                     >
                       <option value="default">Varsayılan Hoparlör</option>
                       {speakers.map(speaker => (
@@ -266,7 +266,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                 <div className="space-y-4">
                   <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Bas Konuş (Push to Talk)</span>
+                      <span className="font-semibold text-white group-hover:text-primary-main transition-colors">Bas Konuş (Push to Talk)</span>
                       <span className="text-xs text-white/50 mt-1">Sadece belirlediğiniz tuşa basılı tuttuğunuzda sesiniz gider.</span>
                     </div>
                     <div className="relative">
@@ -276,7 +276,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                         checked={settings.pushToTalk}
                         onChange={(e) => updateSettings({ pushToTalk: e.target.checked })}
                       />
-                      <div className={`w-10 h-6 rounded-full transition-colors ${settings.pushToTalk ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                      <div className={`w-10 h-6 rounded-full transition-colors ${settings.pushToTalk ? 'bg-primary-main' : 'bg-gray-600'}`}>
                         <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.pushToTalk ? 'translate-x-4' : ''}`} />
                       </div>
                     </div>
@@ -325,7 +325,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
 
                   <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Yankı ve Gürültü Filtresi</span>
+                      <span className="font-semibold text-white group-hover:text-primary-main transition-colors">Yankı ve Gürültü Filtresi</span>
                       <span className="text-xs text-white/50 mt-1">Tarayıcının kendi filtresi: yankı engelleme, fan/uğultu azaltma ve otomatik ses seviyesi. Kapatırsan hoparlör kullananlar yankı duyar.</span>
                     </div>
                     <div className="relative">
@@ -335,7 +335,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                         checked={settings.noiseSuppression}
                         onChange={(e) => updateSettings({ noiseSuppression: e.target.checked })}
                       />
-                      <div className={`w-10 h-6 rounded-full transition-colors ${settings.noiseSuppression ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                      <div className={`w-10 h-6 rounded-full transition-colors ${settings.noiseSuppression ? 'bg-primary-main' : 'bg-gray-600'}`}>
                         <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.noiseSuppression ? 'translate-x-4' : ''}`} />
                       </div>
                     </div>
@@ -345,7 +345,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                   <div className="rounded-xl border border-white/10 bg-white/5">
                     <label className="flex items-center justify-between p-4 cursor-pointer group">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Giriş Hassasiyeti (Gürültü Kapısı)</span>
+                        <span className="font-semibold text-white group-hover:text-primary-main transition-colors">Giriş Hassasiyeti (Gürültü Kapısı)</span>
                         <span className="text-xs text-white/50 mt-1">Sesin eşiği geçmedikçe mikrofonun kapalı kalır. Klavye, TV ve arka plan konuşmalarını keser.</span>
                       </div>
                       <div className="relative shrink-0 ml-4">
@@ -355,7 +355,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                           checked={settings.noiseGateEnabled}
                           onChange={(e) => updateSettings({ noiseGateEnabled: e.target.checked })}
                         />
-                        <div className={`w-10 h-6 rounded-full transition-colors ${settings.noiseGateEnabled ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                        <div className={`w-10 h-6 rounded-full transition-colors ${settings.noiseGateEnabled ? 'bg-primary-main' : 'bg-gray-600'}`}>
                           <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.noiseGateEnabled ? 'translate-x-4' : ''}`} />
                         </div>
                       </div>
@@ -377,7 +377,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                                 style={{ width: `${micLevel}%` }}
                               />
                               <div
-                                className="absolute top-0 bottom-0 w-0.5 bg-[#7C3AED]"
+                                className="absolute top-0 bottom-0 w-0.5 bg-primary-main"
                                 style={{ left: `${settings.noiseGateThreshold}%` }}
                               />
                             </div>
@@ -389,7 +389,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                               step={1}
                               value={settings.noiseGateThreshold}
                               onChange={(e) => updateSettings({ noiseGateThreshold: Number(e.target.value) })}
-                              className="w-full h-1.5 bg-black/40 rounded-full appearance-none cursor-pointer accent-[#7C3AED]"
+                              className="w-full h-1.5 bg-black/40 rounded-full appearance-none cursor-pointer accent-primary-main"
                             />
 
                             <div className="flex items-start gap-2 text-[11px] text-white/40">
@@ -414,7 +414,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
               <div className="space-y-4">
                 <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Uygulama İçi Sesler</span>
+                    <span className="font-semibold text-white group-hover:text-primary-main transition-colors">Uygulama İçi Sesler</span>
                     <span className="text-xs text-white/50 mt-1">Mesaj geldiğinde, odaya girildiğinde çalan ses efektleri.</span>
                   </div>
                   <div className="relative">
@@ -424,19 +424,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                       checked={settings.notificationSoundEnabled}
                       onChange={(e) => updateSettings({ notificationSoundEnabled: e.target.checked })}
                     />
-                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.notificationSoundEnabled ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.notificationSoundEnabled ? 'bg-primary-main' : 'bg-gray-600'}`}>
                       <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.notificationSoundEnabled ? 'translate-x-4' : ''}`} />
                     </div>
                   </div>
                 </label>
 
                 {settings.notificationSoundEnabled && (
-                  <div className="pl-4 border-l-2 border-[#7C3AED]/30 ml-2 mt-2">
+                  <div className="pl-4 border-l-2 border-primary-main/30 ml-2 mt-2">
                     <label className="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Bildirim Sesi Melodisi</label>
                     <select 
                       value={settings.notificationTone}
                       onChange={(e) => updateSettings({ notificationTone: e.target.value })}
-                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#7C3AED] transition-colors appearance-none"
+                      className="w-full bg-[#18181b] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-main transition-colors appearance-none"
                     >
                       <option value="default">Klasik Ding</option>
                       <option value="pop">Hafif Pop</option>
@@ -450,7 +450,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
 
                 <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Özel Mesaj Bildirimleri</span>
+                    <span className="font-semibold text-white group-hover:text-primary-main transition-colors">Özel Mesaj Bildirimleri</span>
                     <span className="text-xs text-white/50 mt-1">Biri size DM attığında görsel uyarı ve kırmızı rozet göster.</span>
                   </div>
                   <div className="relative">
@@ -460,7 +460,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                       checked={settings.dmNotificationsEnabled}
                       onChange={(e) => updateSettings({ dmNotificationsEnabled: e.target.checked })}
                     />
-                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.dmNotificationsEnabled ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.dmNotificationsEnabled ? 'bg-primary-main' : 'bg-gray-600'}`}>
                       <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.dmNotificationsEnabled ? 'translate-x-4' : ''}`} />
                     </div>
                   </div>
@@ -478,7 +478,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                   ) : (
                     <button 
                       onClick={handleRequestPushPermission}
-                      className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0"
+                      className="bg-primary-main hover:bg-primary-hover text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0"
                     >
                       İzin İste
                     </button>
@@ -502,7 +502,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                         onClick={() => updateSettings({ theme: t.id })}
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
                           settings.theme === t.id
-                            ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
+                            ? 'bg-primary-main text-white border-primary-main'
                             : 'text-white/60 border-white/10 hover:text-white hover:bg-white/10'
                         }`}
                       >
@@ -512,9 +512,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                   </div>
                 </div>
 
+                <div className="p-4 rounded-xl border border-white/10 bg-white/5">
+                  <div className="flex flex-col mb-3">
+                    <span className="font-semibold text-white">Vurgu Rengi</span>
+                    <span className="text-xs text-white/50 mt-1">Butonlar, bağlantılar ve seçili öğeler bu rengi kullanır. Temadan bağımsız çalışır.</span>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    {ACCENTS.map(a => (
+                      <button
+                        key={a.id}
+                        onClick={() => updateSettings({ accent: a.id })}
+                        title={a.label}
+                        aria-label={a.label}
+                        aria-pressed={settings.accent === a.id}
+                        className={`w-9 h-9 rounded-full transition-transform cursor-pointer ring-offset-2 ring-offset-[#09090b] ${
+                          settings.accent === a.id ? 'ring-2 ring-white scale-110' : 'hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: a.swatch }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
                 <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Animasyonları Azalt (Reduced Motion)</span>
+                    <span className="font-semibold text-white group-hover:text-primary-main transition-colors">Animasyonları Azalt (Reduced Motion)</span>
                     <span className="text-xs text-white/50 mt-1">Uygulama içindeki menü kaymaları, buton efektleri ve arka plan ışıklarını kapatarak performansı artırır.</span>
                   </div>
                   <div className="relative">
@@ -524,7 +546,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                       checked={settings.reducedMotion}
                       onChange={(e) => updateSettings({ reducedMotion: e.target.checked })}
                     />
-                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.reducedMotion ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.reducedMotion ? 'bg-primary-main' : 'bg-gray-600'}`}>
                       <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.reducedMotion ? 'translate-x-4' : ''}`} />
                     </div>
                   </div>
@@ -532,7 +554,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
 
                 <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Cam Efekti (Blur)</span>
+                    <span className="font-semibold text-white group-hover:text-primary-main transition-colors">Cam Efekti (Blur)</span>
                     <span className="text-xs text-white/50 mt-1">Panellerin arkasını bulanıklaştırır. Şık ama pahalı — arayüz takılıyorsa ilk bunu kapat.</span>
                   </div>
                   <div className="relative">
@@ -542,7 +564,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                       checked={settings.glassEffect}
                       onChange={(e) => updateSettings({ glassEffect: e.target.checked })}
                     />
-                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.glassEffect ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.glassEffect ? 'bg-primary-main' : 'bg-gray-600'}`}>
                       <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.glassEffect ? 'translate-x-4' : ''}`} />
                     </div>
                   </div>
@@ -555,7 +577,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
               <div className="space-y-4">
                 <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                   <div className="flex flex-col">
-                    <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Son Görülmeyi Göster</span>
+                    <span className="font-semibold text-white group-hover:text-primary-main transition-colors">Son Görülmeyi Göster</span>
                     <span className="text-xs text-white/50 mt-1">Kapatırsanız, kimse son görülmenizi göremez. Fakat siz de başkalarının son görülmesini göremezsiniz.</span>
                   </div>
                   <div className="relative">
@@ -565,7 +587,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                       checked={showLastSeen !== false}
                       onChange={(e) => onUpdatePrivacy?.(e.target.checked)}
                     />
-                    <div className={`w-10 h-6 rounded-full transition-colors ${showLastSeen !== false ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                    <div className={`w-10 h-6 rounded-full transition-colors ${showLastSeen !== false ? 'bg-primary-main' : 'bg-gray-600'}`}>
                       <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${showLastSeen !== false ? 'translate-x-4' : ''}`} />
                     </div>
                   </div>

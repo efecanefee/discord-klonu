@@ -122,7 +122,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Üst Gradient Çizgi */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-[#7C3AED]/40 to-transparent" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-primary-main/40 to-transparent" />
 
           {/* Header */}
           <div className="flex items-center justify-between p-6 pb-2">
@@ -130,12 +130,12 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{
-                  background: 'rgba(124, 58, 237, 0.15)',
-                  border: '1px solid rgba(124, 58, 237, 0.3)',
-                  boxShadow: '0 0 20px rgba(124, 58, 237, 0.2)',
+                  background: 'rgba(var(--accent-rgb), 0.15)',
+                  border: '1px solid rgba(var(--accent-rgb), 0.3)',
+                  boxShadow: '0 0 20px rgba(var(--accent-rgb), 0.2)',
                 }}
               >
-                <Plus size={20} className="text-[#7C3AED]" />
+                <Plus size={20} className="text-primary-main" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">Yeni Oda Oluştur</h2>
@@ -181,7 +181,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="w-full flex items-center justify-between gap-3 bg-[#18181b] border border-[#334155] hover:border-[#7C3AED]/50 rounded-xl px-4 py-3.5 transition-colors group"
+                  className="w-full flex items-center justify-between gap-3 bg-[#18181b] border border-[#334155] hover:border-primary-main/50 rounded-xl px-4 py-3.5 transition-colors group"
                 >
                   <span className="text-2xl font-mono font-bold tracking-[0.3em] text-white">{createdRoom.roomCode}</span>
                   <span className="flex items-center gap-1.5 text-xs text-white/50 group-hover:text-white transition-colors">
@@ -199,7 +199,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 type="button"
                 onClick={onClose}
                 className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)' }}
+                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)' }}
               >
                 Tamam
               </button>
@@ -233,7 +233,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   maxLength={50}
                   autoFocus
                   disabled={isLoading}
-                  className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm placeholder:text-white/20 disabled:opacity-50"
+                  className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-primary-main transition-colors text-sm placeholder:text-white/20 disabled:opacity-50"
                 />
                 <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-white/20">
                   {name.length}/50
@@ -248,8 +248,8 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               </label>
               <div className="rounded-xl border border-[#334155] bg-[#18181b] p-3 space-y-2.5">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#7C3AED]/15 flex items-center justify-center shrink-0">
-                    <Hash size={16} className="text-[#7C3AED]" />
+                  <div className="w-8 h-8 rounded-lg bg-primary-main/15 flex items-center justify-center shrink-0">
+                    <Hash size={16} className="text-primary-main" />
                   </div>
                   <div className="text-left">
                     <div className="text-sm font-semibold text-white/90">genel</div>
@@ -284,7 +284,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   maxLength={200}
                   rows={3}
                   disabled={isLoading}
-                  className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-3 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm placeholder:text-white/20 resize-none disabled:opacity-50"
+                  className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-3 text-white outline-none focus:border-primary-main transition-colors text-sm placeholder:text-white/20 resize-none disabled:opacity-50"
                 />
                 <span className="absolute right-3 bottom-2 text-[10px] text-white/20">
                   {description.length}/200
@@ -300,16 +300,16 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 disabled={isLoading}
                 className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 text-left ${
                   isPrivate
-                    ? 'bg-[#7C3AED]/10 border-[#7C3AED]/50 shadow-[0_0_20px_rgba(124,58,237,0.15)]'
-                    : 'bg-[#18181b] border-[#334155] hover:border-[#7C3AED]/30'
+                    ? 'bg-primary-main/10 border-primary-main/50 shadow-[0_0_20px_rgba(var(--accent-rgb),0.15)]'
+                    : 'bg-[#18181b] border-[#334155] hover:border-primary-main/30'
                 } disabled:opacity-50`}
               >
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shrink-0 ${
-                    isPrivate ? 'bg-[#7C3AED]/20' : 'bg-white/5'
+                    isPrivate ? 'bg-primary-main/20' : 'bg-white/5'
                   }`}
                 >
-                  {isPrivate ? <Lock size={18} className="text-[#7C3AED]" /> : <Globe size={18} className="text-white/40" />}
+                  {isPrivate ? <Lock size={18} className="text-primary-main" /> : <Globe size={18} className="text-white/40" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className={`text-sm font-semibold ${isPrivate ? 'text-white' : 'text-white/60'}`}>
@@ -320,7 +320,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   </div>
                 </div>
                 {/* Switch */}
-                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${isPrivate ? 'bg-[#7C3AED]' : 'bg-white/10'}`}>
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${isPrivate ? 'bg-primary-main' : 'bg-white/10'}`}>
                   <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform ${isPrivate ? 'translate-x-6' : 'translate-x-1'}`} style={{ height: '18px', width: '18px' }} />
                 </div>
               </button>
@@ -337,9 +337,9 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               whileTap={!isLoading && name.trim() ? { scale: 0.98 } : {}}
               className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               style={{
-                background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)',
+                background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)',
                 boxShadow: !isLoading && name.trim()
-                  ? '0 8px 32px rgba(124,58,237,0.35), 0 1px 0 rgba(255,255,255,0.15) inset'
+                  ? '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset'
                   : 'none',
               }}
             >
@@ -359,7 +359,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           )}
 
           {/* Alt Gradient Çizgi */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-[#7C3AED]/30 to-transparent" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-primary-main/30 to-transparent" />
         </motion.div>
       </motion.div>
     </AnimatePresence>

@@ -54,8 +54,8 @@ const KeybindInput: React.FC<KeybindInputProps> = ({ value, onChange, disabled }
       onBlur={() => setListening(false)}
       className={`min-w-[130px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
         listening
-          ? 'border-[#7C3AED] bg-[#7C3AED]/15 text-white animate-pulse'
-          : 'border-white/10 bg-[#18181b] text-white/80 hover:border-[#7C3AED]/40 hover:text-white'
+          ? 'border-primary-main bg-primary-main/15 text-white animate-pulse'
+          : 'border-white/10 bg-[#18181b] text-white/80 hover:border-primary-main/40 hover:text-white'
       } disabled:opacity-40 disabled:cursor-not-allowed`}
     >
       <Keyboard size={14} className="opacity-60" />

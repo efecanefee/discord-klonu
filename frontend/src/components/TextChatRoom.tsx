@@ -123,7 +123,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                 onClick={(e) => { setPopoverAnchor(e.currentTarget.getBoundingClientRect()); setPopoverUserKey(prev => prev === m.userId ? null : m.userId); }}
                 className={`relative flex items-center gap-3 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200 cursor-pointer ${m.isOnline ? '' : 'opacity-60'}`}>
                 <div className="relative">
-                    <div className={`w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm text-xl ${m.isOnline ? 'border-[#7C3AED]' : 'border-border-main grayscale'}`}>
+                    <div className={`w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm text-xl ${m.isOnline ? 'border-primary-main' : 'border-border-main grayscale'}`}>
                         {renderAvatar(m.avatarId || 'default')}
                     </div>
                     <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-[2.5px] border-bg-card ${m.isOnline ? 'bg-emerald-500' : 'bg-gray-500'}`} />
@@ -699,7 +699,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             if (seg.inline) {
                 parts.push(
                     <code key={`c${i}`} className="px-1.5 py-0.5 rounded-md text-[13px] font-mono"
-                        style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)', color: '#a78bfa' }}>
+                        style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--accent-light)' }}>
                         {seg.code}
                     </code>
                 );
@@ -971,7 +971,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                             <motion.div initial={{ opacity: 0, scale: 0.98, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.2 }} key={msg.id}
                                                 className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                 <div className={`flex max-w-[85%] sm:max-w-[75%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                    <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.2)] overflow-hidden text-xl">
+                                                    <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-primary-main shadow-[0_0_10px_rgba(var(--accent-rgb),0.2)] overflow-hidden text-xl">
                                                         {renderAvatar(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                     </div>
                                                     <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
@@ -997,7 +997,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                         })()}
 
                                                         <div className="relative group/msg" id={`text-msg-${msg.id}`}>
-                                                            <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                            <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
                                                                 {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
                                                                 {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
                                                                     <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
@@ -1123,7 +1123,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
 
                         <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
-                            className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,#7C3AED,#8B5CF6)] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
+                            className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
                             {editingMessageId ? <Pencil size={18} className="mr-0 sm:mr-2" /> : <Send size={18} className="mr-0 sm:mr-2" />}
                             <span className="hidden sm:inline">{editingMessageId ? 'Kaydet' : 'Gönder'}</span>
                         </button>

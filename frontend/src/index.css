@@ -9,23 +9,74 @@
   --color-bg-surface: #161b27;
   --color-bg-card: #1a2035;
   --color-border-main: #242b3d;
-  --color-primary-main: #8b5cf6;
-  --color-primary-hover: #a78bfa;
+  /* DIKKAT: burada dogrudan hex YAZMA. Tailwind @theme'deki sabit rengi
+     uretilen kurala satir ici koyar; bg-primary-main/20 gibi opaklikli
+     siniflar color-mix(#7c3aed 20%...) olur ve derleyici bunu #7c3aed33'e
+     katlar — vurgu rengi degisince o siniflar mor kalirdi. var() ile
+     yonlendirince deger derleme aninda bilinmedigi icin katlanamaz. */
+  --color-primary-main: var(--accent);
+  --color-primary-hover: var(--accent-hover);
   --color-text-main: #e8eaf0;
   --color-text-muted: #5c6380;
 
   --shadow-premium: 0 4px 30px -2px rgba(0, 0, 0, 0.6);
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-card-hover: 0 8px 40px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+  --shadow-glow: 0 0 0 2px rgba(var(--accent-rgb), 0.5);
 
   /* Tema basina degisen, Tailwind utility'si olmayan degerler.
      @theme icinde durmalarinin sebebi yalnizca varsayilani tek yerde tutmak. */
   --app-bg-glow: radial-gradient(ellipse 110% 75% at 50% -15%, rgba(30, 58, 138, 0.42), transparent 70%);
   --glass-solid-bg: rgba(20, 20, 26, 0.92);
   --shine-base: #ffffff;
-  --scrollbar-thumb: rgba(124, 58, 237, 0.4);
-  --scrollbar-thumb-hover: rgba(124, 58, 237, 0.8);
+  --scrollbar-thumb: rgba(var(--accent-rgb), 0.4);
+  --scrollbar-thumb-hover: rgba(var(--accent-rgb), 0.8);
+}
+
+/* Vurgu rengi paleti — tema (zemin) ve vurgu birbirinden bagimsiz secilir,
+   o yuzden ayri bir attribute uzerinden.
+   Her renk dort deger tanimlar:
+     --accent        ana ton (Tailwind primary-main buna bakar)
+     --accent-hover  hover icin bir koyu ton (primary-hover)
+     --accent-rgb    rgba(var(--accent-rgb), 0.4) yazabilmek icin bilesenler
+     --accent-light  gradyanlarin acik ucu (ham linear-gradient stringleri)
+   Varsayilan mor :root'ta; palet yalnizca ustune yazar. */
+:root {
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-rgb: 124, 58, 237;
+  --accent-light: #8b5cf6;
+}
+
+html[data-accent="blue"] {
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-rgb: 37, 99, 235;
+  --accent-light: #3b82f6;
+}
+html[data-accent="emerald"] {
+  --accent: #059669;
+  --accent-hover: #047857;
+  --accent-rgb: 5, 150, 105;
+  --accent-light: #10b981;
+}
+html[data-accent="amber"] {
+  --accent: #d97706;
+  --accent-hover: #b45309;
+  --accent-rgb: 217, 119, 6;
+  --accent-light: #f59e0b;
+}
+html[data-accent="rose"] {
+  --accent: #e11d48;
+  --accent-hover: #be123c;
+  --accent-rgb: 225, 29, 72;
+  --accent-light: #f43f5e;
+}
+html[data-accent="cyan"] {
+  --accent: #0891b2;
+  --accent-hover: #0e7490;
+  --accent-rgb: 8, 145, 178;
+  --accent-light: #06b6d4;
 }
 
 /* Tema tanimlari tek kaynak: burasi. Bilesenler yalnizca <html>'e
@@ -49,8 +100,8 @@ html.theme-light {
   --app-bg-glow: radial-gradient(ellipse 110% 75% at 50% -15%, rgba(30, 58, 138, 0.10), transparent 70%);
   --glass-solid-bg: rgba(255, 255, 255, 0.92);
   --shine-base: #1e293b;
-  --scrollbar-thumb: rgba(124, 58, 237, 0.35);
-  --scrollbar-thumb-hover: rgba(124, 58, 237, 0.7);
+  --scrollbar-thumb: rgba(var(--accent-rgb), 0.35);
+  --scrollbar-thumb-hover: rgba(var(--accent-rgb), 0.7);
 }
 
 html.theme-oled {

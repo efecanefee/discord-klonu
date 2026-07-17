@@ -12,7 +12,7 @@ interface MyServersPanelProps {
 const roleStyle = (role: string) => {
   if (role === 'owner') return { color: '#F59E0B', glow: 'rgba(245,158,11,0.35)', badge: '👑' };
   if (role === 'moderator') return { color: '#3B82F6', glow: 'rgba(59,130,246,0.35)', badge: '🛡️' };
-  return { color: '#7C3AED', glow: 'rgba(124,58,237,0.30)', badge: '' };
+  return { color: 'var(--color-primary-main)', glow: 'rgba(var(--accent-rgb),0.30)', badge: '' };
 };
 
 const MyServersPanel: React.FC<MyServersPanelProps> = ({ refreshSignal, onSelectRoom }) => {
@@ -33,13 +33,13 @@ const MyServersPanel: React.FC<MyServersPanelProps> = ({ refreshSignal, onSelect
       className="hidden md:block md:static md:flex-1 z-40 w-[280px] max-h-[calc(100vh-40px)] overflow-hidden"
     >
       {/* üst gradient çizgi */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-[#7C3AED]/40 to-transparent" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-primary-main/40 to-transparent" />
 
       <div className="p-5 max-h-[calc(100vh-40px)] overflow-y-auto custom-scrollbar">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)' }}>
-              <Server size={16} className="text-[#7C3AED]" />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(var(--accent-rgb),0.15)', border: '1px solid rgba(var(--accent-rgb),0.3)' }}>
+              <Server size={16} className="text-primary-main" />
             </div>
             <div>
               <h3 className="text-[14px] font-bold text-white leading-none">Sunucularım</h3>
@@ -69,8 +69,8 @@ const MyServersPanel: React.FC<MyServersPanelProps> = ({ refreshSignal, onSelect
         {/* Boş durum */}
         {rooms !== null && rooms.length === 0 && (
           <div className="flex flex-col items-center text-center gap-3 py-8 px-2">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)' }}>
-              <Compass size={26} className="text-[#7C3AED]/80" />
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(var(--accent-rgb),0.1)', border: '1px solid rgba(var(--accent-rgb),0.2)' }}>
+              <Compass size={26} className="text-primary-main/80" />
             </div>
             <div>
               <p className="text-[13px] font-semibold text-white/80">Henüz bir sunucuda değilsin</p>

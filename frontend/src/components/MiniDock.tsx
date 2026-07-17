@@ -38,7 +38,7 @@ const MiniDock: React.FC<MiniDockProps> = ({
       <button
         onClick={onLogoClick}
         title="Lobiye dön"
-        className="group relative w-11 h-11 rounded-2xl overflow-hidden border border-white/10 hover:border-[#7C3AED]/50 hover:shadow-[0_0_16px_rgba(124,58,237,0.4)] transition-all shrink-0"
+        className="group relative w-11 h-11 rounded-2xl overflow-hidden border border-white/10 hover:border-primary-main/50 hover:shadow-[0_0_16px_rgba(var(--accent-rgb),0.4)] transition-all shrink-0"
       >
         <img src="/logo.png" alt="Lobi" className="w-full h-full object-cover group-hover:brightness-110 transition-all" />
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -61,8 +61,8 @@ const MiniDock: React.FC<MiniDockProps> = ({
               className="relative group shrink-0"
             >
               {/* Aktif göstergesi (sol çubuk) */}
-              <div className={`absolute -left-2 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-[#7C3AED] transition-all duration-200 ${isActive ? 'h-7' : 'h-0 group-hover:h-4'}`} />
-              <div className={`relative w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-lg bg-[#18181b] border-2 transition-all ${isActive ? 'border-[#7C3AED] shadow-[0_0_12px_rgba(124,58,237,0.4)]' : 'border-[#334155] group-hover:border-[#7C3AED]/50'}`}>
+              <div className={`absolute -left-2 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-primary-main transition-all duration-200 ${isActive ? 'h-7' : 'h-0 group-hover:h-4'}`} />
+              <div className={`relative w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-lg bg-[#18181b] border-2 transition-all ${isActive ? 'border-primary-main shadow-[0_0_12px_rgba(var(--accent-rgb),0.4)]' : 'border-[#334155] group-hover:border-primary-main/50'}`}>
                 {renderAvatar(user.avatarId)}
               </div>
               <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#09090b] ${statusColor(user.customStatus)}`} />
@@ -79,7 +79,7 @@ const MiniDock: React.FC<MiniDockProps> = ({
         <button
           onClick={onNewMessage}
           title="Yeni Mesaj"
-          className="w-11 h-11 rounded-full flex items-center justify-center bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED] hover:text-white border border-[#7C3AED]/30 transition-all shrink-0"
+          className="w-11 h-11 rounded-full flex items-center justify-center bg-primary-main/10 text-primary-main hover:bg-primary-main hover:text-white border border-primary-main/30 transition-all shrink-0"
         >
           <Plus size={18} />
         </button>
@@ -102,7 +102,7 @@ const MiniDock: React.FC<MiniDockProps> = ({
         title="Profili Düzenle"
         className="relative group shrink-0"
       >
-        <div className="w-11 h-11 rounded-full overflow-hidden border border-[#7C3AED] bg-[#18181b] flex items-center justify-center text-lg group-hover:opacity-80 transition-opacity">
+        <div className="w-11 h-11 rounded-full overflow-hidden border border-primary-main bg-[#18181b] flex items-center justify-center text-lg group-hover:opacity-80 transition-opacity">
           {renderAvatar(avatarId)}
         </div>
         <motion.div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${statusColor(myCustomStatus)}`} />

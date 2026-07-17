@@ -201,7 +201,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#09090b] relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -right-[10%] w-[70vw] h-[70vw] rounded-full bg-[#7C3AED]/5 blur-[120px]" />
+        <div className="absolute -top-[20%] -right-[10%] w-[70vw] h-[70vw] rounded-full bg-primary-main/5 blur-[120px]" />
         <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#3B82F6]/5 blur-[120px]" />
       </div>
 
@@ -285,7 +285,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                     </div>
 
                     <div 
-                      className={`rounded-2xl px-5 py-3 cursor-pointer ${isMe ? 'bg-[#7C3AED] text-white rounded-br-none shadow-[0_4px_20px_rgba(124,58,237,0.3)]' : 'bg-white/5 text-white/90 rounded-bl-none border border-white/10 shadow-lg'}`}
+                      className={`rounded-2xl px-5 py-3 cursor-pointer ${isMe ? 'bg-primary-main text-white rounded-br-none shadow-[0_4px_20px_rgba(var(--accent-rgb),0.3)]' : 'bg-white/5 text-white/90 rounded-bl-none border border-white/10 shadow-lg'}`}
                       title="Kopyalamak için tıkla"
                       onClick={() => { if (!msg.fileUrl) navigator.clipboard.writeText(msg.content); }}
                     >
@@ -344,7 +344,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
         {!editingMessageId && replyingToMessage && (
           <div className="flex items-center justify-between mb-2 bg-white/5 rounded-xl px-4 py-2 border border-white/10">
             <div className="flex items-center gap-2 text-sm text-white/70">
-              <Reply size={14} className="text-[#7C3AED]" />
+              <Reply size={14} className="text-primary-main" />
               <span className="font-semibold">{replyingToMessage.senderId === currentUser.id ? 'Kendine' : targetUser.username}</span>
               <span>yanıt veriliyor:</span>
               <span className="truncate max-w-[200px] text-white/40">{replyingToMessage.content}</span>
@@ -354,7 +354,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             </button>
           </div>
         )}
-        <form onSubmit={handleSendMessage} className="relative flex items-center bg-[#18181b]/50 border border-white/10 rounded-2xl transition-all shadow-inner focus-within:border-[#7C3AED]/50 focus-within:bg-[#18181b]/80">
+        <form onSubmit={handleSendMessage} className="relative flex items-center bg-[#18181b]/50 border border-white/10 rounded-2xl transition-all shadow-inner focus-within:border-primary-main/50 focus-within:bg-[#18181b]/80">
           <div className="relative">
             <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 text-white/30 hover:text-white transition-colors cursor-pointer">
               <Smile size={20} />
@@ -390,7 +390,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
           <button
             type="submit"
             disabled={!newMessage.trim()}
-            className="mr-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-[#7C3AED] text-white hover:bg-[#6D28D9] disabled:opacity-50 disabled:hover:bg-[#7C3AED] transition-all cursor-pointer"
+            className="mr-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-primary-main text-white hover:bg-primary-hover disabled:opacity-50 disabled:hover:bg-primary-main transition-all cursor-pointer"
           >
             <Send size={18} />
           </button>

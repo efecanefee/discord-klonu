@@ -101,12 +101,12 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{
-                  background: 'rgba(124, 58, 237, 0.15)',
-                  border: '1px solid rgba(124, 58, 237, 0.3)',
-                  boxShadow: '0 0 20px rgba(124, 58, 237, 0.2)',
+                  background: 'rgba(var(--accent-rgb), 0.15)',
+                  border: '1px solid rgba(var(--accent-rgb), 0.3)',
+                  boxShadow: '0 0 20px rgba(var(--accent-rgb), 0.2)',
                 }}
               >
-                <MessageSquare size={20} className="text-[#7C3AED]" />
+                <MessageSquare size={20} className="text-primary-main" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">Yeni Mesaj</h2>
@@ -131,7 +131,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Kullanıcı ara..."
                 autoFocus
-                className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm placeholder:text-white/20"
+                className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-primary-main transition-colors text-sm placeholder:text-white/20"
               />
             </div>
           </div>

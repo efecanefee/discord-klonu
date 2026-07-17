@@ -97,7 +97,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           <div className="flex-1 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#334155]">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <UserCircle className="text-[#7C3AED]" />
+                <UserCircle className="text-primary-main" />
                 Profili Düzenle
               </h2>
               <button onClick={onClose} className="p-2 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-colors md:hidden">
@@ -119,7 +119,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
+                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Adınız"
                   />
                 </div>
@@ -129,7 +129,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
+                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Soyadınız"
                   />
                 </div>
@@ -143,7 +143,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-9 pr-4 py-2.5 text-white outline-none focus:border-[#7C3AED] transition-colors text-sm"
+                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-9 pr-4 py-2.5 text-white outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Kullanıcı adınız"
                   />
                 </div>
@@ -159,8 +159,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     onClick={() => setAvatarId(avatar.id)}
                     className={`relative rounded-full flex items-center justify-center transition-all overflow-hidden aspect-square text-4xl bg-[#18181b] ${
                       avatarId === avatar.id
-                        ? 'border-2 border-[#7C3AED] shadow-[0_0_20px_rgba(124,58,237,0.5)] scale-[1.02] z-10'
-                        : 'border-2 border-transparent hover:border-[#7C3AED]/50 hover:scale-[1.02]'
+                        ? 'border-2 border-primary-main shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)] scale-[1.02] z-10'
+                        : 'border-2 border-transparent hover:border-primary-main/50 hover:scale-[1.02]'
                     }`}
                   >
                     {renderAvatar(avatar.id)}
@@ -185,11 +185,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   <span className="text-[11px] font-medium text-white/40 mb-1 max-w-full truncate">
                     {debouncedFirstName || debouncedLastName ? `${debouncedFirstName} ${debouncedLastName}`.trim() : debouncedUsername}
                   </span>
-                  <div className="px-4 py-2.5 rounded-2xl shadow-sm text-[13px] bg-gradient-to-br from-[#7C3AED] to-[#8B5CF6] text-white rounded-tr-sm">
+                  <div className="px-4 py-2.5 rounded-2xl shadow-sm text-[13px] bg-gradient-to-br from-primary-main to-primary-main text-white rounded-tr-sm">
                     Merhaba, bu yeni profilim!
                   </div>
                 </div>
-                <div className="w-8 h-8 rounded-full border border-[#7C3AED] overflow-hidden bg-[#18181b] shrink-0 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-full border border-primary-main overflow-hidden bg-[#18181b] shrink-0 flex items-center justify-center text-sm">
                   {renderAvatar(avatarId)}
                 </div>
               </div>
@@ -197,7 +197,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 
             {/* Aktif Kullanıcı Listesi Önizlemesi */}
             <div className="w-full bg-[#18181b]/50 border border-[#334155] rounded-xl p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border-2 border-[#7C3AED] overflow-hidden shrink-0 flex items-center justify-center text-xl bg-[#18181b]">
+              <div className="w-10 h-10 rounded-full border-2 border-primary-main overflow-hidden shrink-0 flex items-center justify-center text-xl bg-[#18181b]">
                  {renderAvatar(avatarId)}
               </div>
               <div className="flex flex-col min-w-0">
@@ -213,7 +213,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             <button
               onClick={handleSave}
               disabled={isLoading}
-              className="mt-8 w-full py-3 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#8B5CF6] text-white font-semibold text-sm hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-8 w-full py-3 rounded-xl bg-gradient-to-br from-primary-main to-primary-main text-white font-semibold text-sm hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Save size={16} />
               {isLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}

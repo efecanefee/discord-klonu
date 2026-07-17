@@ -88,7 +88,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder="Oda hakkında kısa bir açıklama..."
-              className="mt-2 w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#7C3AED]/50 transition-colors resize-none"
+              className="mt-2 w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-primary-main/50 transition-colors resize-none"
             />
             <div className="flex items-center justify-between mt-2">
               <span className="text-[11px] text-white/30">{description.length}/200</span>
@@ -96,7 +96,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                 onClick={saveDescription}
                 disabled={saving || description.trim() === initialDescription.trim()}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%)' }}
+                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 100%)' }}
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <Check size={14} /> : null}
                 {saved ? 'Kaydedildi' : 'Kaydet'}

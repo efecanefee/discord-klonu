@@ -47,11 +47,11 @@ const MessageFileAttachment: React.FC<MessageFileAttachmentProps> = ({ fileUrl, 
       className={`my-1 flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors max-w-[260px] ${
         onDark
           ? 'bg-white/10 border-white/20 hover:border-white/40'
-          : 'bg-black/20 border-white/10 hover:border-[#7C3AED]/50'
+          : 'bg-black/20 border-white/10 hover:border-primary-main/50'
       }`}
     >
-      <div className="w-9 h-9 rounded-lg bg-[#7C3AED]/20 flex items-center justify-center shrink-0">
-        <FileText size={18} className="text-[#7C3AED]" />
+      <div className="w-9 h-9 rounded-lg bg-primary-main/20 flex items-center justify-center shrink-0">
+        <FileText size={18} className="text-primary-main" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-[13px] font-medium truncate">{name}</div>

@@ -140,7 +140,7 @@ function App() {
     }
     // Özel odalar için özel renkler
     if (room.name === 'Ana Salon') {
-      return { icon: Users, color: '#7C3AED', glow: 'rgba(124,58,237,0.3)', sub: room.description || 'Sohbet Odası' };
+      return { icon: Users, color: 'var(--color-primary-main)', glow: 'rgba(var(--accent-rgb),0.3)', sub: room.description || 'Sohbet Odası' };
     }
     if (room.name === 'Müzik Odası') {
       return { icon: Music, color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: room.description || 'Dinleme Odası' };
@@ -973,13 +973,13 @@ function App() {
               className="flex items-center gap-2 flex-1 hover:bg-white/10 p-1 rounded-full transition-all group overflow-hidden"
             >
               <div className="avatar-container relative cursor-pointer group/avatar">
-                <div className="w-9 h-9 rounded-full overflow-hidden border border-[#7C3AED] bg-[#18181b] flex items-center justify-center text-lg shrink-0 group-hover/avatar:opacity-80 transition-opacity">
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-primary-main bg-[#18181b] flex items-center justify-center text-lg shrink-0 group-hover/avatar:opacity-80 transition-opacity">
                   {renderAvatar(avatarId)}
                 </div>
                 <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
               </div>
               <div className="flex flex-col items-start min-w-0 flex-1">
-                <span className="text-sm font-bold text-white group-hover:text-[#7C3AED] transition-colors truncate w-full text-left">{username}</span>
+                <span className="text-sm font-bold text-white group-hover:text-primary-main transition-colors truncate w-full text-left">{username}</span>
                 <span className="text-[10px] text-white/50 truncate w-full text-left">{myCustomStatusMessage || "Profili Düzenle"}</span>
               </div>
             </button>
@@ -1029,7 +1029,7 @@ function App() {
               className="flex items-center justify-between px-1 cursor-pointer w-full hover:bg-white/5 p-1 rounded-lg transition-colors group shrink-0"
             >
               <div className="flex items-center gap-2">
-                <MessageSquare size={16} className="text-[#7C3AED]" />
+                <MessageSquare size={16} className="text-primary-main" />
                 <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider group-hover:text-white transition-colors">Özel Mesajlar</h3>
                 {!isDMOpen && Object.values(unreadCounts).reduce((a, b) => a + b, 0) > 0 && (
                   <span className="ml-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
@@ -1060,7 +1060,7 @@ function App() {
                       key={user.id}
                       onClick={() => handleStartDM(user)}
                       className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
-                        activeDMUser?.id === user.id ? 'bg-[#7C3AED]/20 border border-[#7C3AED]/30' : 'hover:bg-white/5 border border-transparent'
+                        activeDMUser?.id === user.id ? 'bg-primary-main/20 border border-primary-main/30' : 'hover:bg-white/5 border border-transparent'
                       }`}
                     >
                       <div className="relative">
@@ -1087,7 +1087,7 @@ function App() {
               {/* Yeni Mesaj Butonu */}
               <button
                 onClick={() => setIsNewMessageModalOpen(true)}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#7C3AED]/10 text-[#7C3AED] hover:bg-[#7C3AED] hover:text-white transition-all font-semibold text-sm border border-[#7C3AED]/30 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)] shrink-0"
+                className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary-main/10 text-primary-main hover:bg-primary-main hover:text-white transition-all font-semibold text-sm border border-primary-main/30 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.3)] shrink-0"
               >
                 <Plus size={16} />
                 Yeni Mesaj
@@ -1183,7 +1183,7 @@ function App() {
         <motion.div variants={itemVariants} className="text-center mb-7">
           <div className="relative mb-5 group inline-block cursor-pointer" onClick={() => setIsMainLogoFlipped(!isMainLogoFlipped)}>
             <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.4) 0%, transparent 70%)' }} />
+              style={{ background: 'radial-gradient(circle, rgba(var(--accent-rgb),0.4) 0%, transparent 70%)' }} />
             
             {/* 3D Flip Logo */}
             <div 
@@ -1203,8 +1203,8 @@ function App() {
                   className="absolute inset-0 rounded-3xl overflow-hidden transition-all duration-500 group-hover:scale-110 group-hover:-translate-y-1"
                   style={{
                     backfaceVisibility: 'hidden',
-                    boxShadow: '0 8px 32px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.08)',
-                    filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.3))',
+                    boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.3), 0 0 0 1px rgba(255,255,255,0.08)',
+                    filter: 'drop-shadow(0 0 20px rgba(var(--accent-rgb),0.3))',
                   }}
                 >
                   <img src="/logo.png" alt="SandalyeciMetin" className="w-full h-full object-cover transition-all duration-500 group-hover:brightness-110" />
@@ -1218,13 +1218,13 @@ function App() {
                   style={{
                     backfaceVisibility: 'hidden',
                     transform: 'rotateY(180deg)',
-                    boxShadow: '0 8px 32px rgba(124,58,237,0.3), 0 0 0 1px rgba(255,255,255,0.08)',
-                    filter: 'drop-shadow(0 0 20px rgba(124,58,237,0.3))',
+                    boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.3), 0 0 0 1px rgba(255,255,255,0.08)',
+                    filter: 'drop-shadow(0 0 20px rgba(var(--accent-rgb),0.3))',
                   }}
                 >
                   <img src="/sm-logo.jpg" alt="SM" className="w-full h-full object-contain mix-blend-screen transition-all duration-500 group-hover:brightness-125" />
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                    style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, transparent 60%)' }} />
+                    style={{ background: 'linear-gradient(135deg, rgba(var(--accent-rgb),0.15) 0%, transparent 60%)' }} />
                 </div>
               </div>
             </div>
@@ -1279,8 +1279,8 @@ function App() {
                    autoComplete="email"
                    className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                    style={{
-                     background: focused === 'email' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
-                     border: focused === 'email' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                     background: focused === 'email' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                     border: focused === 'email' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
                    }}
                  />
                </div>
@@ -1290,13 +1290,13 @@ function App() {
                  whileHover={{ scale: 1.02, y: -2 }}
                  whileTap={{ scale: 0.97 }}
                  className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
-                 style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)', boxShadow: '0 8px 32px rgba(124,58,237,0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                  {isLoading ? 'Gönderiliyor...' : 'Şifre Sıfırlama Linki Gönder'}
                </motion.button>
                <div className="text-center pt-3">
                  <button type="button" onClick={() => { setAuthState('login'); setErrorMsg(''); setSuccessMsg(''); }}
                    className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
-                   style={{ color: 'rgba(124,58,237,0.8)' }}>
+                   style={{ color: 'rgba(var(--accent-rgb),0.8)' }}>
                    Giriş Ekranına Dön
                  </button>
                </div>
@@ -1315,8 +1315,8 @@ function App() {
                    autoComplete="new-password"
                    className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                    style={{
-                     background: focused === 'password' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
-                     border: focused === 'password' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                     background: focused === 'password' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                     border: focused === 'password' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
                    }}
                  />
                </div>
@@ -1326,7 +1326,7 @@ function App() {
                  whileHover={{ scale: 1.02, y: -2 }}
                  whileTap={{ scale: 0.97 }}
                  className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
-                 style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)', boxShadow: '0 8px 32px rgba(124,58,237,0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                  {isLoading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
                </motion.button>
              </form>
@@ -1346,8 +1346,8 @@ function App() {
                     autoComplete="username"
                     className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                     style={{
-                      background: focused === 'username' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
-                      border: focused === 'username' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                      background: focused === 'username' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                      border: focused === 'username' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
                     }}
                   />
                 </div>
@@ -1365,8 +1365,8 @@ function App() {
                   autoComplete="email"
                   className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                   style={{
-                    background: focused === 'email' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
-                    border: focused === 'email' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                    background: focused === 'email' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                    border: focused === 'email' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
                   }}
                 />
               </div>
@@ -1383,8 +1383,8 @@ function App() {
                   autoComplete={authState === 'register' ? 'new-password' : 'current-password'}
                   className="w-full pl-12 pr-12 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                   style={{
-                    background: focused === 'password' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
-                    border: focused === 'password' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                    background: focused === 'password' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                    border: focused === 'password' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
                   }}
                 />
                 <button
@@ -1429,10 +1429,10 @@ function App() {
                       autoComplete="new-password"
                       className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                       style={{
-                        background: focused === 'passwordConfirm' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
+                        background: focused === 'passwordConfirm' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                         border: passwordConfirm && password !== passwordConfirm
                           ? '1px solid rgba(239,68,68,0.6)'
-                          : focused === 'passwordConfirm' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                          : focused === 'passwordConfirm' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
                       }}
                     />
                   </div>
@@ -1448,7 +1448,7 @@ function App() {
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.97 }}
                 className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 50%, #7C3AED 100%)', boxShadow: '0 8px 32px rgba(124,58,237,0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                 <span className="relative flex items-center justify-center gap-2">
                   <Sparkles size={16} />
                   {isLoading ? 'Bekleniyor...' : (authState === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
@@ -1470,7 +1470,7 @@ function App() {
                 </span>
                 <button type="button" onClick={() => { setAuthState(authState === 'login' ? 'register' : 'login'); setErrorMsg(''); setSuccessMsg(''); setPasswordConfirm(''); setShowPassword(false); }}
                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
-                  style={{ color: 'rgba(124,58,237,0.8)' }}>
+                  style={{ color: 'rgba(var(--accent-rgb),0.8)' }}>
                   {authState === 'login' ? 'Kayıt Ol' : 'Giriş Yap'}
                 </button>
               </div>
@@ -1557,7 +1557,7 @@ function App() {
                         value={roomSearchQuery}
                         onChange={(e) => setRoomSearchQuery(e.target.value)}
                         placeholder="İsim veya oda kodu ile ara..."
-                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-10 pr-9 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-[#7C3AED]/50 transition-colors"
+                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl pl-10 pr-9 py-3 text-white text-sm placeholder:text-white/25 outline-none focus:border-primary-main/50 transition-colors"
                       />
                       {roomSearchQuery && (
                         <button onClick={() => setRoomSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors">
@@ -1604,7 +1604,7 @@ function App() {
                             <motion.div
                               layoutId="roomTabPill"
                               className="absolute inset-0 rounded-xl"
-                              style={{ background: 'rgba(124,58,237,0.9)', boxShadow: '0 4px 16px rgba(124,58,237,0.35)' }}
+                              style={{ background: 'rgba(var(--accent-rgb),0.9)', boxShadow: '0 4px 16px rgba(var(--accent-rgb),0.35)' }}
                               transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 34 }}
                             />
                           )}
@@ -1633,7 +1633,7 @@ function App() {
                     <div className="flex items-center justify-center gap-2 pt-3 shrink-0">
                       {tabs.map((t) => (
                         <button key={t.key} onClick={() => goRoomPage(t.key)} className="group py-1" title={t.label} aria-label={t.label}>
-                          <div className={`h-1.5 rounded-full transition-all duration-300 ${roomPage === t.key ? 'w-5 bg-[#7C3AED]' : 'w-1.5 bg-white/20 group-hover:bg-white/40'}`} />
+                          <div className={`h-1.5 rounded-full transition-all duration-300 ${roomPage === t.key ? 'w-5 bg-primary-main' : 'w-1.5 bg-white/20 group-hover:bg-white/40'}`} />
                         </button>
                       ))}
                     </div>
@@ -1645,7 +1645,7 @@ function App() {
                 <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.25)' }}>Yeni bir oda mı açmak istiyorsun? </span>
                 <button onClick={() => setIsCreateRoomModalOpen(true)}
                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
-                  style={{ color: 'rgba(124,58,237,0.8)' }}>
+                  style={{ color: 'rgba(var(--accent-rgb),0.8)' }}>
                   Tıkla
                 </button>
               </div>
@@ -1660,7 +1660,7 @@ function App() {
             style={{ 
               fontFamily: "'Orbitron', sans-serif",
               color: '#F8FAFC',
-              textShadow: '0 0 5px rgba(124,58,237,0.8), 0 0 10px rgba(124,58,237,0.6)'
+              textShadow: '0 0 5px rgba(var(--accent-rgb),0.8), 0 0 10px rgba(var(--accent-rgb),0.6)'
             }}>
             MADE BY EFECAN
           </span>
@@ -1683,7 +1683,7 @@ function App() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 28 }}
             className="shrink-0 flex items-center justify-center gap-3 p-4 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-[18px]">
             <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer"
-               className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] transition-all duration-300">
+               className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(var(--accent-rgb),0.6)] transition-all duration-300">
               <Github size={20} />
             </a>
             <a href="https://www.linkedin.com/in/efecanefee/" target="_blank" rel="noopener noreferrer"
@@ -1705,7 +1705,7 @@ function App() {
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
         className="md:hidden fixed bottom-5 right-5 flex flex-col gap-3 z-50">
         <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer" 
-           className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(124,58,237,0.6)] transition-all duration-300">
+           className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(var(--accent-rgb),0.6)] transition-all duration-300">
           <Github size={20} />
         </a>
         <a href="https://www.linkedin.com/in/efecanefee/" target="_blank" rel="noopener noreferrer" 

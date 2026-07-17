@@ -65,7 +65,7 @@ class ErrorBoundary extends React.Component<Props, State> {
             fontWeight: 600,
             fontSize: 14,
             color: '#fff',
-            background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%)',
+            background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 100%)',
           }}
         >
           Sayfayı Yenile

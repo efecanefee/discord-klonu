@@ -64,7 +64,7 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
       style={{ background: '#09090b', border: '1px solid #334155' }}
     >
       {/* Üst banner */}
-      <div className="h-12 bg-gradient-to-r from-[#7C3AED]/40 to-[#8B5CF6]/20" />
+      <div className="h-12 bg-gradient-to-r from-primary-main/40 to-primary-main/20" />
       <div className="px-4 pb-4 -mt-6">
         <div className="w-14 h-14 rounded-full bg-[#18181b] border-4 border-[#09090b] flex items-center justify-center text-2xl overflow-hidden">
           {renderAvatar(user.avatarId || 'default')}
@@ -95,7 +95,7 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
             onClick={onSendMessage}
             disabled={!user.userId}
             className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%)' }}
+            style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 100%)' }}
           >
             <MessageSquare size={14} /> Mesaj Gönder
           </button>

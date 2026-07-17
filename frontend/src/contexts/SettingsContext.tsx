@@ -9,6 +9,19 @@ export const THEMES: { id: Theme; label: string }[] = [
   { id: 'oled', label: 'OLED' },
 ];
 
+export type Accent = 'violet' | 'blue' | 'emerald' | 'amber' | 'rose' | 'cyan';
+
+// swatch: yalnizca ayarlardaki nokta icin. Gercek degerler index.css'te —
+// burada tutulan tek sey kullaniciya gosterilecek onizleme rengi.
+export const ACCENTS: { id: Accent; label: string; swatch: string }[] = [
+  { id: 'violet', label: 'Mor', swatch: '#7c3aed' },
+  { id: 'blue', label: 'Mavi', swatch: '#2563eb' },
+  { id: 'emerald', label: 'Yeşil', swatch: '#059669' },
+  { id: 'amber', label: 'Turuncu', swatch: '#d97706' },
+  { id: 'rose', label: 'Kırmızı', swatch: '#e11d48' },
+  { id: 'cyan', label: 'Camgöbeği', swatch: '#0891b2' },
+];
+
 export interface Settings {
   // Ses / Görüntü
   microphoneId: string;
@@ -28,6 +41,7 @@ export interface Settings {
   
   // Görünüm / UI
   theme: Theme;
+  accent: Accent;
   reducedMotion: boolean;
   glassEffect: boolean;  // Panellerdeki backdrop-blur. Pahalı — zayıf cihazlarda kapatılabilir.
 }
@@ -48,6 +62,7 @@ const defaultSettings: Settings = {
   pushNotificationsEnabled: false,
   
   theme: 'dark',
+  accent: 'violet',
   reducedMotion: true,
   glassEffect: true,   // Varsayılan açık — mevcut görünüm korunsun.
 };
@@ -99,6 +114,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     media.addEventListener('change', apply);
     return () => media.removeEventListener('change', apply);
   }, [settings.theme]);
+
+  // Vurgu rengi temadan (zeminden) bagimsiz secilir: ayri bir attribute.
+  useEffect(() => {
+    document.documentElement.dataset.accent = settings.accent;
+  }, [settings.accent]);
 
   // Saf CSS efektlerini <html> sinifi uzerinden kontrol et — React'in
   // reducedMotion kontrolleri stylesheet'teki animasyonlara ulasamiyor.
