@@ -11,7 +11,7 @@ import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
-import { useSettings, THEMES } from '../contexts/SettingsContext';
+import { useSettings } from '../contexts/SettingsContext';
 import { renderAvatar } from '../constants/avatars';
 import { roomApi } from '../services/roomApi';
 import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
@@ -832,16 +832,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {/* Tema seçici */}
-                        <div className="hidden sm:flex items-center gap-1 p-1 bg-bg-base rounded-xl border border-border-main">
-                            {THEMES.map(t => (
-                                <button key={t.id} onClick={() => updateSettings({ theme: t.id })}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${settings.theme === t.id ? 'bg-primary-main text-white' : 'text-text-muted hover:text-text-main'}`}>
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
-
                         {/* Kullanıcı adı + durum */}
                         <div className="relative">
                             <button onClick={() => setShowStatusMenu(p => !p)}

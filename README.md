@@ -40,7 +40,7 @@
 
 ### 🎨 Arayüz
 - Glassmorphism tasarım
-- Koyu / Açık / OLED tema
+- Tema: Sistem / Koyu / Açık / OLED (Ayarlar → Görünüm; seçim kayıtlı kalır)
 - Framer Motion animasyonları
 - Tam ekran video grid (Meet benzeri)
 - Ekran paylaşımı PiP modu
