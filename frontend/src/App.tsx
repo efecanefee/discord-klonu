@@ -18,6 +18,7 @@ import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 import RoomCard from './components/RoomCard';
 import ClockPanel from './components/ClockPanel';
+import ActivityFeed from './components/ActivityFeed';
 
 // Baslik harf harf yalnizca ilk goruntulemede animasyonlanir. memo: App'in her
 // render'inda 15 motion.span'in yeniden olusturulmasini engeller.
@@ -1603,6 +1604,9 @@ function App() {
 
           {/* Tarih & Saat */}
           <ClockPanel />
+
+          {/* Son Aktiviteler — oda kurulma/silinme akışı */}
+          <ActivityFeed rooms={rooms} />
 
           {/* Sağ Alt Bölme — Sosyal İkonlar */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 28 }}
