@@ -919,8 +919,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         
                                         <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-colors">
                                             <div className="flex flex-col gap-0.5">
-                                                <span className="text-sm font-semibold text-text-main">Gürültü Engelleme</span>
-                                                <span className="text-[10px] text-text-muted leading-tight">Fan, uğultu gibi sürekli sesleri azaltır</span>
+                                                <span className="text-sm font-semibold text-text-main">Yankı ve Gürültü Filtresi</span>
+                                                <span className="text-[10px] text-text-muted leading-tight">Yankı engelleme + fan/uğultu azaltma</span>
                                             </div>
                                             <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.noiseSuppression ? 'bg-primary-main' : 'bg-white/10'}`}>
                                                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.noiseSuppression ? 'translate-x-4' : 'translate-x-1'}`} />

@@ -79,6 +79,11 @@ input:focus {
   100% { background-position: 0% center; }
 }
 
+/* DIKKAT: background-position compositor'a devredilemez. background-clip:text ile
+   birlikte animasyon her karede yeniden boyama demek — hem de sonsuza kadar.
+   Bu yuzden "Hareketi Azalt" ve sistem tercihi ile kapatiliyor.
+   will-change kasitli olarak yok: compositable olmayan bir ozellikte boyamayi
+   ucuzlatmaz, yalnizca bos yere katman ayirir. */
 .text-shine {
   background: linear-gradient(90deg, #ffffff 0%, #ffffff 45%, #00B4D8 50%, #90E0EF 52%, #ffffff 57%, #ffffff 100%);
   background-size: 200% auto;
@@ -86,12 +91,43 @@ input:focus {
   -webkit-text-fill-color: transparent;
   animation: textShine 8s linear infinite;
   animation-delay: 0.8s;
-  will-change: background-position;
 }
 
-/* Premium Radial Gradient Background */
+html.reduce-motion .text-shine {
+  animation: none;
+  background-position: 0% center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-shine {
+    animation: none;
+    background-position: 0% center;
+  }
+}
+
+/* Cam efekti kapaliyken backdrop-blur'u tamamen kaldir.
+   backdrop-filter, altindaki icerik her degistiginde yeniden hesaplanir ve
+   buyuk panellerde pahalidir. Blur gidince panel fazla saydam kalacagi icin
+   arka plan opakligi artiriliyor — okunabilirlik korunur.
+   Bilerek reducedMotion'a bagli DEGIL: o ayar varsayilan acik oldugu icin cam
+   gorunumu herkeste varsayilan kapanirdi.
+   Secici Tailwind'in inline backdrop-blur siniflarini hedefler; boylece yakin
+   zamanda duzeltilen yerlesim isaretlemesine hic dokunmuyoruz. */
+html.no-glass [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: rgba(20, 20, 26, 0.92) !important;
+}
+
+/* Arka plan: neredeyse siyah zemin + ustten tek bir yumusak lacivert isik.
+   Renk kimligi ayni (#1e3a8a) — yalnizca yogunlugu dusuruldu ve merkez yerine
+   ustten geliyor, boylece paneller one cikiyor.
+   Statik: tek seferde boyanir, animasyon yok. Arka planda surekli calisan bir
+   sey birakmak, cam panellerin backdrop-filter'ini her karede yeniden
+   hesaplatir — lobideki kasmanin kaynagi tam olarak buydu. */
 .bg-mesh-gradient {
-  background: radial-gradient(circle at center, #1e3a8a 0%, #0f172a 60%, #020617 100%);
+  background-color: #09090b;
+  background-image: radial-gradient(ellipse 110% 75% at 50% -15%, rgba(30, 58, 138, 0.42), transparent 70%);
   width: 100%;
   height: 100%;
   position: absolute;
