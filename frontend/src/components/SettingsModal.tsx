@@ -325,8 +325,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
 
                   <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Gürültü Engelleme (Noise Suppression)</span>
-                      <span className="text-xs text-white/50 mt-1">Tarayıcının kendi filtresi. Fan, uğultu gibi sürekli sesleri azaltır.</span>
+                      <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Yankı ve Gürültü Filtresi</span>
+                      <span className="text-xs text-white/50 mt-1">Tarayıcının kendi filtresi: yankı engelleme, fan/uğultu azaltma ve otomatik ses seviyesi. Kapatırsan hoparlör kullananlar yankı duyar.</span>
                     </div>
                     <div className="relative">
                       <input
@@ -504,6 +504,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                     />
                     <div className={`w-10 h-6 rounded-full transition-colors ${settings.reducedMotion ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
                       <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.reducedMotion ? 'translate-x-4' : ''}`} />
+                    </div>
+                  </div>
+                </label>
+
+                <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Cam Efekti (Blur)</span>
+                    <span className="text-xs text-white/50 mt-1">Panellerin arkasını bulanıklaştırır. Şık ama pahalı — arayüz takılıyorsa ilk bunu kapat.</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={settings.glassEffect}
+                      onChange={(e) => updateSettings({ glassEffect: e.target.checked })}
+                    />
+                    <div className={`w-10 h-6 rounded-full transition-colors ${settings.glassEffect ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                      <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.glassEffect ? 'translate-x-4' : ''}`} />
                     </div>
                   </div>
                 </label>
