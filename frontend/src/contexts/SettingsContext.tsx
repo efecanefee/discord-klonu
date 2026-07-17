@@ -7,7 +7,9 @@ export interface Settings {
   pushToTalk: boolean;
   pttKey: string;          // Bas-konuş tuşu (KeyboardEvent.code)
   muteToggleKey: string;   // Mikrofon aç/kapat kısayolu (KeyboardEvent.code)
-  noiseSuppression: boolean;
+  noiseSuppression: boolean;   // Tarayıcının kendi filtresi — durağan gürültü için
+  noiseGateEnabled: boolean;   // Gürültü kapısı — eşik altındaki sesi tamamen keser
+  noiseGateThreshold: number;  // 0-100
   
   // Bildirimler
   notificationSoundEnabled: boolean;
@@ -26,6 +28,8 @@ const defaultSettings: Settings = {
   pttKey: 'Space',
   muteToggleKey: 'PageUp',
   noiseSuppression: true,
+  noiseGateEnabled: true,
+  noiseGateThreshold: 15,
   
   notificationSoundEnabled: true,
   notificationTone: 'default',

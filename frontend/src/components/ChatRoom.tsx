@@ -920,12 +920,23 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-colors">
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="text-sm font-semibold text-text-main">Gürültü Engelleme</span>
-                                                <span className="text-[10px] text-text-muted leading-tight">Yapay zeka ile arka plan sesini filtreler</span>
+                                                <span className="text-[10px] text-text-muted leading-tight">Fan, uğultu gibi sürekli sesleri azaltır</span>
                                             </div>
                                             <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.noiseSuppression ? 'bg-primary-main' : 'bg-white/10'}`}>
                                                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.noiseSuppression ? 'translate-x-4' : 'translate-x-1'}`} />
                                             </div>
                                             <input type="checkbox" className="hidden" checked={settings.noiseSuppression} onChange={() => updateSettings({ noiseSuppression: !settings.noiseSuppression })} />
+                                        </label>
+
+                                        <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-colors">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-sm font-semibold text-text-main">Giriş Hassasiyeti</span>
+                                                <span className="text-[10px] text-text-muted leading-tight">Eşik altındaki sesi tamamen keser · eşik Ayarlar'dan</span>
+                                            </div>
+                                            <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.noiseGateEnabled ? 'bg-primary-main' : 'bg-white/10'}`}>
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.noiseGateEnabled ? 'translate-x-4' : 'translate-x-1'}`} />
+                                            </div>
+                                            <input type="checkbox" className="hidden" checked={settings.noiseGateEnabled} onChange={() => updateSettings({ noiseGateEnabled: !settings.noiseGateEnabled })} />
                                         </label>
                                     </div>
                                     {audioOutputs.length > 0 && (

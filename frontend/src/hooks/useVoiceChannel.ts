@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import signalrService, { type VoiceUser } from '../services/signalrService';
 import { useSettings } from '../contexts/SettingsContext';
 import { getRtcConfig } from '../config/webrtc';
+import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 
 export type VoiceParticipant = VoiceUser;
 
@@ -21,7 +22,12 @@ export function useVoiceChannel() {
     // ICE'i kalici olarak basarisiz olan peer'lar — UI'da uyari gostermek icin.
     const [connectionIssues, setConnectionIssues] = useState<Set<string>>(new Set());
 
+    // localStreamRef = peer'lara giden islenmis stream (kapidan gecmis).
+    // rawStreamRef = getUserMedia'dan gelen ham stream; yalnizca stop() icin
+    // tutulur, yoksa mikrofon isigi sonmez.
     const localStreamRef = useRef<MediaStream | null>(null);
+    const rawStreamRef = useRef<MediaStream | null>(null);
+    const gateRef = useRef<NoiseGate | null>(null);
     const pcs = useRef<Map<string, RTCPeerConnection>>(new Map());
     const iceQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
     const analysers = useRef<Map<string, { ctx: AudioContext; interval: number }>>(new Map());
@@ -30,9 +36,17 @@ export function useVoiceChannel() {
     const noiseSuppression = settings.noiseSuppression;
     const microphoneId = settings.microphoneId;
 
-    // Ayarlardaki mikrofonla stream ac ('default' ise secimi tarayiciya birak).
-    const openMic = useCallback(async (): Promise<MediaStream> => {
-        return navigator.mediaDevices.getUserMedia({
+    // Yeni kapi olustururken baslangic degerleri buradan okunur. Ref, cunku
+    // openMic'in kimligi ayar degisince degismemeli (yoksa mikrofon yeniden acilir).
+    const gateSettingsRef = useRef({
+        enabled: settings.noiseGateEnabled,
+        threshold: settings.noiseGateThreshold,
+    });
+
+    // Ayarlardaki mikrofonla stream ac ('default' ise secimi tarayiciya birak),
+    // ardindan gurultu kapisindan gecir. Donen stream peer'lara gonderilir.
+    const openMic = useCallback(async (): Promise<{ raw: MediaStream; processed: MediaStream; gate: NoiseGate }> => {
+        const raw = await navigator.mediaDevices.getUserMedia({
             audio: {
                 ...(microphoneId && microphoneId !== 'default' ? { deviceId: { exact: microphoneId } } : {}),
                 noiseSuppression: { ideal: noiseSuppression },
@@ -41,6 +55,8 @@ export function useVoiceChannel() {
             },
             video: false,
         });
+        const gate = createNoiseGate(raw, gateSettingsRef.current);
+        return { raw, processed: gate.stream, gate };
     }, [microphoneId, noiseSuppression]);
 
     const cleanupAnalyser = (connId: string) => {
@@ -152,8 +168,13 @@ export function useVoiceChannel() {
         iceQueues.current.clear();
         analysers.current.forEach(a => { clearInterval(a.interval); a.ctx.close().catch(() => { }); });
         analysers.current.clear();
+        gateRef.current?.destroy();
+        gateRef.current = null;
         localStreamRef.current?.getTracks().forEach(t => t.stop());
         localStreamRef.current = null;
+        // Ham stream ayrica durdurulmali — mikrofon isigi ancak boyle soner.
+        rawStreamRef.current?.getTracks().forEach(t => t.stop());
+        rawStreamRef.current = null;
         setRemoteStreams(new Map());
         setSpeakingConnIds(new Set());
         setConnectionIssues(new Set());
@@ -175,16 +196,17 @@ export function useVoiceChannel() {
         if (activeKeyRef.current === voiceKey) return;
         if (activeKeyRef.current) leaveVoice();
 
-        // Mikrofon aç
-        let stream: MediaStream;
+        // Mikrofon aç (gürültü kapısından geçmiş stream peer'lara gider)
         try {
-            stream = await openMic();
+            const { raw, processed, gate } = await openMic();
+            rawStreamRef.current = raw;
+            localStreamRef.current = processed;
+            gateRef.current = gate;
         } catch (e) {
             console.error('[Voice] Mikrofon açılamadı:', e);
             alert('Mikrofona erişilemedi. Tarayıcı izinlerini kontrol et.');
             return;
         }
-        localStreamRef.current = stream;
         setIsMuted(false);
 
         const onParticipants = (vk: string, users: VoiceUser[]) => {
@@ -253,19 +275,20 @@ export function useVoiceChannel() {
 
         let cancelled = false;
         (async () => {
-            let newStream: MediaStream;
+            let opened: { raw: MediaStream; processed: MediaStream; gate: NoiseGate };
             try {
-                newStream = await openMic();
+                opened = await openMic();
             } catch (e) {
                 console.error('[Voice] Mikrofon degistirilemedi:', e);
                 return;
             }
             if (cancelled || !activeKeyRef.current) {
-                newStream.getTracks().forEach(t => t.stop());
+                opened.gate.destroy();
+                opened.raw.getTracks().forEach(t => t.stop());
                 return;
             }
 
-            const newTrack = newStream.getAudioTracks()[0];
+            const newTrack = opened.processed.getAudioTracks()[0];
             // Mikrofon kapaliysa yeni track'te de kapali kalsin.
             const wasEnabled = localStreamRef.current?.getAudioTracks()[0]?.enabled ?? true;
             if (newTrack) newTrack.enabled = wasEnabled;
@@ -275,12 +298,29 @@ export function useVoiceChannel() {
                 if (sender && newTrack) sender.replaceTrack(newTrack).catch(e => console.error('[Voice] replaceTrack hatasi:', e));
             });
 
+            gateRef.current?.destroy();
             localStreamRef.current?.getTracks().forEach(t => t.stop());
-            localStreamRef.current = newStream;
+            rawStreamRef.current?.getTracks().forEach(t => t.stop());
+
+            gateRef.current = opened.gate;
+            localStreamRef.current = opened.processed;
+            rawStreamRef.current = opened.raw;
         })();
 
         return () => { cancelled = true; };
     }, [openMic]);
+
+    // Kapi ayarlari degisince calisan kapiya canli uygula — stream'i yeniden
+    // acmaya gerek yok, boylece ses kesilmez. Bir sonraki kapinin baslangic
+    // degeri de burada guncellenir.
+    useEffect(() => {
+        gateSettingsRef.current = {
+            enabled: settings.noiseGateEnabled,
+            threshold: settings.noiseGateThreshold,
+        };
+        gateRef.current?.setEnabled(settings.noiseGateEnabled);
+        gateRef.current?.setThreshold(settings.noiseGateThreshold);
+    }, [settings.noiseGateEnabled, settings.noiseGateThreshold]);
 
     const toggleMute = useCallback(() => {
         const track = localStreamRef.current?.getAudioTracks()[0];
