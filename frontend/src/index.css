@@ -253,6 +253,17 @@ html.reduce-motion *::after {
   transition-duration: 80ms;
 }
 
+/* Saat panelindeki iki nokta: saniyenin nabzi. Opacity compositor'da —
+   boyama maliyeti yok; reduce-motion kurali bunu da otomatik kapatir. */
+@keyframes clockColon {
+  0%, 40% { opacity: 1; }
+  50%, 90% { opacity: 0.25; }
+  100% { opacity: 1; }
+}
+.clock-colon {
+  animation: clockColon 2s ease-in-out infinite;
+}
+
 @keyframes textShine {
   0% { background-position: 200% center; }
   100% { background-position: 0% center; }

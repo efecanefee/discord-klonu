@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 import RoomCard from './components/RoomCard';
+import ClockPanel from './components/ClockPanel';
 
 // Baslik harf harf yalnizca ilk goruntulemede animasyonlanir. memo: App'in her
 // render'inda 15 motion.span'in yeniden olusturulmasini engeller.
@@ -1086,6 +1087,13 @@ function App() {
         )}
       </AnimatePresence>
 
+      {/* Mobil tarih & saat şeridi — masaüstünde sağ kolonda ayrı panel var */}
+      {authState === 'rooms' && (
+        <div className="md:hidden w-full max-w-[400px] mx-4">
+          <ClockPanel compact />
+        </div>
+      )}
+
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
         className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 flex flex-col max-h-screen md:max-h-[calc(100vh-40px)] bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
         style={{
@@ -1592,6 +1600,9 @@ function App() {
               }}
             />
           </div>
+
+          {/* Tarih & Saat */}
+          <ClockPanel />
 
           {/* Sağ Alt Bölme — Sosyal İkonlar */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 28 }}
