@@ -164,6 +164,92 @@ input:focus {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
+/* "Animasyonlari Azalt" acikken tum CSS animasyon/gecisleri tek yerden sondur.
+   0.01ms: display:none'a benzer ani gecis ama transitionend olaylari yine
+   tetiklenir — animasyon bitisine bagli kod kirilmaz. Framer tarafi ayni
+   ayari MotionConfig uzerinden aliyor (main.tsx). */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Oda / sunucu karti hover sistemi.
+   Renk karta --rc (ana ton) ve --rc-glow (golge/parilti) degiskenleriyle
+   satir ici verilir; hover gorunumunun tamami CSS'te kalir — React state'i
+   yok, App yeniden render olmaz.
+   Golge ve parilti onceden boyanmis ayri katmanlar: hover'da yalnizca
+   opacity degisir (compositor isi), box-shadow'un kendisi asla animasyonlanmaz. */
+.room-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+@media (hover: hover) {
+  .room-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--rc) 30%, transparent);
+    background-color: color-mix(in srgb, var(--rc) 8%, transparent);
+  }
+}
+.room-card:active {
+  transform: translateY(0) scale(0.985);
+  transition-duration: 90ms;
+}
+.room-card-glow,
+.room-card-shadow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.room-card-glow {
+  background: radial-gradient(circle at 18% 50%, var(--rc-glow) 0%, transparent 62%);
+}
+.room-card-shadow {
+  box-shadow: 0 10px 32px var(--rc-glow);
+}
+.room-card:hover .room-card-glow,
+.room-card:hover .room-card-shadow {
+  opacity: 1;
+}
+.room-card-chevron {
+  color: rgba(255, 255, 255, 0.2);
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    color 180ms ease;
+}
+.room-card:hover .room-card-chevron {
+  transform: translateX(3px);
+  color: var(--rc);
+}
+
+/* Birincil butonlar: framer whileHover yerine saf CSS — transform + filter
+   ikisi de compositor'da, JS calismaz. */
+.btn-fx {
+  transition:
+    transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 150ms ease;
+}
+@media (hover: hover) {
+  .btn-fx:hover {
+    transform: translateY(-2px) scale(1.015);
+    filter: brightness(1.06);
+  }
+}
+.btn-fx:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 80ms;
+}
+
 @keyframes textShine {
   0% { background-position: 200% center; }
   100% { background-position: 0% center; }

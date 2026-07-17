@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import ChatRoom from './components/ChatRoom';
 import TextChatRoom from './components/TextChatRoom';
 import DMChatRoom from './components/DMChatRoom';
@@ -12,10 +12,31 @@ import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
-import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, Menu, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
+import RoomCard from './components/RoomCard';
+
+// Baslik harf harf yalnizca ilk goruntulemede animasyonlanir. memo: App'in her
+// render'inda 15 motion.span'in yeniden olusturulmasini engeller.
+const AnimatedTitle = memo(function AnimatedTitle() {
+  return (
+    <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-[700] text-white mb-2 tracking-tight flex justify-center text-shine"
+      style={{ textShadow: '0 0 40px #00B4D860' }}>
+      {'SandalyeciMetin'.split('').map((char, index) => (
+        <motion.span
+          key={index}
+          initial={{ opacity: 0, y: -14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 + index * 0.03, duration: 0.3, ease: 'easeOut' }}
+        >
+          {char === ' ' ? ' ' : char}
+        </motion.span>
+      ))}
+    </h1>
+  );
+});
 
 // Kaba sifre gucu gostergesi. Amac kullaniciya yon vermek — gercek zorunluluk
 // backend'de olmali, buradaki skor yalnizca gorsel geri bildirim.
@@ -57,7 +78,8 @@ function App() {
   const [myShowLastSeen, setMyShowLastSeen] = useState(true);
   const [userId, setUserId] = useState(localStorage.getItem('userId') || '');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isDMOpen, setIsDMOpen] = useState(true);
+  // Varsayilan kapali: lobi ilk boyamada DM listesini render etmesin.
+  const [isDMOpen, setIsDMOpen] = useState(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isDeafened, setIsDeafened] = useState(false);
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
@@ -77,12 +99,12 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { settings } = useSettings();
-  const [hoveredRoom, setHoveredRoom] = useState<string | null>(null);
-  const [roomUsers, setRoomUsers] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMainLogoFlipped, setIsMainLogoFlipped] = useState(false);
-  const hoverTimeoutRef = useRef<number | null>(null);
+  // Sunucularim paneli: varsayilan kapali — istek uzerine acilir, listesi de
+  // ancak o zaman yuklenir (lobide gereksiz fetch ve render maliyeti yok).
+  const [isServersOpen, setIsServersOpen] = useState(false);
 
   const handleUpdatePrivacy = async (showLastSeen: boolean) => {
     setMyShowLastSeen(showLastSeen);
@@ -133,100 +155,20 @@ function App() {
   const [deleteConfirmRoom, setDeleteConfirmRoom] = useState<RoomData | null>(null);
   const [isDeletingRoom, setIsDeletingRoom] = useState(false);
 
-  // Oda için ikon ve renk mapping
-  const getRoomVisuals = (room: RoomData) => {
-    if (room.type === 'voice') {
-      return { icon: Volume2, color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: room.description || 'Sesli Sohbet' };
-    }
-    // Özel odalar için özel renkler
-    if (room.name === 'Ana Salon') {
-      return { icon: Users, color: 'var(--color-primary-main)', glow: 'rgba(var(--accent-rgb),0.3)', sub: room.description || 'Sohbet Odası' };
-    }
-    if (room.name === 'Müzik Odası') {
-      return { icon: Music, color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: room.description || 'Dinleme Odası' };
-    }
-    // Varsayılan text odası
-    return { icon: Hash, color: '#3B82F6', glow: 'rgba(59,130,246,0.3)', sub: room.description || 'Yazı Kanalı' };
-  };
-
-  // Tek bir oda kartı — hem sabit hem topluluk odaları için
-  const renderRoomCard = (room: RoomData, opts?: { showMeta?: boolean }) => {
-    const visuals = getRoomVisuals(room);
-    const RoomIcon = visuals.icon;
-    const isOwner = room.createdBy === username && room.id > 0;
-    const showMeta = opts?.showMeta ?? false;
-    return (
-      <motion.button
-        key={room.id}
-        onClick={() => handleJoinRoom(room)}
-        onMouseEnter={() => handleRoomHover(room.name)}
-        onMouseLeave={handleRoomLeave}
-        whileHover={{ scale: 1.02, y: -2 }}
-        whileTap={{ scale: 0.98 }}
-        className="group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left transition-all duration-300 relative mb-3"
-        style={{
-          background: hoveredRoom === room.name ? `${visuals.color}14` : 'rgba(255,255,255,0.03)',
-          border: hoveredRoom === room.name ? `1px solid ${visuals.color}40` : '1px solid rgba(255,255,255,0.05)',
-          boxShadow: hoveredRoom === room.name ? `0 8px 32px ${visuals.glow}` : 'none',
-        }}>
-
-        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            style={{ background: `radial-gradient(circle at 20% 50%, ${visuals.glow} 0%, transparent 60%)` }} />
-        </div>
-
-        <div className="relative flex items-center gap-4 min-w-0">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300"
-            style={{
-              background: `${visuals.color}15`,
-              border: `1px solid ${visuals.color}30`,
-            }}>
-            <RoomIcon size={18} style={{ color: visuals.color }} />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[15px] font-semibold text-white flex items-center gap-1.5 truncate">
-              {room.name}
-              {room.isPrivate && <Lock size={12} className="text-white/40 flex-shrink-0" />}
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
-              <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>{visuals.sub}</span>
-            </div>
-            {showMeta && room.createdBy && room.createdBy !== 'system' && (
-              <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Kurucu: {room.createdBy}
-              </div>
-            )}
-            {hoveredRoom === room.name && roomUsers.length > 0 && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 text-xs flex flex-wrap gap-1">
-                {roomUsers.map((u, i) => (
-                  <span key={i} className="bg-white/10 px-2 py-0.5 rounded text-white/80">{u.username}</span>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        </div>
-
-        <div className="relative flex items-center gap-1 flex-shrink-0">
-          {isOwner && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); setDeleteConfirmRoom(room); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setDeleteConfirmRoom(room); } }}
-              title="Odayı sil"
-              className="p-2 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-            >
-              <Trash2 size={15} />
-            </span>
-          )}
-          <motion.div animate={{ x: hoveredRoom === room.name ? 3 : 0 }} transition={{ duration: 0.2 }}>
-            <ChevronRight size={18} style={{ color: hoveredRoom === room.name ? visuals.color : 'rgba(255,255,255,0.2)' }} />
-          </motion.div>
-        </div>
-      </motion.button>
-    );
-  };
+  // Oda karti kendi bileseninde (RoomCard): hover gorselleri CSS'te, odadaki
+  // kullanici listesi kartin kendi state'inde — App bu yuzden hover'da
+  // yeniden render OLMAZ.
+  const renderRoomCard = (room: RoomData, opts?: { showMeta?: boolean }) => (
+    <RoomCard
+      key={room.id}
+      room={room}
+      isOwner={room.createdBy === username && room.id > 0}
+      showMeta={opts?.showMeta ?? false}
+      apiBaseUrl={API_BASE_URL}
+      onJoin={() => handleJoinRoom(room)}
+      onDelete={() => setDeleteConfirmRoom(room)}
+    />
+  );
 
   // Odaları API'den çek
   const fetchRooms = useCallback(async () => {
@@ -255,29 +197,6 @@ function App() {
       console.error('Odalar yüklenemedi:', err);
     }
   }, []);
-
-  const handleRoomHover = (roomId: string) => {
-    setHoveredRoom(roomId);
-    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-    
-    hoverTimeoutRef.current = window.setTimeout(async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/users`);
-        if (res.ok) {
-           const users = await res.json();
-           setRoomUsers(users);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }, 400);
-  };
-
-  const handleRoomLeave = () => {
-    setHoveredRoom(null);
-    setRoomUsers([]);
-    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-  };
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
@@ -910,11 +829,11 @@ function App() {
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.6, staggerChildren: 0.08, delayChildren: 0.1 } },
+    visible: { opacity: 1, transition: { duration: 0.35, staggerChildren: 0.05, delayChildren: 0.05 } },
   };
   const itemVariants: Variants = {
-    hidden: { opacity: 0, y: settings.reducedMotion ? 0 : 16 },
-    visible: { opacity: 1, y: 0, transition: { duration: settings.reducedMotion ? 0 : 0.4, ease: [0.25, 0.46, 0.45, 0.94] } },
+    hidden: { opacity: 0, y: settings.reducedMotion ? 0 : 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: settings.reducedMotion ? 0 : 0.3, ease: [0.25, 0.46, 0.45, 0.94] } },
   };
 
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
@@ -922,8 +841,8 @@ function App() {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
 
-      {/* Premium Background */}
-      <div className="absolute inset-0 bg-mesh-gradient" />
+      {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
+      <div className="app-background" />
 
 
 
@@ -949,7 +868,7 @@ function App() {
           )}
 
           {/* Sidebar */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15, duration: 0.3 }}
             className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 md:gap-4 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
           >
             {/* Close Button (Mobile) */}
@@ -1016,15 +935,13 @@ function App() {
             />
           </div>
 
-          {/* Özel Mesajlar (DM) Bölümü */}
-          <motion.div 
-            layout 
-            transition={{ layout: { type: 'spring', stiffness: 350, damping: 25 } }}
+          {/* Özel Mesajlar (DM) Bölümü — layout spring'leri kaldirildi: panel
+              boyutu CSS ile aninda degisir, icerik yalnizca opacity/transform
+              ile girer (compositor isi, olcum-yerlesim animasyonu yok). */}
+          <div
             className={`flex flex-col min-h-0 bg-bg-surface/60 border border-white/10 rounded-3xl p-4 overflow-hidden md:bg-[rgba(20,20,26,0.55)] md:border md:border-white/10 md:rounded-[28px] md:backdrop-blur-[18px] md:shadow-[0_8px_32px_rgba(0,0,0,0.3)] md:flex-1 ${isDMOpen ? 'flex-1' : ''}`}
           >
-            <motion.button 
-              layout
-              transition={{ layout: { type: 'spring', stiffness: 350, damping: 25 } }}
+            <button
               onClick={() => setIsDMOpen(!isDMOpen)}
               className="flex items-center justify-between px-1 cursor-pointer w-full hover:bg-white/5 p-1 rounded-lg transition-colors group shrink-0"
             >
@@ -1037,16 +954,11 @@ function App() {
                   </span>
                 )}
               </div>
-              <motion.div animate={{ rotate: isDMOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
-                <ChevronDown size={16} className="text-white/50 group-hover:text-white" />
-              </motion.div>
-            </motion.button>
+              <ChevronDown size={16} className={`text-white/50 group-hover:text-white transition-transform duration-200 ${isDMOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-            <motion.div
-              layout
-              initial={false}
-              transition={{ layout: { type: 'spring', stiffness: 350, damping: 25 } }}
-              className={`flex flex-col overflow-hidden transition-opacity duration-300 ${isDMOpen ? 'flex-1 opacity-100 mt-2' : 'h-0 opacity-0 mt-0 pointer-events-none'}`}
+            <div
+              className={`flex flex-col overflow-hidden transition-opacity duration-200 ${isDMOpen ? 'flex-1 opacity-100 mt-2' : 'h-0 opacity-0 mt-0 pointer-events-none'}`}
             >
               {/* DM Listesi */}
               <div className="max-h-[60vh] flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4 pt-2 -mx-2 px-2">
@@ -1092,8 +1004,8 @@ function App() {
                 <Plus size={16} />
                 Yeni Mesaj
               </button>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
           </motion.div>
         </>
       )}
@@ -1231,19 +1143,7 @@ function App() {
 
             <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105 pointer-events-none" />
           </div>
-          <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-[700] text-white mb-2 tracking-tight flex justify-center text-shine"
-            style={{ textShadow: '0 0 40px #00B4D860' }}>
-            {'SandalyeciMetin'.split('').map((char, index) => (
-                <motion.span
-                  key={index}
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.045, duration: 0.35 }}
-                >
-                  {char === " " ? "\u00A0" : char}
-                </motion.span>
-            ))}
-          </h1>
+          <AnimatedTitle />
           <p className="text-[14px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
             {authState === 'rooms' ? `Hoş geldin, ${username}` : (authState === 'login' ? 'Hesabına giriş yap' : 'Yeni hesap oluştur')}
           </p>
@@ -1284,15 +1184,13 @@ function App() {
                    }}
                  />
                </div>
-               <motion.button
+               <button
                  type="submit"
                  disabled={isLoading}
-                 whileHover={{ scale: 1.02, y: -2 }}
-                 whileTap={{ scale: 0.97 }}
-                 className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
+                 className="btn-fx relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
                  style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                  {isLoading ? 'Gönderiliyor...' : 'Şifre Sıfırlama Linki Gönder'}
-               </motion.button>
+               </button>
                <div className="text-center pt-3">
                  <button type="button" onClick={() => { setAuthState('login'); setErrorMsg(''); setSuccessMsg(''); }}
                    className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
@@ -1320,15 +1218,13 @@ function App() {
                    }}
                  />
                </div>
-               <motion.button
+               <button
                  type="submit"
                  disabled={isLoading}
-                 whileHover={{ scale: 1.02, y: -2 }}
-                 whileTap={{ scale: 0.97 }}
-                 className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
+                 className="btn-fx relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
                  style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                  {isLoading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
-               </motion.button>
+               </button>
              </form>
           ) : authState !== 'rooms' ? (
             <form onSubmit={authState === 'login' ? handleLogin : handleRegister} className="space-y-4">
@@ -1442,18 +1338,16 @@ function App() {
                 </>
               )}
 
-              <motion.button
+              <button
                 type="submit"
                 disabled={isLoading}
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                className="relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
+                className="btn-fx relative w-full py-4 mt-2 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                 <span className="relative flex items-center justify-center gap-2">
                   <Sparkles size={16} />
                   {isLoading ? 'Bekleniyor...' : (authState === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
                 </span>
-              </motion.button>
+              </button>
 
               <div className="text-center pt-3">
                 {authState === 'login' && (
@@ -1613,20 +1507,32 @@ function App() {
                       ))}
                     </div>
 
-                    {/* İçerik: aynı anda tek sayfa — Crossfade Animasyonu. */}
-                    <div ref={roomPagerRef} className="relative flex-1 min-h-0 flex flex-col">
-                      <AnimatePresence mode="popLayout" initial={false}>
-                        <motion.div
-                          key={roomPage}
-                          className="h-full flex flex-col"
-                          initial={{ opacity: 0, scale: 0.96, y: 5 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.96, y: -5 }}
-                          transition={{ duration: 0.15, ease: "easeOut" }}
+                    {/* İçerik: iki sayfa da yerinde durur, ray yalnizca
+                        translateX ile kayar. Unmount/popLayout yok — cikan
+                        sayfa akistan kopmadigi icin yerlesim hic bozulmaz,
+                        transform animasyonu da tamamen compositor'da. */}
+                    <div ref={roomPagerRef} className="relative flex-1 min-h-0 overflow-hidden">
+                      <motion.div
+                        className="flex h-full"
+                        initial={false}
+                        animate={{ x: roomPage === 0 ? '0%' : '-100%' }}
+                        transition={reduce ? { duration: 0 } : { type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                      >
+                        <div
+                          className="w-full h-full shrink-0 flex flex-col"
+                          aria-hidden={roomPage !== 0}
+                          style={{ pointerEvents: roomPage === 0 ? 'auto' : 'none' }}
                         >
-                          {roomPage === 0 ? fixedPage : communityPage}
-                        </motion.div>
-                      </AnimatePresence>
+                          {fixedPage}
+                        </div>
+                        <div
+                          className="w-full h-full shrink-0 flex flex-col"
+                          aria-hidden={roomPage !== 1}
+                          style={{ pointerEvents: roomPage === 1 ? 'auto' : 'none' }}
+                        >
+                          {communityPage}
+                        </div>
+                      </motion.div>
                     </div>
 
                     {/* Sayfa göstergesi: alta iki nokta (swipe ipucu) */}
@@ -1669,8 +1575,12 @@ function App() {
 
       {authState === 'rooms' && (
         <div className="hidden md:flex md:flex-col gap-4 md:shrink-0 w-[280px]">
-          <div className="flex-1 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-[18px] overflow-hidden flex flex-col p-0 relative">
+          {/* Sunucularim: varsayilan kapali — baslik her zaman gorunur, liste
+              tiklandiginda acilir ve ancak o zaman yuklenir. */}
+          <div className={`bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-[18px] overflow-hidden flex flex-col p-0 relative ${isServersOpen ? 'flex-1 min-h-0' : 'shrink-0'}`}>
             <MyServersPanel
+              open={isServersOpen}
+              onToggle={() => setIsServersOpen(o => !o)}
               refreshSignal={rooms.length}
               onSelectRoom={(r) => {
                 const full = rooms.find(x => x.id === r.id);
@@ -1680,7 +1590,7 @@ function App() {
           </div>
 
           {/* Sağ Alt Bölme — Sosyal İkonlar */}
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 28 }}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 28 }}
             className="shrink-0 flex items-center justify-center gap-3 p-4 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-[18px]">
             <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer"
                className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(var(--accent-rgb),0.6)] transition-all duration-300">
@@ -1702,7 +1612,7 @@ function App() {
 
       {/* Removed external MADE BY EFECAN */}
       {/* Sabit Sosyal Medya İkonları (yalnızca mobil) */}
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 }}
+      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.3 }}
         className="md:hidden fixed bottom-5 right-5 flex flex-col gap-3 z-50">
         <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer" 
            className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(var(--accent-rgb),0.6)] transition-all duration-300">

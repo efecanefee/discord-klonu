@@ -4,12 +4,15 @@ import './index.css'
 import App from './App.tsx'
 import { SettingsProvider } from './contexts/SettingsContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import MotionRoot from './components/MotionRoot'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <SettingsProvider>
-        <App />
+        <MotionRoot>
+          <App />
+        </MotionRoot>
       </SettingsProvider>
     </ErrorBoundary>
   </StrictMode>,

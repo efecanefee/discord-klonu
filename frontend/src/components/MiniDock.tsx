@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Plus, Settings, LogOut } from 'lucide-react';
 import { renderAvatar } from '../constants/avatars';
 import type { UserData as ModalUserData } from './NewMessageModal';
@@ -105,7 +104,7 @@ const MiniDock: React.FC<MiniDockProps> = ({
         <div className="w-11 h-11 rounded-full overflow-hidden border border-primary-main bg-[#18181b] flex items-center justify-center text-lg group-hover:opacity-80 transition-opacity">
           {renderAvatar(avatarId)}
         </div>
-        <motion.div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${statusColor(myCustomStatus)}`} />
+        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${statusColor(myCustomStatus)}`} />
       </button>
     </div>
   );
