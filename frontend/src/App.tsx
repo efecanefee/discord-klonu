@@ -12,12 +12,33 @@ import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { getAvatarEmoji } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
-import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
 
 // Removed Orb component as it is replaced by CSS mesh background
+
+// Kaba sifre gucu gostergesi. Amac kullaniciya yon vermek — gercek zorunluluk
+// backend'de olmali, buradaki skor yalnizca gorsel geri bildirim.
+const PASSWORD_LEVELS = [
+  { label: 'Çok zayıf', color: '#ef4444' },
+  { label: 'Zayıf', color: '#f59e0b' },
+  { label: 'Orta', color: '#eab308' },
+  { label: 'İyi', color: '#22c55e' },
+  { label: 'Güçlü', color: '#10b981' },
+];
+
+function passwordScore(pw: string): number {
+  if (!pw) return 0;
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return Math.min(score, PASSWORD_LEVELS.length);
+}
 
 function App() {
   const [authState, setAuthState] = useState<'login' | 'register' | 'rooms' | 'forgot' | 'reset'>('login');
@@ -28,6 +49,8 @@ function App() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [avatarId, setAvatarId] = useState('default');
@@ -52,7 +75,7 @@ function App() {
   const [onlineUserList, setOnlineUserList] = useState<string[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [globalActiveUsers, setGlobalActiveUsers] = useState(0);
-  const [focused, setFocused] = useState<'username' | 'email' | 'password' | null>(null);
+  const [focused, setFocused] = useState<'username' | 'email' | 'password' | 'passwordConfirm' | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { settings } = useSettings();
@@ -507,6 +530,12 @@ function App() {
       setErrorMsg('Tüm alanları doldurun');
       return;
     }
+    // Tek alanla yazim hatasi fark edilmiyordu: hesap olusuyor ama kullanici
+    // bir daha giremiyordu.
+    if (password !== passwordConfirm) {
+      setErrorMsg('Şifreler eşleşmiyor');
+      return;
+    }
     setIsLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
@@ -519,6 +548,8 @@ function App() {
       if (res.ok) {
         const data = await res.json();
         setAuthState('login');
+        setPasswordConfirm('');
+        setShowPassword(false);
         setSuccessMsg(data.message || 'Kayıt başarılı. Lütfen e-posta adresinize gönderilen link ile hesabınızı doğrulayın.');
       } else {
         const text = await res.text();
@@ -1247,6 +1278,7 @@ function App() {
                    onFocus={() => setFocused('email')}
                    onBlur={() => setFocused(null)}
                    placeholder="E-posta Adresi"
+                   autoComplete="email"
                    className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                    style={{
                      background: focused === 'email' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
@@ -1282,6 +1314,7 @@ function App() {
                    onFocus={() => setFocused('password')}
                    onBlur={() => setFocused(null)}
                    placeholder="Yeni Şifre"
+                   autoComplete="new-password"
                    className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                    style={{
                      background: focused === 'password' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
@@ -1312,6 +1345,7 @@ function App() {
                     onFocus={() => setFocused('username')}
                     onBlur={() => setFocused(null)}
                     placeholder="Kullanıcı Adı"
+                    autoComplete="username"
                     className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                     style={{
                       background: focused === 'username' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
@@ -1330,6 +1364,7 @@ function App() {
                   onFocus={() => setFocused('email')}
                   onBlur={() => setFocused(null)}
                   placeholder="E-posta Adresi"
+                  autoComplete="email"
                   className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                   style={{
                     background: focused === 'email' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
@@ -1341,19 +1376,73 @@ function App() {
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   onFocus={() => setFocused('password')}
                   onBlur={() => setFocused(null)}
                   placeholder="Şifre"
-                  className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                  autoComplete={authState === 'register' ? 'new-password' : 'current-password'}
+                  className="w-full pl-12 pr-12 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                   style={{
                     background: focused === 'password' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
                     border: focused === 'password' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
                   }}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(p => !p)}
+                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
+
+              {authState === 'register' && (
+                <>
+                  {/* Şifre gücü — yalnızca yazmaya başlayınca */}
+                  {password && (
+                    <div className="flex items-center gap-2 px-1">
+                      <div className="flex gap-1 flex-1">
+                        {PASSWORD_LEVELS.map((lvl, i) => (
+                          <div
+                            key={lvl.label}
+                            className="h-1 flex-1 rounded-full transition-colors duration-200"
+                            style={{ background: i < passwordScore(password) ? PASSWORD_LEVELS[passwordScore(password) - 1].color : 'rgba(255,255,255,0.08)' }}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[11px] shrink-0" style={{ color: PASSWORD_LEVELS[Math.max(0, passwordScore(password) - 1)].color }}>
+                        {PASSWORD_LEVELS[Math.max(0, passwordScore(password) - 1)].label}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={passwordConfirm}
+                      onChange={e => setPasswordConfirm(e.target.value)}
+                      onFocus={() => setFocused('passwordConfirm')}
+                      onBlur={() => setFocused(null)}
+                      placeholder="Şifre (Tekrar)"
+                      autoComplete="new-password"
+                      className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                      style={{
+                        background: focused === 'passwordConfirm' ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.04)',
+                        border: passwordConfirm && password !== passwordConfirm
+                          ? '1px solid rgba(239,68,68,0.6)'
+                          : focused === 'passwordConfirm' ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                      }}
+                    />
+                  </div>
+                  {passwordConfirm && password !== passwordConfirm && (
+                    <p className="text-[12px] px-1" style={{ color: 'rgba(239,68,68,0.9)' }}>Şifreler eşleşmiyor</p>
+                  )}
+                </>
+              )}
 
               <motion.button
                 type="submit"
@@ -1381,7 +1470,7 @@ function App() {
                 <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
                   {authState === 'login' ? 'Hesabın yok mu? ' : 'Zaten hesabın var mı? '}
                 </span>
-                <button type="button" onClick={() => { setAuthState(authState === 'login' ? 'register' : 'login'); setErrorMsg(''); setSuccessMsg(''); }}
+                <button type="button" onClick={() => { setAuthState(authState === 'login' ? 'register' : 'login'); setErrorMsg(''); setSuccessMsg(''); setPasswordConfirm(''); setShowPassword(false); }}
                   className="text-[13px] font-semibold cursor-pointer transition-colors duration-200 hover:text-white"
                   style={{ color: 'rgba(124,58,237,0.8)' }}>
                   {authState === 'login' ? 'Kayıt Ol' : 'Giriş Yap'}
