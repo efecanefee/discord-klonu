@@ -19,6 +19,7 @@ export interface Settings {
   
   // Görünüm / UI
   reducedMotion: boolean;
+  glassEffect: boolean;  // Panellerdeki backdrop-blur. Pahalı — zayıf cihazlarda kapatılabilir.
 }
 
 const defaultSettings: Settings = {
@@ -37,6 +38,7 @@ const defaultSettings: Settings = {
   pushNotificationsEnabled: false,
   
   reducedMotion: true,
+  glassEffect: true,   // Varsayılan açık — mevcut görünüm korunsun.
 };
 
 interface SettingsContextType {
@@ -63,6 +65,19 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem('sm_settings', JSON.stringify(settings));
   }, [settings]);
+
+  // Saf CSS efektlerini <html> sinifi uzerinden kontrol et — React'in
+  // reducedMotion kontrolleri stylesheet'teki animasyonlara ulasamiyor.
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduce-motion', settings.reducedMotion);
+  }, [settings.reducedMotion]);
+
+  // Cam efekti bilerek reducedMotion'dan ayri: reducedMotion varsayilan acik
+  // oldugu icin ona baglamak cam gorunumunu herkeste varsayilan olarak
+  // kapatirdi.
+  useEffect(() => {
+    document.documentElement.classList.toggle('no-glass', !settings.glassEffect);
+  }, [settings.glassEffect]);
 
   // Kimlik sabit kalmali: tuketiciler bunu useCallback/useEffect bagimliligi
   // olarak kullaniyor, her render'da degisirse gereksiz yeniden calisir.
