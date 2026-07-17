@@ -257,19 +257,6 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const voice = useVoiceChannel();
     const { settings } = useSettings();
 
-    // Tema — koyu tema değişkenleri (ChatRoom ile aynı varsayılan)
-    useEffect(() => {
-        const root = document.documentElement;
-        root.classList.remove('theme-dark', 'theme-light', 'theme-oled');
-        root.classList.add('theme-dark');
-        root.style.setProperty('--color-bg-base', '#0f1117');
-        root.style.setProperty('--color-bg-surface', '#161b27');
-        root.style.setProperty('--color-bg-card', '#1a2035');
-        root.style.setProperty('--color-text-main', '#e8eaf0');
-        root.style.setProperty('--color-text-muted', '#5c6380');
-        root.style.setProperty('--color-border-main', '#242b3d');
-    }, []);
-
     // SignalR event'leri
     useEffect(() => {
         let isMounted = true;

@@ -11,7 +11,7 @@ import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
-import { useSettings } from '../contexts/SettingsContext';
+import { useSettings, THEMES } from '../contexts/SettingsContext';
 import { renderAvatar } from '../constants/avatars';
 import { roomApi } from '../services/roomApi';
 import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
@@ -102,14 +102,6 @@ const RemoteVideoPlayer: React.FC<{ stream: MediaStream; label: string }> = ({ s
     );
 };
 
-// Tema
-type Theme = 'dark' | 'light' | 'oled';
-const THEMES: { id: Theme; label: string }[] = [
-    { id: 'dark', label: 'Koyu' },
-    { id: 'light', label: 'Açık' },
-    { id: 'oled', label: 'OLED' },
-];
-
 const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roomId, roomDbId, myUserId, roomDescription, onLeave, onOpenDM, onOpenProfile }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [usersInRoom, setUsersInRoom] = useState<{ connectionId: string; username: string; avatarId?: string; userId?: string; role?: string }[]>([]);
@@ -142,7 +134,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const [masterVolume, setMasterVolume] = useState(1.0);
     const [userVolumes, setUserVolumes] = useState<Record<string, number>>({});
     const [showDeviceMenu, setShowDeviceMenu] = useState(false);
-    const [theme, setTheme] = useState<Theme>('dark');
     const [myStatus, setMyStatus] = useState<UserStatus>('online');
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const { settings, updateSettings } = useSettings();
@@ -190,35 +181,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     } = useWebRTC();
 
     const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playSendSound, playReceiveSound } = useAudioNotifications();
-
-    // Tema uygula
-    useEffect(() => {
-        const root = document.documentElement;
-        root.classList.remove('theme-dark', 'theme-light', 'theme-oled');
-        root.classList.add(`theme-${theme}`);
-        if (theme === 'light') {
-            root.style.setProperty('--color-bg-base', '#f1f5f9');
-            root.style.setProperty('--color-bg-surface', '#ffffff');
-            root.style.setProperty('--color-bg-card', '#ffffff');
-            root.style.setProperty('--color-text-main', '#09090b');
-            root.style.setProperty('--color-text-muted', '#64748b');
-            root.style.setProperty('--color-border-main', '#e2e8f0');
-        } else if (theme === 'oled') {
-            root.style.setProperty('--color-bg-base', '#000000');
-            root.style.setProperty('--color-bg-surface', '#0a0a0a');
-            root.style.setProperty('--color-bg-card', '#0d0d0d');
-            root.style.setProperty('--color-text-main', '#ffffff');
-            root.style.setProperty('--color-text-muted', '#555555');
-            root.style.setProperty('--color-border-main', '#1a1a1a');
-        } else {
-            root.style.setProperty('--color-bg-base', '#0f1117');
-            root.style.setProperty('--color-bg-surface', '#161b27');
-            root.style.setProperty('--color-bg-card', '#1a2035');
-            root.style.setProperty('--color-text-main', '#e8eaf0');
-            root.style.setProperty('--color-text-muted', '#5c6380');
-            root.style.setProperty('--color-border-main', '#242b3d');
-        }
-    }, [theme]);
 
     // SignalR event'leri
     useEffect(() => {
@@ -873,8 +835,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                         {/* Tema seçici */}
                         <div className="hidden sm:flex items-center gap-1 p-1 bg-bg-base rounded-xl border border-border-main">
                             {THEMES.map(t => (
-                                <button key={t.id} onClick={() => setTheme(t.id)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${theme === t.id ? 'bg-primary-main text-white' : 'text-text-muted hover:text-text-main'}`}>
+                                <button key={t.id} onClick={() => updateSettings({ theme: t.id })}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${settings.theme === t.id ? 'bg-primary-main text-white' : 'text-text-muted hover:text-text-main'}`}>
                                     {t.label}
                                 </button>
                             ))}

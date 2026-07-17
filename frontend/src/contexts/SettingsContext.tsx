@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
+export type Theme = 'system' | 'dark' | 'light' | 'oled';
+
+export const THEMES: { id: Theme; label: string }[] = [
+  { id: 'system', label: 'Sistem' },
+  { id: 'dark', label: 'Koyu' },
+  { id: 'light', label: 'Açık' },
+  { id: 'oled', label: 'OLED' },
+];
+
 export interface Settings {
   // Ses / Görüntü
   microphoneId: string;
@@ -18,6 +27,7 @@ export interface Settings {
   pushNotificationsEnabled: boolean;
   
   // Görünüm / UI
+  theme: Theme;
   reducedMotion: boolean;
   glassEffect: boolean;  // Panellerdeki backdrop-blur. Pahalı — zayıf cihazlarda kapatılabilir.
 }
@@ -37,6 +47,7 @@ const defaultSettings: Settings = {
   dmNotificationsEnabled: true,
   pushNotificationsEnabled: false,
   
+  theme: 'dark',
   reducedMotion: true,
   glassEffect: true,   // Varsayılan açık — mevcut görünüm korunsun.
 };
@@ -65,6 +76,29 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     localStorage.setItem('sm_settings', JSON.stringify(settings));
   }, [settings]);
+
+  // Tema: renk degerleri index.css'te, burasi yalnizca hangi sinifin gecerli
+  // oldugunu soyler. 'system' secildiginde isletim sistemi tercihi dinlenir —
+  // kullanici karanlik moda gecince uygulama yeniden yuklemeden takip eder.
+  useEffect(() => {
+    const root = document.documentElement;
+    const media = window.matchMedia('(prefers-color-scheme: light)');
+
+    const apply = () => {
+      const effective = settings.theme === 'system'
+        ? (media.matches ? 'light' : 'dark')
+        : settings.theme;
+      root.classList.remove('theme-dark', 'theme-light', 'theme-oled');
+      root.classList.add(`theme-${effective}`);
+      // Tarayici kendi arayuzunu (kaydirma cubugu, form kontrolleri) buna gore boyar.
+      root.style.colorScheme = effective === 'light' ? 'light' : 'dark';
+    };
+
+    apply();
+    if (settings.theme !== 'system') return;
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, [settings.theme]);
 
   // Saf CSS efektlerini <html> sinifi uzerinden kontrol et — React'in
   // reducedMotion kontrolleri stylesheet'teki animasyonlara ulasamiyor.

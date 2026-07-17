@@ -1,21 +1,70 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
 @import "tailwindcss";
 
+/* Koyu tema ayni zamanda varsayilan: tema sinifi <html>'e yazilmadan once
+   (ilk boyama) gecerli olan degerler bunlar. */
 @theme {
   --font-sans: "Space Grotesk", sans-serif;
-  --color-bg-base: #09090b;
-  --color-bg-surface: #18181b;
-  --color-bg-card: #09090b;
-  --color-border-main: #27272a;
+  --color-bg-base: #0f1117;
+  --color-bg-surface: #161b27;
+  --color-bg-card: #1a2035;
+  --color-border-main: #242b3d;
   --color-primary-main: #8b5cf6;
   --color-primary-hover: #a78bfa;
-  --color-text-main: #fafafa;
-  --color-text-muted: #a1a1aa;
-  
+  --color-text-main: #e8eaf0;
+  --color-text-muted: #5c6380;
+
   --shadow-premium: 0 4px 30px -2px rgba(0, 0, 0, 0.6);
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-card-hover: 0 8px 40px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+
+  /* Tema basina degisen, Tailwind utility'si olmayan degerler.
+     @theme icinde durmalarinin sebebi yalnizca varsayilani tek yerde tutmak. */
+  --app-bg-glow: radial-gradient(ellipse 110% 75% at 50% -15%, rgba(30, 58, 138, 0.42), transparent 70%);
+  --glass-solid-bg: rgba(20, 20, 26, 0.92);
+  --shine-base: #ffffff;
+  --scrollbar-thumb: rgba(124, 58, 237, 0.4);
+  --scrollbar-thumb-hover: rgba(124, 58, 237, 0.8);
+}
+
+/* Tema tanimlari tek kaynak: burasi. Bilesenler yalnizca <html>'e
+   theme-* sinifini yazar, renk degeri tasimaz.
+   Secici html.theme-* (0,1,1) oldugundan Tailwind'in :root (0,1,0)
+   degiskenlerini ezer. */
+html.theme-light {
+  --color-bg-base: #f1f5f9;
+  --color-bg-surface: #ffffff;
+  --color-bg-card: #ffffff;
+  --color-border-main: #e2e8f0;
+  --color-text-main: #09090b;
+  --color-text-muted: #64748b;
+
+  /* Acik zeminde siyah golgeler kir gibi gorunur: opaklik dusuruldu ve
+     rengi lacivertimsi yapildi. */
+  --shadow-premium: 0 4px 24px -4px rgba(15, 23, 42, 0.14);
+  --shadow-card: 0 2px 12px rgba(15, 23, 42, 0.08);
+  --shadow-card-hover: 0 8px 28px rgba(15, 23, 42, 0.14);
+
+  --app-bg-glow: radial-gradient(ellipse 110% 75% at 50% -15%, rgba(30, 58, 138, 0.10), transparent 70%);
+  --glass-solid-bg: rgba(255, 255, 255, 0.92);
+  --shine-base: #1e293b;
+  --scrollbar-thumb: rgba(124, 58, 237, 0.35);
+  --scrollbar-thumb-hover: rgba(124, 58, 237, 0.7);
+}
+
+html.theme-oled {
+  --color-bg-base: #000000;
+  --color-bg-surface: #0a0a0a;
+  --color-bg-card: #0d0d0d;
+  --color-border-main: #1a1a1a;
+  --color-text-main: #ffffff;
+  --color-text-muted: #555555;
+
+  /* OLED'in tek amaci pikselin sonmesi: zemine isik dusuren gradient
+     bunu dogrudan bozar, o yuzden kapali. */
+  --app-bg-glow: none;
+  --glass-solid-bg: rgba(0, 0, 0, 0.94);
 }
 
 body {
@@ -48,13 +97,13 @@ input:focus {
 
 *::-webkit-scrollbar-thumb,
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.4) !important;
+  background: var(--scrollbar-thumb) !important;
   border-radius: 10px !important;
 }
 
 *::-webkit-scrollbar-thumb:hover,
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 58, 237, 0.8) !important;
+  background: var(--scrollbar-thumb-hover) !important;
 }
 
 /* Scrollbar tamamen gizle (yatay kaydırmalı oda sayfaları için) */
@@ -71,7 +120,7 @@ input:focus {
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(124, 58, 237, 0.4) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 @keyframes textShine {
@@ -85,7 +134,7 @@ input:focus {
    will-change kasitli olarak yok: compositable olmayan bir ozellikte boyamayi
    ucuzlatmaz, yalnizca bos yere katman ayirir. */
 .text-shine {
-  background: linear-gradient(90deg, #ffffff 0%, #ffffff 45%, #00B4D8 50%, #90E0EF 52%, #ffffff 57%, #ffffff 100%);
+  background: linear-gradient(90deg, var(--shine-base) 0%, var(--shine-base) 45%, #00B4D8 50%, #90E0EF 52%, var(--shine-base) 57%, var(--shine-base) 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -116,7 +165,7 @@ html.reduce-motion .text-shine {
 html.no-glass [class*="backdrop-blur"] {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  background-color: rgba(20, 20, 26, 0.92) !important;
+  background-color: var(--glass-solid-bg) !important;
 }
 
 /* Uygulama arka plani: neredeyse siyah zemin + ustten tek bir yumusak lacivert isik.
@@ -126,8 +175,8 @@ html.no-glass [class*="backdrop-blur"] {
    sey birakmak, cam panellerin backdrop-filter'ini her karede yeniden
    hesaplatir — lobideki kasmanin kaynagi tam olarak buydu. */
 .app-background {
-  background-color: #09090b;
-  background-image: radial-gradient(ellipse 110% 75% at 50% -15%, rgba(30, 58, 138, 0.42), transparent 70%);
+  background-color: var(--color-bg-base);
+  background-image: var(--app-bg-glow);
   width: 100%;
   height: 100%;
   position: absolute;
