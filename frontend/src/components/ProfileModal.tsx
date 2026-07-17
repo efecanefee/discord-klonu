@@ -91,16 +91,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           initial={{ scale: 0.95, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-[#09090b] border border-[#334155] rounded-3xl overflow-y-auto custom-scrollbar shadow-2xl flex flex-col md:flex-row"
+          className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-bg-surface border border-[#334155] rounded-3xl overflow-y-auto custom-scrollbar shadow-2xl flex flex-col md:flex-row"
         >
           {/* Sol Panel: Form ve Seçim */}
           <div className="flex-1 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#334155]">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
                 <UserCircle className="text-primary-main" />
                 Profili Düzenle
               </h2>
-              <button onClick={onClose} className="p-2 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-colors md:hidden">
+              <button onClick={onClose} className="p-2 text-text-muted hover:text-text-main hover:bg-surface-subtle rounded-full transition-colors md:hidden">
                 <X size={20} />
               </button>
             </div>
@@ -114,36 +114,36 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             <div className="space-y-4 mb-6">
               <div className="flex gap-3">
                 <div className="flex-1 space-y-1">
-                  <label className="text-xs text-white/50 uppercase tracking-wider font-semibold">Ad</label>
+                  <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">Ad</label>
                   <input
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-primary-main transition-colors text-sm"
+                    className="w-full bg-bg-base border border-[#334155] rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Adınız"
                   />
                 </div>
                 <div className="flex-1 space-y-1">
-                  <label className="text-xs text-white/50 uppercase tracking-wider font-semibold">Soyad</label>
+                  <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">Soyad</label>
                   <input
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-2.5 text-white outline-none focus:border-primary-main transition-colors text-sm"
+                    className="w-full bg-bg-base border border-[#334155] rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Soyadınız"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-white/50 uppercase tracking-wider font-semibold">Kullanıcı Adı</label>
+                <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">Kullanıcı Adı</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-9 pr-4 py-2.5 text-white outline-none focus:border-primary-main transition-colors text-sm"
+                    className="w-full bg-bg-base border border-[#334155] rounded-xl pl-9 pr-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Kullanıcı adınız"
                   />
                 </div>
@@ -151,13 +151,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs text-white/50 uppercase tracking-wider font-semibold">Avatar Seçimi</label>
+              <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">Avatar Seçimi</label>
               <div className="grid grid-cols-3 gap-3">
                 {AVATARS.map((avatar) => (
                   <button
                     key={avatar.id}
                     onClick={() => setAvatarId(avatar.id)}
-                    className={`relative rounded-full flex items-center justify-center transition-all overflow-hidden aspect-square text-4xl bg-[#18181b] ${
+                    className={`relative rounded-full flex items-center justify-center transition-all overflow-hidden aspect-square text-4xl bg-bg-base ${
                       avatarId === avatar.id
                         ? 'border-2 border-primary-main shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)] scale-[1.02] z-10'
                         : 'border-2 border-transparent hover:border-primary-main/50 hover:scale-[1.02]'
@@ -172,39 +172,39 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
 
           {/* Sağ Panel: Live Preview */}
           <div className="w-full md:w-80 bg-[#0B1020] p-4 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center relative shrink-0">
-            <button onClick={onClose} className="absolute top-4 right-4 p-2 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-colors hidden md:block">
+            <button onClick={onClose} className="absolute top-4 right-4 p-2 text-text-muted hover:text-text-main hover:bg-surface-subtle rounded-full transition-colors hidden md:block">
               <X size={20} />
             </button>
             
-            <h3 className="text-sm font-semibold text-white/50 mb-6 uppercase tracking-widest w-full text-center">Canlı Önizleme</h3>
+            <h3 className="text-sm font-semibold text-text-muted mb-6 uppercase tracking-widest w-full text-center">Canlı Önizleme</h3>
             
             {/* Mesaj Balonu Önizlemesi */}
             <div className="w-full mb-8">
               <div className="flex gap-3 items-end justify-end mb-2">
                 <div className="flex flex-col items-end max-w-[85%]">
-                  <span className="text-[11px] font-medium text-white/40 mb-1 max-w-full truncate">
+                  <span className="text-[11px] font-medium text-text-muted mb-1 max-w-full truncate">
                     {debouncedFirstName || debouncedLastName ? `${debouncedFirstName} ${debouncedLastName}`.trim() : debouncedUsername}
                   </span>
-                  <div className="px-4 py-2.5 rounded-2xl shadow-sm text-[13px] bg-gradient-to-br from-primary-main to-primary-main text-white rounded-tr-sm">
+                  <div className="px-4 py-2.5 rounded-2xl shadow-sm text-[13px] bg-gradient-to-br from-primary-main to-primary-main text-text-main rounded-tr-sm">
                     Merhaba, bu yeni profilim!
                   </div>
                 </div>
-                <div className="w-8 h-8 rounded-full border border-primary-main overflow-hidden bg-[#18181b] shrink-0 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-full border border-primary-main overflow-hidden bg-bg-base shrink-0 flex items-center justify-center text-sm">
                   {renderAvatar(avatarId)}
                 </div>
               </div>
             </div>
 
             {/* Aktif Kullanıcı Listesi Önizlemesi */}
-            <div className="w-full bg-[#18181b]/50 border border-[#334155] rounded-xl p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border-2 border-primary-main overflow-hidden shrink-0 flex items-center justify-center text-xl bg-[#18181b]">
+            <div className="w-full bg-bg-base/50 border border-[#334155] rounded-xl p-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full border-2 border-primary-main overflow-hidden shrink-0 flex items-center justify-center text-xl bg-bg-base">
                  {renderAvatar(avatarId)}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-semibold text-white truncate w-full">
+                <span className="text-sm font-semibold text-text-main truncate w-full">
                   {debouncedUsername || 'kullanici_adi'}
                 </span>
-                <span className="text-[10px] text-white/40 truncate w-full">
+                <span className="text-[10px] text-text-muted truncate w-full">
                   Sohbet Odasında
                 </span>
               </div>
@@ -213,7 +213,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             <button
               onClick={handleSave}
               disabled={isLoading}
-              className="mt-8 w-full py-3 rounded-xl bg-gradient-to-br from-primary-main to-primary-main text-white font-semibold text-sm hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="mt-8 w-full py-3 rounded-xl bg-gradient-to-br from-primary-main to-primary-main text-text-main font-semibold text-sm hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Save size={16} />
               {isLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}

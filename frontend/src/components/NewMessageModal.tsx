@@ -92,7 +92,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-md bg-[#09090b] border border-[#334155] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+          className="relative w-full max-w-md bg-bg-surface border border-[#334155] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -109,13 +109,13 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                 <MessageSquare size={20} className="text-primary-main" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Yeni Mesaj</h2>
-                <p className="text-xs text-white/40">Bir kullanıcı ara ve sohbeti başlat</p>
+                <h2 className="text-lg font-bold text-text-main">Yeni Mesaj</h2>
+                <p className="text-xs text-text-muted">Bir kullanıcı ara ve sohbeti başlat</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+              className="p-2 text-text-muted hover:text-text-main hover:bg-surface-subtle rounded-full transition-colors"
             >
               <X size={20} />
             </button>
@@ -124,14 +124,14 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
           {/* Search */}
           <div className="px-6 pb-4 shrink-0">
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Kullanıcı ara..."
                 autoFocus
-                className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-primary-main transition-colors text-sm placeholder:text-white/20"
+                className="w-full bg-bg-base border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted"
               />
             </div>
           </div>
@@ -141,7 +141,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
           {/* User List */}
           <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-10 text-white/50">
+              <div className="flex flex-col items-center justify-center py-10 text-text-muted">
                 <Loader2 size={24} className="animate-spin mb-2" />
                 <span className="text-sm">Kullanıcılar yükleniyor...</span>
               </div>
@@ -150,7 +150,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                 {error}
               </div>
             ) : filteredUsers.length === 0 ? (
-              <div className="text-center py-10 text-white/40 text-sm">
+              <div className="text-center py-10 text-text-muted text-sm">
                 Kullanıcı bulunamadı.
               </div>
             ) : (
@@ -164,18 +164,18 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                     }}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/10 transition-all text-left group"
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-surface-subtle hover:bg-surface-subtle-strong border border-transparent hover:border-border-main transition-all text-left group"
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-xl bg-[#18181b] border border-[#334155]">
+                        <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-xl bg-bg-base border border-[#334155]">
                           {renderAvatar(user.avatarId)}
                         </div>
                         {/* Status Indicator */}
                         <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${getStatusColor(user.customStatus)}`} />
                       </div>
                       <div>
-                        <div className="text-sm font-semibold text-white flex items-center gap-2">
+                        <div className="text-sm font-semibold text-text-main flex items-center gap-2">
                           {user.username}
                           {user.customStatus === 'online' && (
                             <span className="text-[10px] font-normal text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded-full">
@@ -183,7 +183,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-white/40 mt-0.5">
+                        <div className="text-xs text-text-muted mt-0.5">
                           {user.firstName} {user.lastName}
                         </div>
                       </div>

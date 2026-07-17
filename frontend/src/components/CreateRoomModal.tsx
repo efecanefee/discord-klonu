@@ -118,7 +118,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-md bg-[#09090b] border border-[#334155] rounded-3xl overflow-hidden shadow-2xl"
+          className="relative w-full max-w-md bg-bg-surface border border-[#334155] rounded-3xl overflow-hidden shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Üst Gradient Çizgi */}
@@ -138,14 +138,14 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 <Plus size={20} className="text-primary-main" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Yeni Oda Oluştur</h2>
-                <p className="text-xs text-white/40">Arkadaşlarınla sohbet etmek için bir oda aç</p>
+                <h2 className="text-lg font-bold text-text-main">Yeni Oda Oluştur</h2>
+                <p className="text-xs text-text-muted">Arkadaşlarınla sohbet etmek için bir oda aç</p>
               </div>
             </div>
             <button
               onClick={onClose}
               disabled={isLoading}
-              className="p-2 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-colors disabled:opacity-50"
+              className="p-2 text-text-muted hover:text-text-main hover:bg-surface-subtle rounded-full transition-colors disabled:opacity-50"
             >
               <X size={20} />
             </button>
@@ -166,29 +166,29 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   <Check size={28} className="text-[#10b981]" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Oda oluşturuldu!</h3>
-                  <p className="text-xs text-white/40 mt-1">
-                    <span className="text-white/70 font-semibold">{createdRoom.name}</span> hazır.
+                  <h3 className="text-base font-bold text-text-main">Oda oluşturuldu!</h3>
+                  <p className="text-xs text-text-muted mt-1">
+                    <span className="text-text-muted font-semibold">{createdRoom.name}</span> hazır.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs text-white/50 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                <label className="text-xs text-text-muted uppercase tracking-wider font-semibold flex items-center gap-1.5">
                   {createdRoom.isPrivate ? <Lock size={12} /> : <Globe size={12} />}
                   Oda Kodu
                 </label>
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="w-full flex items-center justify-between gap-3 bg-[#18181b] border border-[#334155] hover:border-primary-main/50 rounded-xl px-4 py-3.5 transition-colors group"
+                  className="w-full flex items-center justify-between gap-3 bg-bg-base border border-[#334155] hover:border-primary-main/50 rounded-xl px-4 py-3.5 transition-colors group"
                 >
-                  <span className="text-2xl font-mono font-bold tracking-[0.3em] text-white">{createdRoom.roomCode}</span>
-                  <span className="flex items-center gap-1.5 text-xs text-white/50 group-hover:text-white transition-colors">
+                  <span className="text-2xl font-mono font-bold tracking-[0.3em] text-text-main">{createdRoom.roomCode}</span>
+                  <span className="flex items-center gap-1.5 text-xs text-text-muted group-hover:text-text-main transition-colors">
                     {copied ? <><Check size={14} className="text-[#10b981]" /> Kopyalandı</> : <><Copy size={14} /> Kopyala</>}
                   </span>
                 </button>
-                <p className="text-[11px] text-white/30 leading-relaxed">
+                <p className="text-[11px] text-text-muted leading-relaxed">
                   {createdRoom.isPrivate
                     ? 'Bu oda gizli. Sadece bu kodu bilenler odayı bulup katılabilir. Kodu paylaşmayı unutma!'
                     : 'Oda herkese açık listede görünür. Bu kod ile de doğrudan bulunabilir.'}
@@ -198,7 +198,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 rounded-xl text-text-main font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)' }}
               >
                 Tamam
@@ -220,11 +220,11 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
 
             {/* Oda Adı */}
             <div className="space-y-2">
-              <label className="text-xs text-white/50 uppercase tracking-wider font-semibold">
+              <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">
                 Oda Adı <span className="text-red-400">*</span>
               </label>
               <div className="relative">
-                <MessageSquare className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <MessageSquare className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                 <input
                   type="text"
                   value={name}
@@ -233,9 +233,9 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   maxLength={50}
                   autoFocus
                   disabled={isLoading}
-                  className="w-full bg-[#18181b] border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-white outline-none focus:border-primary-main transition-colors text-sm placeholder:text-white/20 disabled:opacity-50"
+                  className="w-full bg-bg-base border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted disabled:opacity-50"
                 />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-white/20">
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-text-muted">
                   {name.length}/50
                 </span>
               </div>
@@ -243,17 +243,17 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
 
             {/* Kanallar — oda türü seçimi kaldırıldı; her oda metin + ses kanalıyla açılır */}
             <div className="space-y-2">
-              <label className="text-xs text-white/50 uppercase tracking-wider font-semibold">
+              <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">
                 Kanallar
               </label>
-              <div className="rounded-xl border border-[#334155] bg-[#18181b] p-3 space-y-2.5">
+              <div className="rounded-xl border border-[#334155] bg-bg-base p-3 space-y-2.5">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary-main/15 flex items-center justify-center shrink-0">
                     <Hash size={16} className="text-primary-main" />
                   </div>
                   <div className="text-left">
-                    <div className="text-sm font-semibold text-white/90">genel</div>
-                    <div className="text-[10px] text-white/30">Metin kanalı — mesajlaşma</div>
+                    <div className="text-sm font-semibold text-text-main">genel</div>
+                    <div className="text-[10px] text-text-muted">Metin kanalı — mesajlaşma</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -261,20 +261,20 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                     <Volume2 size={16} className="text-[#10b981]" />
                   </div>
                   <div className="text-left">
-                    <div className="text-sm font-semibold text-white/90">Sesli Sohbet</div>
-                    <div className="text-[10px] text-white/30">Ses kanalı — sesli sohbet</div>
+                    <div className="text-sm font-semibold text-text-main">Sesli Sohbet</div>
+                    <div className="text-[10px] text-text-muted">Ses kanalı — sesli sohbet</div>
                   </div>
                 </div>
               </div>
-              <p className="text-[11px] text-white/30 leading-relaxed">
+              <p className="text-[11px] text-text-muted leading-relaxed">
                 Odan bir metin ve bir ses kanalıyla açılır. Sonradan yeni kanallar ekleyebilirsin.
               </p>
             </div>
 
             {/* Açıklama */}
             <div className="space-y-2">
-              <label className="text-xs text-white/50 uppercase tracking-wider font-semibold">
-                Açıklama <span className="text-white/20 normal-case">(isteğe bağlı)</span>
+              <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                Açıklama <span className="text-text-muted normal-case">(isteğe bağlı)</span>
               </label>
               <div className="relative">
                 <textarea
@@ -284,9 +284,9 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   maxLength={200}
                   rows={3}
                   disabled={isLoading}
-                  className="w-full bg-[#18181b] border border-[#334155] rounded-xl px-4 py-3 text-white outline-none focus:border-primary-main transition-colors text-sm placeholder:text-white/20 resize-none disabled:opacity-50"
+                  className="w-full bg-bg-base border border-[#334155] rounded-xl px-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted resize-none disabled:opacity-50"
                 />
-                <span className="absolute right-3 bottom-2 text-[10px] text-white/20">
+                <span className="absolute right-3 bottom-2 text-[10px] text-text-muted">
                   {description.length}/200
                 </span>
               </div>
@@ -301,26 +301,26 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 text-left ${
                   isPrivate
                     ? 'bg-primary-main/10 border-primary-main/50 shadow-[0_0_20px_rgba(var(--accent-rgb),0.15)]'
-                    : 'bg-[#18181b] border-[#334155] hover:border-primary-main/30'
+                    : 'bg-bg-base border-[#334155] hover:border-primary-main/30'
                 } disabled:opacity-50`}
               >
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all shrink-0 ${
-                    isPrivate ? 'bg-primary-main/20' : 'bg-white/5'
+                    isPrivate ? 'bg-primary-main/20' : 'bg-surface-subtle'
                   }`}
                 >
-                  {isPrivate ? <Lock size={18} className="text-primary-main" /> : <Globe size={18} className="text-white/40" />}
+                  {isPrivate ? <Lock size={18} className="text-primary-main" /> : <Globe size={18} className="text-text-muted" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className={`text-sm font-semibold ${isPrivate ? 'text-white' : 'text-white/60'}`}>
+                  <div className={`text-sm font-semibold ${isPrivate ? 'text-text-main' : 'text-text-muted'}`}>
                     Gizli Oda
                   </div>
-                  <div className="text-[10px] text-white/30 leading-tight">
+                  <div className="text-[10px] text-text-muted leading-tight">
                     {isPrivate ? 'Sadece oda kodunu bilenler bulabilir' : 'Herkese açık listede görünür'}
                   </div>
                 </div>
                 {/* Switch */}
-                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${isPrivate ? 'bg-primary-main' : 'bg-white/10'}`}>
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${isPrivate ? 'bg-primary-main' : 'bg-surface-subtle-strong'}`}>
                   <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white transition-transform ${isPrivate ? 'translate-x-6' : 'translate-x-1'}`} style={{ height: '18px', width: '18px' }} />
                 </div>
               </button>
@@ -335,7 +335,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               disabled={isLoading || !name.trim()}
               whileHover={!isLoading && name.trim() ? { scale: 1.02, y: -1 } : {}}
               whileTap={!isLoading && name.trim() ? { scale: 0.98 } : {}}
-              className="w-full py-3.5 rounded-xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="w-full py-3.5 rounded-xl text-text-main font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               style={{
                 background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)',
                 boxShadow: !isLoading && name.trim()
