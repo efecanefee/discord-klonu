@@ -13,12 +13,22 @@ import { getAvatarEmoji } from '../constants/avatars';
 import { roomApi, type RoomMemberDto, type ChannelDto } from '../services/roomApi';
 import { useVoiceChannel } from '../hooks/useVoiceChannel';
 import { roleBadgeEmoji, sortByRole, roleRank, roleLabel } from '../utils/roles';
+import { useSettings } from '../contexts/SettingsContext';
+import { applySinkId } from '../utils/audioOutput';
 
 export interface TextRoomInfo {
     name: string;
     description?: string;
     createdBy?: string;
 }
+
+// Uzak katilimcinin sesi. Ayarlardaki cikis cihazina yonlendirilir.
+const VoiceAudio: React.FC<{ stream: MediaStream; sinkId: string }> = ({ stream, sinkId }) => {
+    const ref = useRef<HTMLAudioElement>(null);
+    useEffect(() => { if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream; }, [stream]);
+    useEffect(() => { applySinkId(ref.current, sinkId); }, [sinkId, stream]);
+    return <audio ref={ref} autoPlay playsInline />;
+};
 
 interface TextChatRoomProps {
     username: string;
@@ -243,6 +253,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
     const { playJoinSound, playLeaveSound, playSendSound, playReceiveSound } = useAudioNotifications();
     const voice = useVoiceChannel();
+    const { settings } = useSettings();
 
     // Tema — koyu tema değişkenleri (ChatRoom ile aynı varsayılan)
     useEffect(() => {
@@ -903,14 +914,18 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                     <AnimatePresence>
                                                         {voice.participants.map(p => {
                                                             const speaking = voice.speakingConnIds.has(p.connectionId);
+                                                            const failed = voice.connectionIssues.has(p.connectionId);
                                                             return (
                                                                 <motion.div key={p.connectionId} layout
                                                                     initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
                                                                     className="flex items-center gap-1.5">
-                                                                    <span className={`text-base leading-none rounded-full transition-shadow ${speaking ? 'ring-2 ring-emerald-400' : ''}`}>{getAvatarEmoji(p.avatarId || 'default')}</span>
-                                                                    <span className={`text-[12px] truncate ${speaking ? 'text-emerald-400' : 'text-text-muted'}`}>
+                                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${failed ? 'bg-amber-400' : speaking ? 'bg-emerald-400' : 'bg-text-muted/40'}`} />
+                                                                    <span className={`text-[12px] truncate max-w-[120px] ${failed ? 'text-amber-400/80' : speaking ? 'text-emerald-400' : 'text-text-muted'}`}>
                                                                         {p.username}{p.userId === myUserId ? ' (Sen)' : ''}
                                                                     </span>
+                                                                    {failed && (
+                                                                        <span title="Bu kisiyle ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80 shrink-0">bağlanılamadı</span>
+                                                                    )}
                                                                 </motion.div>
                                                             );
                                                         })}
@@ -945,7 +960,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
                     {/* Uzak katılımcıların sesi (gizli audio öğeleri) */}
                     {Array.from(voice.remoteStreams.entries()).map(([connId, stream]) => (
-                        <audio key={connId} autoPlay playsInline ref={el => { if (el && el.srcObject !== stream) el.srcObject = stream; }} />
+                        <VoiceAudio key={connId} stream={stream} sinkId={settings.speakerId} />
                     ))}
 
                     {/* Chat alanı */}
