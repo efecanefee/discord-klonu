@@ -43,7 +43,9 @@ const ActivityFeed = memo(function ActivityFeed({ rooms }: ActivityFeedProps) {
 
   // Silme olayinda oda adini cozebilmek icin guncel listenin ref'i
   const roomsRef = useRef(rooms);
-  roomsRef.current = rooms;
+  useEffect(() => {
+    roomsRef.current = rooms;
+  }, [rooms]);
 
   // Goreli zaman etiketleri dakikada bir tazelenir
   useEffect(() => {
