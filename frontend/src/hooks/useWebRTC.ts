@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useSettings } from '../contexts/SettingsContext';
-
-const STUN_SERVERS = {
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-};
+import { getRtcConfig } from '../config/webrtc';
+import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 
 export interface DeviceInfo {
     deviceId: string;
@@ -12,8 +10,19 @@ export interface DeviceInfo {
 }
 
 export function useWebRTC() {
-    const { settings } = useSettings();
+    const { settings, updateSettings } = useSettings();
     const noiseSuppression = settings.noiseSuppression;
+    // Cihaz secimi tek kaynaktan (SettingsContext) okunur; boylece Ayarlar
+    // penceresi ile oda ici cihaz menusu ayni degeri gosterir.
+    const selectedMicId = settings.microphoneId;
+    const selectedOutputId = settings.speakerId;
+
+    // Yeni kapi olustururken baslangic degerleri buradan okunur. Ref, cunku
+    // openMicStream'in kimligi ayar degisince degismemeli.
+    const gateSettingsRef = useRef({
+        enabled: settings.noiseGateEnabled,
+        threshold: settings.noiseGateThreshold,
+    });
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
     const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
@@ -23,17 +32,26 @@ export function useWebRTC() {
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [isReady, setIsReady] = useState(false);
     const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
+    // ICE'i kalici olarak basarisiz olan peer'lar — UI'da uyari gostermek icin.
+    const [connectionIssues, setConnectionIssues] = useState<Set<string>>(new Set());
     const analyserRefs = useRef<Map<string, { analyser: AnalyserNode, interval: number }>>(new Map());
 
     // Cihaz listesi
     const [audioInputs, setAudioInputs] = useState<DeviceInfo[]>([]);
     const [audioOutputs, setAudioOutputs] = useState<DeviceInfo[]>([]);
-    const [selectedMicId, setSelectedMicId] = useState<string>('');
-    const [selectedOutputId, setSelectedOutputId] = useState<string>('');
+
+    const setSelectedOutputId = useCallback((deviceId: string) => {
+        updateSettings({ speakerId: deviceId });
+    }, [updateSettings]);
 
     const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
     const iceCandidateQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+    // streamRef = peer'lara giden islenmis stream (gurultu kapisindan gecmis).
+    // rawStreamRef = ham mikrofon; yalnizca stop() icin tutulur, yoksa mikrofon
+    // isigi sonmez.
     const streamRef = useRef<MediaStream | null>(null);
+    const rawStreamRef = useRef<MediaStream | null>(null);
+    const gateRef = useRef<NoiseGate | null>(null);
     const videoStreamRef = useRef<MediaStream | null>(null);
     const screenStreamRef = useRef<MediaStream | null>(null);
 
@@ -49,52 +67,41 @@ export function useWebRTC() {
                 .map(d => ({ deviceId: d.deviceId, label: d.label || `Çıkış ${d.deviceId.slice(0, 4)}` }));
             setAudioInputs(mics);
             setAudioOutputs(outputs);
-            if (mics.length > 0 && !selectedMicId) setSelectedMicId(mics[0].deviceId);
-            if (outputs.length > 0 && !selectedOutputId) setSelectedOutputId(outputs[0].deviceId);
         } catch (e) {
             console.error('[WebRTC] Cihaz listesi alınamadı:', e);
         }
-    }, [selectedMicId, selectedOutputId]);
+    }, []);
 
-    // Belirli mikrofon ile stream aç
+    // Belirli mikrofon ile stream aç. deviceId verilmezse ayarlardaki mikrofon
+    // kullanilir ('default' ise tarayiciya birakilir). Donen `processed` stream
+    // gurultu kapisindan gecmistir ve peer'lara o gonderilir.
     const openMicStream = useCallback(async (deviceId?: string) => {
+        const wanted = deviceId ?? selectedMicId;
         try {
             const constraints: MediaStreamConstraints = {
                 audio: {
-                    ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+                    ...(wanted && wanted !== 'default' ? { deviceId: { exact: wanted } } : {}),
                     noiseSuppression: noiseSuppression ? { ideal: true } : { ideal: false },
                     echoCancellation: noiseSuppression ? { ideal: true } : { ideal: false },
                     autoGainControl: noiseSuppression ? { ideal: true } : { ideal: false }
                 },
                 video: false
             };
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            return stream;
+            const raw = await navigator.mediaDevices.getUserMedia(constraints);
+            const gate = createNoiseGate(raw, gateSettingsRef.current);
+            return { raw, processed: gate.stream, gate };
         } catch (e) {
             console.error('[WebRTC] Mikrofon açılamadı:', e);
             return null;
         }
-    }, []);
+    }, [noiseSuppression, selectedMicId]);
 
-    // Mikrofon değiştir
-    const switchMicrophone = useCallback(async (deviceId: string) => {
-        setSelectedMicId(deviceId);
-        const newStream = await openMicStream(deviceId);
-        if (!newStream) return;
-
-        // Mevcut peer bağlantılarındaki audio track'i değiştir
-        const newAudioTrack = newStream.getAudioTracks()[0];
-        peerConnections.current.forEach(pc => {
-            const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
-            if (sender && newAudioTrack) sender.replaceTrack(newAudioTrack);
-        });
-
-        // Eski stream'i temizle, yenisini set et
-        streamRef.current?.getAudioTracks().forEach(t => t.stop());
-        streamRef.current = newStream;
-        setLocalStream(newStream);
-        setIsMuted(false);
-    }, [openMicStream]);
+    // Mikrofon değiştir — yalnizca ayari yazar. Asil stream degisimini asagidaki
+    // effect yapar; boylece Ayarlar penceresinden yapilan degisiklik de ayni
+    // yoldan gecer ve iki farkli kod yolu olusmaz.
+    const switchMicrophone = useCallback((deviceId: string) => {
+        updateSettings({ microphoneId: deviceId });
+    }, [updateSettings]);
 
     // Kamera aç/kapat
     const toggleCamera = useCallback(async () => {
@@ -264,7 +271,7 @@ export function useWebRTC() {
         let isMounted = true;
 
         const createPeerConnection = (targetConnectionId: string) => {
-            const pc = new RTCPeerConnection(STUN_SERVERS);
+            const pc = new RTCPeerConnection(getRtcConfig());
             iceCandidateQueues.current.set(targetConnectionId, []);
 
             // Audio track ekle
@@ -353,8 +360,41 @@ export function useWebRTC() {
                 }
             };
 
-            pc.oniceconnectionstatechange = () => {
-                console.log(`[WebRTC ICE] ${targetConnectionId} -> ${pc.iceConnectionState}`);
+            let iceRestarted = false;
+            pc.oniceconnectionstatechange = async () => {
+                const state = pc.iceConnectionState;
+                console.log(`[WebRTC ICE] ${targetConnectionId} -> ${state}`);
+
+                if (state === 'failed') {
+                    // Iki taraf ayni anda restart ederse glare olur. Deterministik
+                    // tie-break: yalnizca connectionId'si buyuk olan taraf yeniden
+                    // offer acar, digeri yanit vermekle yetinir.
+                    const myId = signalrService.connectionId ?? '';
+                    const shouldRestart = myId > targetConnectionId;
+
+                    if (!iceRestarted && shouldRestart) {
+                        iceRestarted = true;
+                        console.warn(`[WebRTC ICE] ${targetConnectionId} basarisiz, ICE restart deneniyor.`);
+                        try {
+                            const offer = await pc.createOffer({ iceRestart: true });
+                            await pc.setLocalDescription(offer);
+                            signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), targetConnectionId);
+                        } catch (e) {
+                            console.error('[WebRTC] ICE restart hatasi:', e);
+                            setConnectionIssues(prev => new Set(prev).add(targetConnectionId));
+                        }
+                    } else {
+                        setConnectionIssues(prev => new Set(prev).add(targetConnectionId));
+                    }
+                } else if (state === 'connected' || state === 'completed') {
+                    iceRestarted = false;
+                    setConnectionIssues(prev => {
+                        if (!prev.has(targetConnectionId)) return prev;
+                        const next = new Set(prev);
+                        next.delete(targetConnectionId);
+                        return next;
+                    });
+                }
             };
 
             return pc;
@@ -467,11 +507,17 @@ export function useWebRTC() {
 
         const init = async () => {
             // Önce mikrofon izni al, sonra cihazları listele (izin olmadan isimler boş döner)
-            const stream = await openMicStream();
-            if (!isMounted) { stream?.getTracks().forEach(t => t.stop()); return; }
-            if (stream) {
-                streamRef.current = stream;
-                setLocalStream(stream);
+            const opened = await openMicStream();
+            if (!isMounted) {
+                opened?.gate.destroy();
+                opened?.raw.getTracks().forEach(t => t.stop());
+                return;
+            }
+            if (opened) {
+                rawStreamRef.current = opened.raw;
+                gateRef.current = opened.gate;
+                streamRef.current = opened.processed;
+                setLocalStream(opened.processed);
             }
             await loadDevices();
             const cleanup = setupWebRTCListeners();
@@ -486,7 +532,12 @@ export function useWebRTC() {
         return () => {
             isMounted = false;
             cleanupListeners?.();
+            gateRef.current?.destroy();
+            gateRef.current = null;
             streamRef.current?.getTracks().forEach(t => t.stop());
+            // Ham stream ayrica durdurulmali — mikrofon isigi ancak boyle soner.
+            rawStreamRef.current?.getTracks().forEach(t => t.stop());
+            rawStreamRef.current = null;
             videoStreamRef.current?.getTracks().forEach(t => t.stop());
             screenStreamRef.current?.getTracks().forEach(t => t.stop());
             currentPCs.forEach(pc => pc.close());
@@ -495,10 +546,55 @@ export function useWebRTC() {
         };
     }, []);
 
-    // Dinamik olarak Gürültü Engelleme ayarı değiştiğinde canlı stream'e uygula
+    // Ayarlardan mikrofon degisince canli stream'i degistir. init() ilk stream'i
+    // zaten dogru cihazla actigi icin mount'ta calismamali.
+    const appliedMicRef = useRef<string | null>(null);
     useEffect(() => {
-        if (!isReady || !localStream) return;
-        const track = localStream.getAudioTracks()[0];
+        if (!isReady) return;
+        if (appliedMicRef.current === null) { appliedMicRef.current = selectedMicId; return; }
+        if (appliedMicRef.current === selectedMicId) return;
+        appliedMicRef.current = selectedMicId;
+
+        let cancelled = false;
+        (async () => {
+            const opened = await openMicStream(selectedMicId);
+            if (!opened) return;
+            if (cancelled) {
+                opened.gate.destroy();
+                opened.raw.getTracks().forEach(t => t.stop());
+                return;
+            }
+
+            const newAudioTrack = opened.processed.getAudioTracks()[0];
+            // Mikrofon kapaliysa yeni track'te de kapali kalsin.
+            const wasEnabled = streamRef.current?.getAudioTracks()[0]?.enabled ?? true;
+            if (newAudioTrack) newAudioTrack.enabled = wasEnabled;
+
+            peerConnections.current.forEach(pc => {
+                const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
+                if (sender && newAudioTrack) sender.replaceTrack(newAudioTrack).catch(e => console.error('[WebRTC] replaceTrack hatasi:', e));
+            });
+
+            gateRef.current?.destroy();
+            streamRef.current?.getTracks().forEach(t => t.stop());
+            rawStreamRef.current?.getTracks().forEach(t => t.stop());
+
+            gateRef.current = opened.gate;
+            streamRef.current = opened.processed;
+            rawStreamRef.current = opened.raw;
+            setLocalStream(opened.processed);
+            setIsMuted(!wasEnabled);
+        })();
+
+        return () => { cancelled = true; };
+    }, [selectedMicId, isReady, openMicStream]);
+
+    // Tarayici gurultu filtresi degisince canli stream'e uygula.
+    // Kisit HAM track'e uygulanmali — islenmis stream MediaStreamDestination'dan
+    // gelir ve mikrofon kisitlarini tasimaz.
+    useEffect(() => {
+        if (!isReady) return;
+        const track = rawStreamRef.current?.getAudioTracks()[0];
         if (track) {
             track.applyConstraints({
                 noiseSuppression: noiseSuppression ? { ideal: true } : { ideal: false },
@@ -507,6 +603,18 @@ export function useWebRTC() {
             }).catch(e => console.error('[WebRTC] applyConstraints failed:', e));
         }
     }, [noiseSuppression, localStream, isReady]);
+
+    // Kapi ayarlari degisince calisan kapiya canli uygula — stream yeniden
+    // acilmaz, ses kesilmez. Ayni anda bir sonraki kapinin baslangic degerini
+    // de guncelle.
+    useEffect(() => {
+        gateSettingsRef.current = {
+            enabled: settings.noiseGateEnabled,
+            threshold: settings.noiseGateThreshold,
+        };
+        gateRef.current?.setEnabled(settings.noiseGateEnabled);
+        gateRef.current?.setThreshold(settings.noiseGateThreshold);
+    }, [settings.noiseGateEnabled, settings.noiseGateThreshold]);
 
     const toggleMute = useCallback(() => {
         if (streamRef.current) {
@@ -549,5 +657,6 @@ export function useWebRTC() {
         setSelectedOutputId,
         isReady,
         speakingUsers,
+        connectionIssues,
     };
 }

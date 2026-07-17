@@ -15,6 +15,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { getAvatarEmoji } from '../constants/avatars';
 import { roomApi } from '../services/roomApi';
 import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
+import { applySinkId } from '../utils/audioOutput';
 
 interface ChatRoomProps {
     username: string;
@@ -57,10 +58,11 @@ const STATUS_COLORS: Record<UserStatus, string> = {
     music: 'bg-purple-500',
 };
 
-const AudioPlayer: React.FC<{ stream: MediaStream; volume: number }> = ({ stream, volume }) => {
+const AudioPlayer: React.FC<{ stream: MediaStream; volume: number; sinkId: string }> = ({ stream, volume, sinkId }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     useEffect(() => { if (audioRef.current) audioRef.current.srcObject = stream; }, [stream]);
     useEffect(() => { if (audioRef.current) audioRef.current.volume = volume; }, [volume]);
+    useEffect(() => { applySinkId(audioRef.current, sinkId); }, [sinkId, stream]);
     return <audio ref={audioRef} autoPlay />;
 };
 
@@ -182,7 +184,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         audioInputs, audioOutputs,
         selectedMicId, selectedOutputId,
         switchMicrophone, setSelectedOutputId,
-        speakingUsers,
+        speakingUsers, connectionIssues,
     } = useWebRTC();
 
     const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playSendSound, playReceiveSound } = useAudioNotifications();
@@ -849,7 +851,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             {Array.from(remoteStreams.entries()).map(([connId, stream], idx) => {
                 const userObj = usersInRoom.find(u => u.connectionId === connId);
                 const uName = userObj?.username ?? 'Unknown';
-                return <AudioPlayer key={idx} stream={stream} volume={masterVolume * (userVolumes[uName] ?? 1.0)} />;
+                return <AudioPlayer key={idx} stream={stream} volume={masterVolume * (userVolumes[uName] ?? 1.0)} sinkId={selectedOutputId} />;
             })}
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible"
@@ -911,18 +913,30 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Mikrofon</p>
                                         <select value={selectedMicId} onChange={e => switchMicrophone(e.target.value)}
                                             className="w-full bg-bg-surface border border-border-main text-text-main text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-primary-main cursor-pointer mb-3">
+                                            {!audioInputs.some(d => d.deviceId === 'default') && <option value="default">Varsayılan Mikrofon</option>}
                                             {audioInputs.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
                                         </select>
                                         
                                         <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-colors">
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="text-sm font-semibold text-text-main">Gürültü Engelleme</span>
-                                                <span className="text-[10px] text-text-muted leading-tight">Yapay zeka ile arka plan sesini filtreler</span>
+                                                <span className="text-[10px] text-text-muted leading-tight">Fan, uğultu gibi sürekli sesleri azaltır</span>
                                             </div>
                                             <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.noiseSuppression ? 'bg-primary-main' : 'bg-white/10'}`}>
                                                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.noiseSuppression ? 'translate-x-4' : 'translate-x-1'}`} />
                                             </div>
                                             <input type="checkbox" className="hidden" checked={settings.noiseSuppression} onChange={() => updateSettings({ noiseSuppression: !settings.noiseSuppression })} />
+                                        </label>
+
+                                        <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-colors">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-sm font-semibold text-text-main">Giriş Hassasiyeti</span>
+                                                <span className="text-[10px] text-text-muted leading-tight">Eşik altındaki sesi tamamen keser · eşik Ayarlar'dan</span>
+                                            </div>
+                                            <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.noiseGateEnabled ? 'bg-primary-main' : 'bg-white/10'}`}>
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.noiseGateEnabled ? 'translate-x-4' : 'translate-x-1'}`} />
+                                            </div>
+                                            <input type="checkbox" className="hidden" checked={settings.noiseGateEnabled} onChange={() => updateSettings({ noiseGateEnabled: !settings.noiseGateEnabled })} />
                                         </label>
                                     </div>
                                     {audioOutputs.length > 0 && (
@@ -930,6 +944,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Ses Çıkışı</p>
                                             <select value={selectedOutputId} onChange={e => setSelectedOutputId(e.target.value)}
                                                 className="w-full bg-bg-surface border border-border-main text-text-main text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-primary-main cursor-pointer">
+                                                {!audioOutputs.some(d => d.deviceId === 'default') && <option value="default">Varsayılan Çıkış</option>}
                                                 {audioOutputs.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label}</option>)}
                                             </select>
                                         </div>
@@ -1058,7 +1073,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             </div>
                                             <div className="flex flex-col min-w-0">
                                                 <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}</span>
-                                                {mutedUsers[u.connectionId] && <MicOff size={10} className="text-red-400 mt-0.5" />}
+                                                {connectionIssues.has(u.connectionId)
+                                                    ? <span title="Ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80">bağlanılamadı</span>
+                                                    : mutedUsers[u.connectionId] && <MicOff size={10} className="text-red-400 mt-0.5" />}
                                             </div>
                                         </div>
                                     );
@@ -1412,7 +1429,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         </span>
                                                                     )}
                                                                 </span>
-                                                                <span className="text-[11px] text-text-muted">{u.connectionId === signalrService.connectionId ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}</span>
+                                                                {connectionIssues.has(u.connectionId)
+                                                                    ? <span title="Ses baglantisi kurulamadi — karsi taraf seni duyamiyor olabilir" className="text-[11px] text-amber-400/80">⚠ bağlanılamadı</span>
+                                                                    : <span className="text-[11px] text-text-muted">{u.connectionId === signalrService.connectionId ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}</span>}
                                                             </div>
                                                         </div>
                                                     </div>

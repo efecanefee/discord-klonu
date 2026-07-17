@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mic, Bell, Monitor, CheckCircle2, Info } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 import KeybindInput from './KeybindInput';
 
 interface SettingsModalProps {
@@ -20,6 +21,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
   const [speakers, setSpeakers] = useState<MediaDeviceInfo[]>([]);
   const [permissionGranted, setPermissionGranted] = useState<boolean>(false);
+  // Eşik kaydırıcısının yanındaki canlı seviye çubuğu. Bu geri bildirim olmadan
+  // kullanıcı eşiği doğru ayarlayamaz — nereye çektiğini göremez.
+  const [micLevel, setMicLevel] = useState(0);
+  const previewRef = useRef<{ raw: MediaStream; gate: NoiseGate } | null>(null);
 
   useEffect(() => {
     if (isOpen && activeTab === 'audio') {
@@ -43,6 +48,49 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
       fetchDevices();
     }
   }, [isOpen, activeTab]);
+
+  // Ses sekmesi açıkken geçici bir mikrofon önizlemesi tut: yalnızca seviye
+  // ölçmek için. Sekme kapanınca stream durdurulur, mikrofon ışığı söner.
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'audio' || !permissionGranted) return;
+
+    let cancelled = false;
+    let rafId = 0;
+
+    (async () => {
+      try {
+        const raw = await navigator.mediaDevices.getUserMedia({
+          audio: settings.microphoneId && settings.microphoneId !== 'default'
+            ? { deviceId: { exact: settings.microphoneId } }
+            : true,
+        });
+        if (cancelled) { raw.getTracks().forEach(t => t.stop()); return; }
+
+        // enabled: false — burada kapi kapatmiyoruz, yalnizca seviye okuyoruz.
+        const gate = createNoiseGate(raw, { threshold: 0, enabled: false });
+        previewRef.current = { raw, gate };
+
+        const loop = () => {
+          setMicLevel(gate.getLevel());
+          rafId = requestAnimationFrame(loop);
+        };
+        loop();
+      } catch (e) {
+        console.error('[Ayarlar] Mikrofon önizlemesi açılamadı:', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      previewRef.current?.gate.destroy();
+      previewRef.current?.raw.getTracks().forEach(t => t.stop());
+      previewRef.current = null;
+      setMicLevel(0);
+    };
+    // Esik bilerek bagimlilik degil: kaydirici her oynadiginda mikrofonun
+    // yeniden acilmasi gerekmez, cubuk yalnizca giris seviyesini gosterir.
+  }, [isOpen, activeTab, permissionGranted, settings.microphoneId]);
 
   const requestAudioPermission = async () => {
     try {
@@ -278,12 +326,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                   <label className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group">
                     <div className="flex flex-col">
                       <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Gürültü Engelleme (Noise Suppression)</span>
-                      <span className="text-xs text-white/50 mt-1">Arka plandaki klavye, fan gibi rahatsız edici sesleri filtreler.</span>
+                      <span className="text-xs text-white/50 mt-1">Tarayıcının kendi filtresi. Fan, uğultu gibi sürekli sesleri azaltır.</span>
                     </div>
                     <div className="relative">
-                      <input 
-                        type="checkbox" 
-                        className="sr-only" 
+                      <input
+                        type="checkbox"
+                        className="sr-only"
                         checked={settings.noiseSuppression}
                         onChange={(e) => updateSettings({ noiseSuppression: e.target.checked })}
                       />
@@ -292,6 +340,71 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                       </div>
                     </div>
                   </label>
+
+                  {/* Gürültü kapısı — eşik altındaki sesi tamamen keser */}
+                  <div className="rounded-xl border border-white/10 bg-white/5">
+                    <label className="flex items-center justify-between p-4 cursor-pointer group">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-white group-hover:text-[#7C3AED] transition-colors">Giriş Hassasiyeti (Gürültü Kapısı)</span>
+                        <span className="text-xs text-white/50 mt-1">Sesin eşiği geçmedikçe mikrofonun kapalı kalır. Klavye, TV ve arka plan konuşmalarını keser.</span>
+                      </div>
+                      <div className="relative shrink-0 ml-4">
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={settings.noiseGateEnabled}
+                          onChange={(e) => updateSettings({ noiseGateEnabled: e.target.checked })}
+                        />
+                        <div className={`w-10 h-6 rounded-full transition-colors ${settings.noiseGateEnabled ? 'bg-[#7C3AED]' : 'bg-gray-600'}`}>
+                          <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings.noiseGateEnabled ? 'translate-x-4' : ''}`} />
+                        </div>
+                      </div>
+                    </label>
+
+                    <AnimatePresence initial={false}>
+                      {settings.noiseGateEnabled && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden border-t border-white/5"
+                        >
+                          <div className="p-4 space-y-3">
+                            {/* Canlı seviye çubuğu — eşik çizgisi üstünde */}
+                            <div className="relative h-2.5 w-full rounded-full bg-black/40 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-[width] duration-75 ${micLevel >= settings.noiseGateThreshold ? 'bg-emerald-400' : 'bg-white/25'}`}
+                                style={{ width: `${micLevel}%` }}
+                              />
+                              <div
+                                className="absolute top-0 bottom-0 w-0.5 bg-[#7C3AED]"
+                                style={{ left: `${settings.noiseGateThreshold}%` }}
+                              />
+                            </div>
+
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={settings.noiseGateThreshold}
+                              onChange={(e) => updateSettings({ noiseGateThreshold: Number(e.target.value) })}
+                              className="w-full h-1.5 bg-black/40 rounded-full appearance-none cursor-pointer accent-[#7C3AED]"
+                            />
+
+                            <div className="flex items-start gap-2 text-[11px] text-white/40">
+                              <Info size={13} className="mt-0.5 shrink-0" />
+                              <span>
+                                {permissionGranted
+                                  ? <>Konuşurken çubuk <b className="text-emerald-400">yeşile</b> dönmeli, sessizken mor çizginin solunda kalmalı. Sesin kesiliyorsa eşiği azalt.</>
+                                  : <>Çubuğu görmek için yukarıdan mikrofon izni ver.</>}
+                              </span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
             )}

@@ -11,6 +11,9 @@ export const AVATARS = [
   { id: 'footballer', img: '/avatars/choso.png' }
 ];
 
+// Resimli avatarlar `w-full h-full` ile cizilir: cagiran, boyutu belli VE
+// `overflow-hidden` olan bir kapsayici vermek zorunda. Aksi halde resim dogal
+// boyutunda cikar ve scale-[1.85] ile birlikte kirpilmadan tasar.
 export const getAvatarEmoji = (id: string) => {
   const avatar = AVATARS.find(a => a.id === id) || AVATARS[0];
   if (avatar.img) {
