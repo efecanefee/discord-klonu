@@ -2,3 +2,8 @@
 .env*.local
 **/bin/
 **/obj/
+
+# Yerel araclar ve kisisel notlar — depoya girmez
+.claude/
+BUGUNUN_PLANI.md
+GELISTIRME_PLANI.md
