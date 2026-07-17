@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import signalrService, { type VoiceUser } from '../services/signalrService';
 import { useSettings } from '../contexts/SettingsContext';
-
-const STUN_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+import { getRtcConfig } from '../config/webrtc';
 
 export type VoiceParticipant = VoiceUser;
 
@@ -19,6 +18,8 @@ export function useVoiceChannel() {
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
     const [speakingConnIds, setSpeakingConnIds] = useState<Set<string>>(new Set());
     const [isMuted, setIsMuted] = useState(false);
+    // ICE'i kalici olarak basarisiz olan peer'lar — UI'da uyari gostermek icin.
+    const [connectionIssues, setConnectionIssues] = useState<Set<string>>(new Set());
 
     const localStreamRef = useRef<MediaStream | null>(null);
     const pcs = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -27,6 +28,20 @@ export function useVoiceChannel() {
     const activeKeyRef = useRef<string | null>(null);
     const selfRef = useRef<VoiceUser | null>(null);
     const noiseSuppression = settings.noiseSuppression;
+    const microphoneId = settings.microphoneId;
+
+    // Ayarlardaki mikrofonla stream ac ('default' ise secimi tarayiciya birak).
+    const openMic = useCallback(async (): Promise<MediaStream> => {
+        return navigator.mediaDevices.getUserMedia({
+            audio: {
+                ...(microphoneId && microphoneId !== 'default' ? { deviceId: { exact: microphoneId } } : {}),
+                noiseSuppression: { ideal: noiseSuppression },
+                echoCancellation: { ideal: noiseSuppression },
+                autoGainControl: { ideal: noiseSuppression },
+            },
+            video: false,
+        });
+    }, [microphoneId, noiseSuppression]);
 
     const cleanupAnalyser = (connId: string) => {
         const a = analysers.current.get(connId);
@@ -55,7 +70,7 @@ export function useVoiceChannel() {
     };
 
     const createPeerConnection = useCallback((connId: string) => {
-        const pc = new RTCPeerConnection(STUN_SERVERS);
+        const pc = new RTCPeerConnection(getRtcConfig());
         iceQueues.current.set(connId, []);
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(t => pc.addTrack(t, localStreamRef.current!));
@@ -68,6 +83,40 @@ export function useVoiceChannel() {
             setRemoteStreams(prev => new Map(prev).set(connId, stream));
             if (e.track.kind === 'audio') attachAnalyser(connId, e.track);
         };
+
+        let iceRestarted = false;
+        pc.oniceconnectionstatechange = async () => {
+            const state = pc.iceConnectionState;
+            console.log(`[Voice ICE] ${connId} -> ${state}`);
+
+            if (state === 'failed') {
+                // Glare onleme: yalnizca connectionId'si buyuk olan taraf restart eder.
+                const myId = signalrService.connectionId ?? '';
+                if (!iceRestarted && myId > connId) {
+                    iceRestarted = true;
+                    console.warn(`[Voice ICE] ${connId} basarisiz, ICE restart deneniyor.`);
+                    try {
+                        const offer = await pc.createOffer({ iceRestart: true });
+                        await pc.setLocalDescription(offer);
+                        signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
+                    } catch (err) {
+                        console.error('[Voice] ICE restart hatasi:', err);
+                        setConnectionIssues(prev => new Set(prev).add(connId));
+                    }
+                } else {
+                    setConnectionIssues(prev => new Set(prev).add(connId));
+                }
+            } else if (state === 'connected' || state === 'completed') {
+                iceRestarted = false;
+                setConnectionIssues(prev => {
+                    if (!prev.has(connId)) return prev;
+                    const next = new Set(prev);
+                    next.delete(connId);
+                    return next;
+                });
+            }
+        };
+
         return pc;
     }, []);
 
@@ -86,6 +135,7 @@ export function useVoiceChannel() {
         cleanupAnalyser(connId);
         setRemoteStreams(prev => { const m = new Map(prev); m.delete(connId); return m; });
         setSpeakingConnIds(prev => { const s = new Set(prev); s.delete(connId); return s; });
+        setConnectionIssues(prev => { const s = new Set(prev); s.delete(connId); return s; });
     };
 
     const teardown = useCallback(() => {
@@ -106,6 +156,7 @@ export function useVoiceChannel() {
         localStreamRef.current = null;
         setRemoteStreams(new Map());
         setSpeakingConnIds(new Set());
+        setConnectionIssues(new Set());
         setParticipants([]);
     }, []);
 
@@ -127,14 +178,7 @@ export function useVoiceChannel() {
         // Mikrofon aç
         let stream: MediaStream;
         try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    noiseSuppression: { ideal: noiseSuppression },
-                    echoCancellation: { ideal: noiseSuppression },
-                    autoGainControl: { ideal: noiseSuppression },
-                },
-                video: false,
-            });
+            stream = await openMic();
         } catch (e) {
             console.error('[Voice] Mikrofon açılamadı:', e);
             alert('Mikrofona erişilemedi. Tarayıcı izinlerini kontrol et.');
@@ -200,7 +244,43 @@ export function useVoiceChannel() {
         setActiveVoiceKey(voiceKey);
         setParticipants([self]);
         await signalrService.joinVoice(voiceKey);
-    }, [noiseSuppression, createPeerConnection, leaveVoice]);
+    }, [openMic, createPeerConnection, leaveVoice]);
+
+    // Ayarlardan mikrofon degisirse: yeni stream ac, tum peer'larda track'i
+    // degistir, eskisini durdur. Baglanti kopmaz, karsi taraf kesinti duymaz.
+    useEffect(() => {
+        if (!activeKeyRef.current || !localStreamRef.current) return;
+
+        let cancelled = false;
+        (async () => {
+            let newStream: MediaStream;
+            try {
+                newStream = await openMic();
+            } catch (e) {
+                console.error('[Voice] Mikrofon degistirilemedi:', e);
+                return;
+            }
+            if (cancelled || !activeKeyRef.current) {
+                newStream.getTracks().forEach(t => t.stop());
+                return;
+            }
+
+            const newTrack = newStream.getAudioTracks()[0];
+            // Mikrofon kapaliysa yeni track'te de kapali kalsin.
+            const wasEnabled = localStreamRef.current?.getAudioTracks()[0]?.enabled ?? true;
+            if (newTrack) newTrack.enabled = wasEnabled;
+
+            pcs.current.forEach(pc => {
+                const sender = pc.getSenders().find(s => s.track?.kind === 'audio');
+                if (sender && newTrack) sender.replaceTrack(newTrack).catch(e => console.error('[Voice] replaceTrack hatasi:', e));
+            });
+
+            localStreamRef.current?.getTracks().forEach(t => t.stop());
+            localStreamRef.current = newStream;
+        })();
+
+        return () => { cancelled = true; };
+    }, [openMic]);
 
     const toggleMute = useCallback(() => {
         const track = localStreamRef.current?.getAudioTracks()[0];
@@ -210,5 +290,5 @@ export function useVoiceChannel() {
     // Bileşen unmount olursa ses kanalından çık
     useEffect(() => () => { if (activeKeyRef.current) { signalrService.leaveVoice(activeKeyRef.current); teardown(); } }, [teardown]);
 
-    return { activeVoiceKey, participants, remoteStreams, speakingConnIds, isMuted, toggleMute, joinVoice, leaveVoice };
+    return { activeVoiceKey, participants, remoteStreams, speakingConnIds, connectionIssues, isMuted, toggleMute, joinVoice, leaveVoice };
 }

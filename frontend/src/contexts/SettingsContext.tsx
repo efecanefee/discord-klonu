@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 export interface Settings {
   // Ses / Görüntü
@@ -60,12 +60,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('sm_settings', JSON.stringify(settings));
   }, [settings]);
 
-  const updateSettings = (newSettings: Partial<Settings>) => {
+  // Kimlik sabit kalmali: tuketiciler bunu useCallback/useEffect bagimliligi
+  // olarak kullaniyor, her render'da degisirse gereksiz yeniden calisir.
+  const updateSettings = useCallback((newSettings: Partial<Settings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
-  };
+  }, []);
+
+  const value = useMemo(() => ({ settings, updateSettings }), [settings, updateSettings]);
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings }}>
+    <SettingsContext.Provider value={value}>
       {children}
     </SettingsContext.Provider>
   );
