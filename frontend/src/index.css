@@ -92,29 +92,6 @@ html[data-accent="cyan"] {
    theme-* sinifini yazar, renk degeri tasimaz.
    Secici html.theme-* (0,1,1) oldugundan Tailwind'in :root (0,1,0)
    degiskenlerini ezer. */
-html.theme-light {
-  --color-bg-base: #f1f5f9;
-  --color-bg-surface: #ffffff;
-  --color-bg-card: #ffffff;
-  --color-border-main: #e2e8f0;
-  --color-text-main: #09090b;
-  --color-text-muted: #64748b;
-
-  /* Acik zeminde siyah golgeler kir gibi gorunur: opaklik dusuruldu ve
-     rengi lacivertimsi yapildi. */
-  --shadow-premium: 0 4px 24px -4px rgba(15, 23, 42, 0.14);
-  --shadow-card: 0 2px 12px rgba(15, 23, 42, 0.08);
-  --shadow-card-hover: 0 8px 28px rgba(15, 23, 42, 0.14);
-
-  --app-bg-glow: radial-gradient(ellipse 110% 75% at 50% -15%, rgba(30, 58, 138, 0.10), transparent 70%);
-  --glass-solid-bg: rgba(255, 255, 255, 0.92);
-  --shine-base: #1e293b;
-  --subtle: rgba(15, 23, 42, 0.04);
-  --subtle-strong: rgba(15, 23, 42, 0.08);
-  --scrollbar-thumb: rgba(var(--accent-rgb), 0.35);
-  --scrollbar-thumb-hover: rgba(var(--accent-rgb), 0.7);
-}
-
 html.theme-oled {
   --color-bg-base: #000000;
   --color-bg-surface: #0a0a0a;

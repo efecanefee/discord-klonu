@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
-export type Theme = 'system' | 'dark' | 'light' | 'oled';
+// Acik tema kaldirildi: uygulamanin yuzeyleri koyu zemine gore tasarlanmis,
+// acikta yikanmis gri bir goruntu cikiyordu. "Sistem" de onunla birlikte
+// gitti — prefers-color-scheme acik/koyu arasinda secer, acik yokken takip
+// edecek bir sey kalmiyor.
+export type Theme = 'dark' | 'oled';
 
 export const THEMES: { id: Theme; label: string }[] = [
-  { id: 'system', label: 'Sistem' },
   { id: 'dark', label: 'Koyu' },
-  { id: 'light', label: 'Açık' },
   { id: 'oled', label: 'OLED' },
 ];
 
@@ -79,7 +81,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const saved = localStorage.getItem('sm_settings');
     if (saved) {
       try {
-        return { ...defaultSettings, ...JSON.parse(saved) };
+        const merged: Settings = { ...defaultSettings, ...JSON.parse(saved) };
+        // Kaldirilan temalari ('light', 'system') secmis olanlar gecersiz bir
+        // degerle kalmasin: hicbir theme-* sinifi eslesmezdi.
+        if (!THEMES.some(t => t.id === merged.theme)) merged.theme = defaultSettings.theme;
+        return merged;
       } catch (e) {
         console.error('Failed to parse settings from local storage', e);
         return defaultSettings;
@@ -93,26 +99,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [settings]);
 
   // Tema: renk degerleri index.css'te, burasi yalnizca hangi sinifin gecerli
-  // oldugunu soyler. 'system' secildiginde isletim sistemi tercihi dinlenir —
-  // kullanici karanlik moda gecince uygulama yeniden yuklemeden takip eder.
+  // oldugunu soyler.
   useEffect(() => {
     const root = document.documentElement;
-    const media = window.matchMedia('(prefers-color-scheme: light)');
-
-    const apply = () => {
-      const effective = settings.theme === 'system'
-        ? (media.matches ? 'light' : 'dark')
-        : settings.theme;
-      root.classList.remove('theme-dark', 'theme-light', 'theme-oled');
-      root.classList.add(`theme-${effective}`);
-      // Tarayici kendi arayuzunu (kaydirma cubugu, form kontrolleri) buna gore boyar.
-      root.style.colorScheme = effective === 'light' ? 'light' : 'dark';
-    };
-
-    apply();
-    if (settings.theme !== 'system') return;
-    media.addEventListener('change', apply);
-    return () => media.removeEventListener('change', apply);
+    root.classList.remove('theme-dark', 'theme-oled');
+    root.classList.add(`theme-${settings.theme}`);
+    // Tarayici kendi arayuzunu (kaydirma cubugu, form kontrolleri) buna gore boyar.
+    root.style.colorScheme = 'dark';
   }, [settings.theme]);
 
   // Vurgu rengi temadan (zeminden) bagimsiz secilir: ayri bir attribute.
