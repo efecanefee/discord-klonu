@@ -1460,8 +1460,8 @@ function App() {
                       )}
                     </div>
 
-                    {/* Sonuçlar / liste */}
-                    <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2 pb-2">
+                    {/* Sonuçlar / liste — her satirda 2 oda, kaydirdikca devam eder */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-2">
                       {searchResults !== null ? (
                         isSearching ? (
                           <div className="text-center py-6 text-white/30 text-[12px]">Aranıyor...</div>
@@ -1470,14 +1470,18 @@ function App() {
                             Sonuç bulunamadı. Gizli bir oda için tam kodu girmelisin.
                           </div>
                         ) : (
-                          searchResults.map((room) => renderRoomCard(room, { showMeta: true }))
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
+                            {searchResults.map((room) => renderRoomCard(room, { showMeta: true }))}
+                          </div>
                         )
                       ) : communityRooms.length === 0 ? (
                         <div className="text-center py-6 text-white/30 text-[12px] px-2">
                           Henüz topluluk odası yok. İlk odayı sen oluştur!
                         </div>
                       ) : (
-                        communityRooms.map((room) => renderRoomCard(room, { showMeta: true }))
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 content-start">
+                          {communityRooms.map((room) => renderRoomCard(room, { showMeta: true }))}
+                        </div>
                       )}
                     </div>
                   </div>

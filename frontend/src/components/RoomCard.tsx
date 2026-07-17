@@ -73,7 +73,7 @@ const RoomCard = memo(function RoomCard({ room, isOwner, showMeta = false, apiBa
       onClick={() => onJoin(room)}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
-      className="room-card group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left relative mb-3"
+      className="room-card group w-full flex items-center justify-between p-4 rounded-2xl cursor-pointer text-left relative"
       style={{ '--rc': visuals.color, '--rc-glow': visuals.glow } as React.CSSProperties}
     >
       <div className="room-card-shadow" aria-hidden />
