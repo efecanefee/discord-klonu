@@ -196,6 +196,9 @@ html.reduce-motion *::after {
     transform: translateY(-2px);
     border-color: color-mix(in srgb, var(--rc) 30%, transparent);
     background-color: color-mix(in srgb, var(--rc) 8%, transparent);
+    /* Halka golge kartin disina tasar; komsu kartlar sonra boyandigi icin
+       isik onlarin arkasinda kaliyordu. Hover'daki karti one al. */
+    z-index: 1;
   }
 }
 .room-card:active {
@@ -215,7 +218,7 @@ html.reduce-motion *::after {
   background: radial-gradient(circle at 18% 50%, var(--rc-glow) 0%, transparent 62%);
 }
 .room-card-shadow {
-  box-shadow: 0 10px 32px var(--rc-glow);
+  box-shadow: 0 6px 18px var(--rc-glow);
 }
 .room-card:hover .room-card-glow,
 .room-card:hover .room-card-shadow {
