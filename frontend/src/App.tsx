@@ -10,14 +10,12 @@ import NewMessageModal, { type UserData as ModalUserData } from './components/Ne
 import SettingsModal from './components/SettingsModal';
 import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
-import { getAvatarEmoji } from './constants/avatars';
+import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
 import { Lock, Mail, MessageSquare, Plus, User, Users, Menu, X, Hash, Volume2, Music, Sparkles, ChevronRight, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import signalrService from './services/signalrService';
-
-// Removed Orb component as it is replaced by CSS mesh background
 
 // Kaba sifre gucu gostergesi. Amac kullaniciya yon vermek — gercek zorunluluk
 // backend'de olmali, buradaki skor yalnizca gorsel geri bildirim.
@@ -518,7 +516,7 @@ function App() {
         const errText = await res.text();
         setErrorMsg(errText || 'Giriş başarısız, e-posta veya şifre hatalı.');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Bağlantı hatası.');
     }
     setIsLoading(false);
@@ -555,7 +553,7 @@ function App() {
         const text = await res.text();
         setErrorMsg(text || 'Kayıt başarısız.');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Bağlantı hatası.');
     }
     setIsLoading(false);
@@ -583,7 +581,7 @@ function App() {
         const text = await res.text();
         setErrorMsg(text || 'İşlem başarısız.');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Bağlantı hatası.');
     }
     setIsLoading(false);
@@ -613,7 +611,7 @@ function App() {
         const text = await res.text();
         setErrorMsg(text || 'Sıfırlama başarısız.');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Bağlantı hatası.');
     }
     setIsLoading(false);
@@ -976,7 +974,7 @@ function App() {
             >
               <div className="avatar-container relative cursor-pointer group/avatar">
                 <div className="w-9 h-9 rounded-full overflow-hidden border border-[#7C3AED] bg-[#18181b] flex items-center justify-center text-lg shrink-0 group-hover/avatar:opacity-80 transition-opacity">
-                  {getAvatarEmoji(avatarId)}
+                  {renderAvatar(avatarId)}
                 </div>
                 <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
               </div>
@@ -1067,7 +1065,7 @@ function App() {
                     >
                       <div className="relative">
                         <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm bg-[#18181b] border border-[#334155]">
-                          {getAvatarEmoji(user.avatarId)}
+                          {renderAvatar(user.avatarId)}
                         </div>
                         <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#09090b] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : user.customStatus === 'idle' ? 'bg-yellow-500' : user.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
                       </div>
@@ -1503,7 +1501,7 @@ function App() {
                           } else {
                             setOnlineUserList([`[Hata: Yüklenemedi (${res.status})]`]);
                           }
-                        } catch(e) {
+                        } catch {
                           setOnlineUserList(['[Hata: Bağlantı Yok]']);
                         }
                       }}

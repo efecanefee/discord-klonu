@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, User, UserCircle } from 'lucide-react';
-import { AVATARS, getAvatarEmoji } from '../constants/avatars';
+import { AVATARS, renderAvatar } from '../constants/avatars';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -163,7 +163,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                         : 'border-2 border-transparent hover:border-[#7C3AED]/50 hover:scale-[1.02]'
                     }`}
                   >
-                    {getAvatarEmoji(avatar.id)}
+                    {renderAvatar(avatar.id)}
                   </button>
                 ))}
               </div>
@@ -190,7 +190,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                 </div>
                 <div className="w-8 h-8 rounded-full border border-[#7C3AED] overflow-hidden bg-[#18181b] shrink-0 flex items-center justify-center text-sm">
-                  {getAvatarEmoji(avatarId)}
+                  {renderAvatar(avatarId)}
                 </div>
               </div>
             </div>
@@ -198,7 +198,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             {/* Aktif Kullanıcı Listesi Önizlemesi */}
             <div className="w-full bg-[#18181b]/50 border border-[#334155] rounded-xl p-3 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full border-2 border-[#7C3AED] overflow-hidden shrink-0 flex items-center justify-center text-xl bg-[#18181b]">
-                 {getAvatarEmoji(avatarId)}
+                 {renderAvatar(avatarId)}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-semibold text-white truncate w-full">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, MessageSquare, Loader2 } from 'lucide-react';
-import { getAvatarEmoji } from '../constants/avatars';
+import { renderAvatar } from '../constants/avatars';
 
 export interface UserData {
   id: string;
@@ -169,7 +169,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-xl bg-[#18181b] border border-[#334155]">
-                          {getAvatarEmoji(user.avatarId)}
+                          {renderAvatar(user.avatarId)}
                         </div>
                         {/* Status Indicator */}
                         <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${getStatusColor(user.customStatus)}`} />

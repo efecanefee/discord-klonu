@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Ban, Loader2, Check } from 'lucide-react';
-import { getAvatarEmoji } from '../constants/avatars';
+import { renderAvatar } from '../constants/avatars';
 import { roomApi, type RoomBanDto } from '../services/roomApi';
 
 interface RoomSettingsModalProps {
@@ -121,7 +121,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                 bans.map((b) => (
                   <div key={b.userId} className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                     <div className="w-8 h-8 rounded-full bg-[#18181b] flex items-center justify-center text-lg overflow-hidden flex-shrink-0">
-                      {getAvatarEmoji(b.avatarId || 'default')}
+                      {renderAvatar(b.avatarId || 'default')}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-white text-[13px] font-medium truncate">{b.username}</div>

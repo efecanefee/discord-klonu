@@ -12,7 +12,7 @@ import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
 import { useSettings } from '../contexts/SettingsContext';
-import { getAvatarEmoji } from '../constants/avatars';
+import { renderAvatar } from '../constants/avatars';
 import { roomApi } from '../services/roomApi';
 import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
 import { applySinkId } from '../utils/audioOutput';
@@ -150,7 +150,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const [showSearch, setShowSearch] = useState(false);
     const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
     const [isTyping, setIsTyping] = useState(false);
-    const [_unreadCount, setUnreadCount] = useState(0);
+    // Yalnizca sekme basligini beslediginden ref: state olsaydi her gelen
+    // mesajda bu bilesen bos yere yeniden render olurdu.
+    const unreadCount = useRef(0);
     const isPageVisible = useRef(true);
     const originalTitle = useRef(document.title);
     const notificationPermission = useRef<NotificationPermission>('default');
@@ -453,7 +455,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             setTimeout(() => {
                 target.classList.remove('ring-2', 'ring-green-500', 'bg-green-500/10');
             }, 2000);
-        } catch (err) {}
+        } catch { /* pano erisimi yok */ }
     };
 
     // Ses testi
@@ -468,7 +470,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                 stream.getTracks().forEach(t => t.stop());
                 alert("Ses testi bitti.");
             }, 5000);
-        } catch(err) {
+        } catch {
             alert("Mikrofona erişilemedi.");
         }
     };
@@ -486,7 +488,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             isPageVisible.current = !document.hidden;
             if (!document.hidden) {
                 // Sekme aktif olunca unread sıfırla
-                setUnreadCount(0);
+                unreadCount.current = 0;
                 document.title = originalTitle.current;
             }
         };
@@ -503,11 +505,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
         if (document.hidden) {
             // Tab title güncelle
-            setUnreadCount(prev => {
-                const next = prev + 1;
-                document.title = `(${next}) SandalyeciMetin`;
-                return next;
-            });
+            unreadCount.current += 1;
+            document.title = `(${unreadCount.current}) SandalyeciMetin`;
 
             // Push notification
             if (notificationPermission.current === 'granted') {
@@ -1069,7 +1068,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     return (
                                         <div key={u.connectionId} className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/30' : 'hover:bg-bg-surface'}`}>
                                             <div className={`w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-sm flex-shrink-0 ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
-                                                {getAvatarEmoji(u.avatarId || 'default')}
+                                                {renderAvatar(u.avatarId || 'default')}
                                             </div>
                                             <div className="flex flex-col min-w-0">
                                                 <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}</span>
@@ -1119,7 +1118,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                     className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                     <div className={`flex max-w-[90%] gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                                                         <div className="w-7 h-7 mt-0.5 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_8px_rgba(124,58,237,0.2)] overflow-hidden text-sm">
-                                                            {getAvatarEmoji(msg.avatarId || (isMine ? avatarId : 'default'))}
+                                                            {renderAvatar(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                         </div>
                                                         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                             <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
@@ -1265,7 +1264,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                         className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`flex max-w-[85%] sm:max-w-[75%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                                                             <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.2)] overflow-hidden text-xl">
-                                                                {getAvatarEmoji(msg.avatarId || (isMine ? avatarId : 'default'))}
+                                                                {renderAvatar(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                             </div>
                                                             <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                                 <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
@@ -1416,7 +1415,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                     )}
                                                                 </AnimatePresence>
                                                                 <div className={`relative z-10 w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-150 text-xl ${isSpeaking ? 'border-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]' : 'border-[#7C3AED]'}`}>
-                                                                    {getAvatarEmoji(u.avatarId || 'default')}
+                                                                    {renderAvatar(u.avatarId || 'default')}
                                                                 </div>
                                                                 <div className={`absolute -bottom-1 -right-1 w-3 h-3 ${STATUS_COLORS[u.username === username ? myStatus : 'online']} rounded-full border-[2.5px] border-bg-card z-20`} />
                                                             </div>

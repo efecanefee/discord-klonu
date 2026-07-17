@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MessageSquare, Pencil, Shield, ShieldOff, LogOut, Ban } from 'lucide-react';
-import { getAvatarEmoji } from '../constants/avatars';
+import { renderAvatar } from '../constants/avatars';
 
 export interface PopoverUser {
   userId?: string;
@@ -67,7 +67,7 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
       <div className="h-12 bg-gradient-to-r from-[#7C3AED]/40 to-[#8B5CF6]/20" />
       <div className="px-4 pb-4 -mt-6">
         <div className="w-14 h-14 rounded-full bg-[#18181b] border-4 border-[#09090b] flex items-center justify-center text-2xl overflow-hidden">
-          {getAvatarEmoji(user.avatarId || 'default')}
+          {renderAvatar(user.avatarId || 'default')}
         </div>
         <div className="mt-2">
           <div className="text-white font-bold text-[15px] truncate flex items-center gap-1.5">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Settings, LogOut } from 'lucide-react';
-import { getAvatarEmoji } from '../constants/avatars';
+import { renderAvatar } from '../constants/avatars';
 import type { UserData as ModalUserData } from './NewMessageModal';
 
 interface MiniDockProps {
@@ -63,7 +63,7 @@ const MiniDock: React.FC<MiniDockProps> = ({
               {/* Aktif göstergesi (sol çubuk) */}
               <div className={`absolute -left-2 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-[#7C3AED] transition-all duration-200 ${isActive ? 'h-7' : 'h-0 group-hover:h-4'}`} />
               <div className={`relative w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-lg bg-[#18181b] border-2 transition-all ${isActive ? 'border-[#7C3AED] shadow-[0_0_12px_rgba(124,58,237,0.4)]' : 'border-[#334155] group-hover:border-[#7C3AED]/50'}`}>
-                {getAvatarEmoji(user.avatarId)}
+                {renderAvatar(user.avatarId)}
               </div>
               <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#09090b] ${statusColor(user.customStatus)}`} />
               {unread > 0 && (
@@ -103,7 +103,7 @@ const MiniDock: React.FC<MiniDockProps> = ({
         className="relative group shrink-0"
       >
         <div className="w-11 h-11 rounded-full overflow-hidden border border-[#7C3AED] bg-[#18181b] flex items-center justify-center text-lg group-hover:opacity-80 transition-opacity">
-          {getAvatarEmoji(avatarId)}
+          {renderAvatar(avatarId)}
         </div>
         <motion.div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${statusColor(myCustomStatus)}`} />
       </button>

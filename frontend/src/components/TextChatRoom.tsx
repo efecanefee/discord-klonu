@@ -9,7 +9,7 @@ import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
-import { getAvatarEmoji } from '../constants/avatars';
+import { renderAvatar } from '../constants/avatars';
 import { roomApi, type RoomMemberDto, type ChannelDto } from '../services/roomApi';
 import { useVoiceChannel } from '../hooks/useVoiceChannel';
 import { roleBadgeEmoji, sortByRole, roleRank, roleLabel } from '../utils/roles';
@@ -124,7 +124,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                 className={`relative flex items-center gap-3 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200 cursor-pointer ${m.isOnline ? '' : 'opacity-60'}`}>
                 <div className="relative">
                     <div className={`w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm text-xl ${m.isOnline ? 'border-[#7C3AED]' : 'border-border-main grayscale'}`}>
-                        {getAvatarEmoji(m.avatarId || 'default')}
+                        {renderAvatar(m.avatarId || 'default')}
                     </div>
                     <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-[2.5px] border-bg-card ${m.isOnline ? 'bg-emerald-500' : 'bg-gray-500'}`} />
                 </div>
@@ -229,7 +229,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const [showSearch, setShowSearch] = useState(false);
     const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
     const [isTyping, setIsTyping] = useState(false);
-    const [_unreadCount, setUnreadCount] = useState(0);
+    // Yalnizca sekme basligini beslediginden ref: state olsaydi her gelen
+    // mesajda bu bilesen bos yere yeniden render olurdu.
+    const unreadCount = useRef(0);
     const isPageVisible = useRef(true);
     const originalTitle = useRef(document.title);
     const notificationPermission = useRef<NotificationPermission>('default');
@@ -453,7 +455,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             setTimeout(() => {
                 target.classList.remove('ring-2', 'ring-green-500', 'bg-green-500/10');
             }, 2000);
-        } catch (err) { /* pano erişimi yok */ }
+        } catch { /* pano erisimi yok */ }
     };
 
     // Sayfa görünürlüğü + tab title + bildirim izni
@@ -466,7 +468,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         const handleVisibilityChange = () => {
             isPageVisible.current = !document.hidden;
             if (!document.hidden) {
-                setUnreadCount(0);
+                unreadCount.current = 0;
                 document.title = originalTitle.current;
             }
         };
@@ -480,11 +482,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         const lastMsg = messages[messages.length - 1];
         if (lastMsg.type !== 'message' || lastMsg.username === username) return;
         if (document.hidden) {
-            setUnreadCount(prev => {
-                const next = prev + 1;
-                document.title = `(${next}) SandalyeciMetin`;
-                return next;
-            });
+            unreadCount.current += 1;
+            document.title = `(${unreadCount.current}) SandalyeciMetin`;
             if (notificationPermission.current === 'granted') {
                 new Notification(`${lastMsg.username}`, {
                     body: lastMsg.text.length > 60 ? lastMsg.text.slice(0, 60) + '...' : lastMsg.text,
@@ -986,7 +985,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                 className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                 <div className={`flex max-w-[85%] sm:max-w-[75%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                                                     <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-[#7C3AED] shadow-[0_0_10px_rgba(124,58,237,0.2)] overflow-hidden text-xl">
-                                                        {getAvatarEmoji(msg.avatarId || (isMine ? avatarId : 'default'))}
+                                                        {renderAvatar(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                     </div>
                                                     <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                         <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">

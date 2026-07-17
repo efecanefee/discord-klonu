@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Check, CheckCheck, X, Pencil, Reply, Smile, Paperclip } from 'lucide-react';
-import { getAvatarEmoji } from '../constants/avatars';
+import { renderAvatar } from '../constants/avatars';
 import signalrService from '../services/signalrService';
 import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
@@ -215,7 +215,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
           </button>
           <div className="relative">
             <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-[#18181b] border border-[#334155] shadow-lg">
-              {getAvatarEmoji(targetUser.avatarId)}
+              {renderAvatar(targetUser.avatarId)}
             </div>
             <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-[#09090b] rounded-full ${targetUser.customStatus === 'online' ? 'bg-green-500' : targetUser.customStatus === 'idle' ? 'bg-yellow-500' : targetUser.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
           </div>
