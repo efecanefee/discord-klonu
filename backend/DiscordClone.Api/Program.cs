@@ -279,6 +279,21 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_direct_messages_sender_id"" ON direct_messages (sender_id);"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_direct_messages_receiver_id"" ON direct_messages (receiver_id);"); } catch { }
 
+        // 10. Soundboard: kullanıcıya özel sesler
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS user_sounds (
+                    id bigserial NOT NULL,
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    name text NOT NULL,
+                    url text NOT NULL,
+                    created_at timestamptz NOT NULL DEFAULT now(),
+                    CONSTRAINT ""PK_user_sounds"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_user_sounds_user_id"" ON user_sounds (user_id);"); } catch { }
+
     }
     catch (Exception ex)
     {

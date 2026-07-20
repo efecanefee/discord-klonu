@@ -383,6 +383,60 @@ class SignalRService {
         }
     }
 
+    // ===== Soundboard =====
+    public async playSound(roomId: string, soundUrl: string, soundName: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('PlaySound', roomId, soundUrl, soundName);
+        }
+    }
+    public onSoundPlayed(callback: (username: string, soundUrl: string, soundName: string) => void) {
+        this.connection?.on('SoundPlayed', callback);
+    }
+    public offSoundPlayed(callback: (username: string, soundUrl: string, soundName: string) => void) {
+        this.connection?.off('SoundPlayed', callback);
+    }
+
+    // ===== YouTube senkron oynatma =====
+    public async startYoutube(roomId: string, videoId: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('StartYoutube', roomId, videoId);
+        }
+    }
+    public async syncYoutube(roomId: string, action: 'play' | 'pause' | 'seek', position: number) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('SyncYoutube', roomId, action, position);
+        }
+    }
+    public async stopYoutube(roomId: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('StopYoutube', roomId);
+        }
+    }
+    public onYoutubeStarted(callback: (videoId: string, username: string) => void) {
+        this.connection?.on('YoutubeStarted', callback);
+    }
+    public offYoutubeStarted(callback: (videoId: string, username: string) => void) {
+        this.connection?.off('YoutubeStarted', callback);
+    }
+    public onYoutubeSync(callback: (action: string, position: number) => void) {
+        this.connection?.on('YoutubeSync', callback);
+    }
+    public offYoutubeSync(callback: (action: string, position: number) => void) {
+        this.connection?.off('YoutubeSync', callback);
+    }
+    public onYoutubeStopped(callback: () => void) {
+        this.connection?.on('YoutubeStopped', callback);
+    }
+    public offYoutubeStopped(callback: () => void) {
+        this.connection?.off('YoutubeStopped', callback);
+    }
+    public onYoutubeState(callback: (videoId: string, isPlaying: boolean, position: number, startedBy: string) => void) {
+        this.connection?.on('YoutubeState', callback);
+    }
+    public offYoutubeState(callback: (videoId: string, isPlaying: boolean, position: number, startedBy: string) => void) {
+        this.connection?.off('YoutubeState', callback);
+    }
+
     // ===== Ses kanalları =====
     public async joinVoice(voiceKey: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {

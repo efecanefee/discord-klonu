@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, User, UserCircle } from 'lucide-react';
-import { AVATARS, renderAvatar } from '../constants/avatars';
+import { X, Save, User, UserCircle, Upload, Loader2 } from 'lucide-react';
+import { AVATARS, renderAvatar, isCustomAvatar } from '../constants/avatars';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -27,7 +29,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const [lastName, setLastName] = useState(currentLastName);
   const [avatarId, setAvatarId] = useState(currentAvatarId);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [error, setError] = useState('');
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [debouncedUsername, setDebouncedUsername] = useState(currentUsername);
   const [debouncedFirstName, setDebouncedFirstName] = useState(currentFirstName);
@@ -51,6 +55,38 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       setError('');
     }
   }, [isOpen, currentUsername, currentFirstName, currentLastName, currentAvatarId]);
+
+  const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/\.(png|jpe?g|webp|gif)$/i.test(file.name)) {
+      setError('Sadece PNG, JPG, WEBP veya GIF yükleyebilirsin.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Fotoğraf boyutu 5MB\'ı geçemez.');
+      return;
+    }
+    setIsUploadingPhoto(true);
+    setError('');
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setAvatarId('url:' + data.url);
+    } catch {
+      setError('Fotoğraf yüklenemedi, tekrar dene.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!username.trim()) {
@@ -166,6 +202,34 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     {renderAvatar(avatar.id)}
                   </button>
                 ))}
+                {/* Kendi fotoğrafını yükle */}
+                <button
+                  onClick={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                  title="Kendi fotoğrafını yükle"
+                  className={`relative rounded-full flex items-center justify-center transition-all overflow-hidden aspect-square bg-bg-base ${
+                    isCustomAvatar(avatarId)
+                      ? 'border-2 border-primary-main shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)] scale-[1.02] z-10'
+                      : 'border-2 border-dashed border-[#334155] hover:border-primary-main/50 hover:scale-[1.02]'
+                  }`}
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 size={22} className="text-primary-main animate-spin" />
+                  ) : isCustomAvatar(avatarId) ? (
+                    renderAvatar(avatarId)
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-text-muted">
+                      <Upload size={20} />
+                      <span className="text-[9px] font-semibold uppercase tracking-wide">Yükle</span>
+                    </div>
+                  )}
+                </button>
+                <input
+                  type="file"
+                  ref={photoInputRef}
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handlePhotoSelected}
+                />
               </div>
             </div>
           </div>

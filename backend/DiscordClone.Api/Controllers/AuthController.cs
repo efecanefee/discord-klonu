@@ -109,7 +109,9 @@ namespace DiscordClone.Api.Controllers
                     avatarId = user.AvatarId ?? "default",
                     firstName = user.FirstName ?? "",
                     lastName = user.LastName ?? "",
-                    customStatus = user.CustomStatus,
+                    // SignalR baglantisi kurulunca hub DB'yi zaten online yapiyor;
+                    // bayat "offline" degerini istemciye tasima.
+                    customStatus = user.CustomStatus == "offline" ? "online" : user.CustomStatus,
                     customStatusMessage = user.CustomStatusMessage,
                     showLastSeen = user.ShowLastSeen
                 });
@@ -190,10 +192,17 @@ namespace DiscordClone.Api.Controllers
                 return BadRequest("Bu kullanıcı adı zaten alınmış.");
             }
 
+            // AvatarId ya hazir avatar id'si ya da "url:" onekli yuklenmis fotograf adresi olabilir.
+            var avatarId = request.AvatarId ?? "default";
+            if (avatarId.Length > 500 || (avatarId.StartsWith("url:") && !avatarId.StartsWith("url:http")))
+            {
+                return BadRequest("Geçersiz avatar.");
+            }
+
             user.Username = request.Username;
             user.FirstName = request.FirstName;
             user.LastName = request.LastName;
-            user.AvatarId = request.AvatarId;
+            user.AvatarId = avatarId;
 
             try
             {

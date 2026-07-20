@@ -19,6 +19,19 @@ namespace DiscordClone.Api.Hubs
         private static readonly ConcurrentDictionary<string, bool> _muteStatus = new();
         // Ses kanalları: voiceKey -> (connectionId -> VoiceUserDto). Metin kanalı presence'ından bağımsız.
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, VoiceUserDto>> _voiceUsers = new();
+        // Soundboard spam koruması: connectionId -> son ses basma zamanı
+        private static readonly ConcurrentDictionary<string, DateTime> _lastSoundAt = new();
+        // Oda başına aktif YouTube oynatma durumu (geç katılanlar için)
+        private static readonly ConcurrentDictionary<string, YoutubeRoomState> _youtubeStates = new();
+
+        public class YoutubeRoomState
+        {
+            public string VideoId { get; set; } = string.Empty;
+            public bool IsPlaying { get; set; }
+            public double PositionSeconds { get; set; }
+            public long UpdatedAtUnixMs { get; set; }
+            public string StartedBy { get; set; } = string.Empty;
+        }
 
         private readonly AppDbContext _db;
         private readonly IRoomAuthorizationService _roomAuth;
@@ -102,6 +115,7 @@ namespace DiscordClone.Api.Hubs
             }
 
             _muteStatus.TryRemove(Context.ConnectionId, out _);
+            _lastSoundAt.TryRemove(Context.ConnectionId, out _);
 
             if (_userConnections.TryRemove(Context.ConnectionId, out var roomId))
             {
@@ -111,6 +125,9 @@ namespace DiscordClone.Api.Hubs
                     {
                         await Clients.Group(roomId).SendAsync("UserLeft", userDto.Username, Context.ConnectionId);
                     }
+                    // Oda boşaldıysa YouTube oturumunu da temizle
+                    if (usersInRoom.IsEmpty)
+                        _youtubeStates.TryRemove(roomId, out _);
                 }
             }
 
@@ -231,6 +248,14 @@ namespace DiscordClone.Api.Hubs
 
             history.Reverse(); // In memory reverse to chronological order
             await Clients.Caller.SendAsync("RoomHistory", history);
+
+            // Odada süren YouTube oynatması varsa geç katılana güncel durumu gönder
+            if (_youtubeStates.TryGetValue(roomId, out var yt))
+            {
+                var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var effectivePos = yt.PositionSeconds + (yt.IsPlaying ? (now - yt.UpdatedAtUnixMs) / 1000.0 : 0);
+                await Clients.Caller.SendAsync("YoutubeState", yt.VideoId, yt.IsPlaying, effectivePos, yt.StartedBy);
+            }
         }
 
         public async Task LeaveRoom(string roomId, string requestedUsername)
@@ -242,7 +267,12 @@ namespace DiscordClone.Api.Hubs
             if (_userConnections.TryRemove(Context.ConnectionId, out _))
             {
                 if (_roomUsers.TryGetValue(roomId, out var usersInRoom))
+                {
                     usersInRoom.TryRemove(Context.ConnectionId, out _);
+                    // Oda boşaldıysa YouTube oturumunu da temizle
+                    if (usersInRoom.IsEmpty)
+                        _youtubeStates.TryRemove(roomId, out _);
+                }
             }
 
             _muteStatus.TryRemove(Context.ConnectionId, out _);
@@ -306,6 +336,65 @@ namespace DiscordClone.Api.Hubs
 
             if (msg.Id > 0)
                 await Clients.Group(roomId).SendAsync("MessageIdAssigned", timestamp, msg.Id);
+        }
+
+        // ============ SOUNDBOARD ============
+        // Odadaki herkese bir ses efekti çaldırır (her istemci URL'i lokal oynatır).
+        public async Task PlaySound(string roomId, string soundUrl, string soundName)
+        {
+            // Sadece gerçekten odada olan bağlantılar ses basabilir
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return;
+
+            // Spam koruması: bağlantı başına 2 saniye
+            if (_lastSoundAt.TryGetValue(Context.ConnectionId, out var last)
+                && (DateTime.UtcNow - last).TotalSeconds < 2)
+                return;
+            _lastSoundAt[Context.ConnectionId] = DateTime.UtcNow;
+
+            var username = Context.User?.Identity?.Name ?? "";
+            await Clients.Group(roomId).SendAsync("SoundPlayed", username, soundUrl, soundName);
+        }
+
+        // ============ YOUTUBE SENKRON OYNATMA ============
+        public async Task StartYoutube(string roomId, string videoId)
+        {
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return;
+            if (string.IsNullOrWhiteSpace(videoId) || videoId.Length > 20) return;
+
+            var username = Context.User?.Identity?.Name ?? "";
+            _youtubeStates[roomId] = new YoutubeRoomState
+            {
+                VideoId = videoId,
+                IsPlaying = true,
+                PositionSeconds = 0,
+                UpdatedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                StartedBy = username
+            };
+            await Clients.Group(roomId).SendAsync("YoutubeStarted", videoId, username);
+        }
+
+        public async Task SyncYoutube(string roomId, string action, double position)
+        {
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return;
+            if (!_youtubeStates.TryGetValue(roomId, out var yt)) return;
+            if (action != "play" && action != "pause" && action != "seek") return;
+
+            yt.IsPlaying = action != "pause";
+            yt.PositionSeconds = position;
+            yt.UpdatedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            await Clients.OthersInGroup(roomId).SendAsync("YoutubeSync", action, position);
+        }
+
+        public async Task StopYoutube(string roomId)
+        {
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return;
+            _youtubeStates.TryRemove(roomId, out _);
+            await Clients.Group(roomId).SendAsync("YoutubeStopped");
         }
 
         // Mesaj düzenleme

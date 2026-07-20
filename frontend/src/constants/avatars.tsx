@@ -14,7 +14,13 @@ export const AVATARS = [
 // Resimli avatarlar `w-full h-full` ile cizilir: cagiran, boyutu belli VE
 // `overflow-hidden` olan bir kapsayici vermek zorunda. Aksi halde resim dogal
 // boyutunda cikar ve scale-[1.85] ile birlikte kirpilmadan tasar.
+// "url:" onekli id'ler kullanicinin kendi yukledigi profil fotografidir.
+export const isCustomAvatar = (id: string) => id?.startsWith('url:');
+
 export const renderAvatar = (id: string) => {
+  if (isCustomAvatar(id)) {
+    return <img src={id.slice(4)} alt="avatar" className="w-full h-full object-cover" />;
+  }
   const avatar = AVATARS.find(a => a.id === id) || AVATARS[0];
   if (avatar.img) {
     return <img src={avatar.img} alt="avatar" className="w-full h-full object-cover scale-[1.85] translate-y-[9%]" />;

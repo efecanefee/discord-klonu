@@ -19,6 +19,7 @@ import signalrService from './services/signalrService';
 import RoomCard from './components/RoomCard';
 import ClockPanel from './components/ClockPanel';
 import ActivityFeed from './components/ActivityFeed';
+import VoiceConnectedPill from './components/VoiceConnectedPill';
 
 // Baslik harf harf yalnizca ilk goruntulemede animasyonlanir. memo: App'in her
 // render'inda 15 motion.span'in yeniden olusturulmasini engeller.
@@ -239,7 +240,9 @@ function App() {
     const savedFirstName = localStorage.getItem('firstName') || '';
     const savedLastName = localStorage.getItem('lastName') || '';
     const savedAvatarId = localStorage.getItem('avatarId') || 'default';
-    const savedStatus = localStorage.getItem('customStatus') || 'online';
+    // Onceki oturum "offline" birakmis olabilir; oturum acikken kendimizi cevrim ici goster.
+    const rawSavedStatus = localStorage.getItem('customStatus') || 'online';
+    const savedStatus = rawSavedStatus === 'offline' ? 'online' : rawSavedStatus;
     const savedStatusMsg = localStorage.getItem('customStatusMessage') || '';
     const savedShowLastSeen = localStorage.getItem('showLastSeen') !== 'false'; // default true
 
@@ -351,6 +354,15 @@ function App() {
 
     const handleUserStatusChanged = (data: { userId: string, status: string, message?: string,  lastSeen?: string; }) => {
       const { userId: id, status, message, lastSeen } = data;
+      if (id === userId) {
+        // Hub gorunmez kullaniciyi herkese (kendine de) "offline" yayinlar; yereldeki
+        // "invisible" secimini ezme. Reconnect sirasindaki "offline" olaylarini da yok say.
+        setMyCustomStatus(prev => {
+          if (prev === 'invisible' || status === 'offline') return prev;
+          localStorage.setItem('customStatus', status);
+          return status;
+        });
+      }
       setActiveDMs(prev => prev.map(u => u.id === id ? { ...u, customStatus: status, customStatusMessage: message, lastSeen } : u));
       setActiveDMUser(prev => prev?.id === id ? { ...prev, customStatus: status, customStatusMessage: message, lastSeen } : prev);
     };
@@ -575,6 +587,19 @@ function App() {
   };
 
   const handleJoinRoom = (room: RoomData) => {
+    // Arkaplanda süren sesli oturum varken aynı odaya girmek sadece görünümü
+    // geri açar (yeniden bağlanma yok). Farklı odaya geçişte eski oturum
+    // key değişimiyle temiz kapanır — kullanıcıya sor.
+    if (activeRoom && !inRoom) {
+      if (activeRoom.id === room.id) {
+        setInRoom(true);
+        return;
+      }
+      const wasVoice = activeRoom.id < 0 || activeRoom.name === 'Ana Salon' || activeRoom.name === 'Müzik Odası' || activeRoom.type === 'voice';
+      if (wasVoice && !window.confirm(`"${activeRoom.name}" sesli sohbetinden ayrılıp "${room.name}" odasına geçilsin mi?`)) {
+        return;
+      }
+    }
     setActiveRoom(room);
     setRoomId(room.name);
     setInRoom(true);
@@ -678,10 +703,10 @@ function App() {
       setIsNewMessageModalOpen(false);
       return;
     }
+    // Buraya yalnızca lobiden (inRoom=false) gelinir; arkaplanda sesli oturum
+    // varsa roomId'ye dokunma — gizli ChatRoom'un props'u bozulmasın.
     setActiveDMUser(user);
     setInDMRoom(true);
-    setInRoom(false);
-    setRoomId('');
 
     if (!activeDMs.some(u => u.id === user.id)) {
       setActiveDMs(prev => [user, ...prev]);
@@ -732,13 +757,26 @@ function App() {
     setAvatarId(result.avatarId || 'default');
   };
 
-  if (inRoom && activeRoom) {
-    // Sabit odalar (Ana Salon, Müzik Odası) ve SES odaları → ChatRoom (WebRTC).
-    // Topluluk YAZI odaları → TextChatRoom (sadece mesajlaşma).
-    const isVoiceStyle = activeRoom.id < 0 || activeRoom.name === 'Ana Salon' || activeRoom.name === 'Müzik Odası' || activeRoom.type === 'voice';
-    const handleLeaveRoom = () => { setInRoom(false); setRoomId(''); setActiveRoom(null); setRoomDMUser(null); };
-    return (
-      <div className="flex h-[100dvh] overflow-hidden bg-bg-base">
+  // Sabit odalar (Ana Salon, Müzik Odası) ve SES odaları → ChatRoom (WebRTC).
+  // Topluluk YAZI odaları → TextChatRoom (sadece mesajlaşma).
+  const isVoiceStyle = !!activeRoom && (activeRoom.id < 0 || activeRoom.name === 'Ana Salon' || activeRoom.name === 'Müzik Odası' || activeRoom.type === 'voice');
+
+  // Tam kapatma: oda oturumu unmount olur, ses/WebRTC kapanır.
+  const handleDisconnectRoom = () => { setInRoom(false); setRoomId(''); setActiveRoom(null); setRoomDMUser(null); };
+  // Lobiye dön: ses odalarında oturum arkaplanda mount kalır, ses sürer
+  // (Discord tarzı). Yazı odalarında tutmanın anlamı yok — tam kapat.
+  const handleReturnToLobby = () => {
+    if (isVoiceStyle) { setInRoom(false); setRoomDMUser(null); }
+    else handleDisconnectRoom();
+  };
+
+  // Oda oturumu ağacı: activeRoom set olduğu sürece mount kalır; lobideyken
+  // yalnızca gizlenir ki sesli sohbet kopmasın. ChatRoom'daki key={activeRoom.id}
+  // oda değişiminde tam unmount/remount garantiler (useWebRTC temizliği unmount'ta
+  // çalışır). key="room-session" ise farklı return dallarında React'in bu ağacı
+  // aynı düğüm olarak korumasını sağlar.
+  const roomTree = activeRoom && (
+      <div key="room-session" className={inRoom ? 'flex h-[100dvh] overflow-hidden bg-bg-base' : 'hidden'}>
         {/* Sol Mini Dock */}
         <MiniDock
           avatarId={avatarId}
@@ -746,7 +784,7 @@ function App() {
           activeDMs={activeDMs}
           unreadCounts={unreadCounts}
           activeDMUserId={roomDMUser?.id}
-          onLogoClick={handleLeaveRoom}
+          onLogoClick={handleReturnToLobby}
           onSelectDM={handleOpenRoomDM}
           onOpenProfile={() => setIsProfileModalOpen(true)}
           onOpenSettings={() => setIsSettingsModalOpen(true)}
@@ -756,12 +794,12 @@ function App() {
         {/* Oda içeriği */}
         <div className="flex-1 min-w-0 relative">
           {isVoiceStyle ? (
-            <ChatRoom username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} roomDescription={activeRoom.description} onLeave={handleLeaveRoom}
+            <ChatRoom key={activeRoom.id} username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} roomDescription={activeRoom.description} onLeave={handleDisconnectRoom}
               onOpenProfile={() => setIsProfileModalOpen(true)}
               onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
             />
           ) : (
-            <TextChatRoom username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy }} onLeave={handleLeaveRoom}
+            <TextChatRoom key={activeRoom.id} username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy }} onLeave={handleDisconnectRoom}
               onOpenProfile={() => setIsProfileModalOpen(true)}
               onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
             />
@@ -802,6 +840,23 @@ function App() {
           )}
         </AnimatePresence>
 
+      </div>
+  );
+
+  // Lobideyken arkaplanda süren sesli oturum göstergesi
+  const voicePill = activeRoom && !inRoom && isVoiceStyle && (
+    <VoiceConnectedPill
+      key="voice-pill"
+      roomName={activeRoom.name}
+      onReturn={() => setInRoom(true)}
+      onDisconnect={handleDisconnectRoom}
+    />
+  );
+
+  if (inRoom && activeRoom) {
+    return (
+      <>
+        {roomTree}
         {/* Oda içinden erişilebilen modallar */}
         <ProfileModal
           isOpen={isProfileModalOpen}
@@ -824,10 +879,18 @@ function App() {
           onSelectUser={handleStartDM}
           API_BASE_URL={API_BASE_URL}
         />
-      </div>
+      </>
     );
   }
-  if (inDMRoom && activeDMUser) return <DMChatRoom currentUser={{ id: userId, username }} targetUser={activeDMUser} API_BASE_URL={API_BASE_URL} onLeave={() => { setInDMRoom(false); setActiveDMUser(null); }} />;
+  if (inDMRoom && activeDMUser) {
+    return (
+      <>
+        {roomTree}
+        <DMChatRoom currentUser={{ id: userId, username }} targetUser={activeDMUser} API_BASE_URL={API_BASE_URL} onLeave={() => { setInDMRoom(false); setActiveDMUser(null); }} />
+        {voicePill}
+      </>
+    );
+  }
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -841,6 +904,9 @@ function App() {
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
 
   return (
+    <>
+    {roomTree}
+    {voicePill}
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
 
       {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
@@ -1648,13 +1714,14 @@ function App() {
         </a>
       </motion.div>
 
-      <SettingsModal 
-        isOpen={isSettingsModalOpen} 
-        onClose={() => setIsSettingsModalOpen(false)} 
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
         showLastSeen={myShowLastSeen}
         onUpdatePrivacy={handleUpdatePrivacy}
       />
     </div>
+    </>
   );
 }
 

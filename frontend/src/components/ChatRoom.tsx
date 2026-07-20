@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users } from 'lucide-react';
+import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import SoundboardPanel from './SoundboardPanel';
+import YoutubePlayerPanel from './YoutubePlayerPanel';
 import MessageFileAttachment from './MessageFileAttachment';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
@@ -182,6 +184,31 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
     const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playSendSound, playReceiveSound } = useAudioNotifications();
 
+    // ===== Soundboard + YouTube (yalnızca Ana Salon) =====
+    const isAnaSalon = roomId === 'Ana Salon';
+    const [showSoundboard, setShowSoundboard] = useState(false);
+    const [showYoutubeInput, setShowYoutubeInput] = useState(false);
+    const [youtubeUrlInput, setYoutubeUrlInput] = useState('');
+    // SignalR effect'inin dep dizisine girmesinler diye ref üzerinden okunurlar
+    const masterVolumeRef = useRef(masterVolume);
+    useEffect(() => { masterVolumeRef.current = masterVolume; }, [masterVolume]);
+    const outputIdRef = useRef(selectedOutputId);
+    useEffect(() => { outputIdRef.current = selectedOutputId; }, [selectedOutputId]);
+    // Üst üste binmesin diye çalan son soundboard sesi
+    const soundboardAudioRef = useRef<HTMLAudioElement | null>(null);
+
+    const handleStartYoutube = (e: React.FormEvent) => {
+        e.preventDefault();
+        const match = youtubeUrlInput.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([A-Za-z0-9_-]{11})/);
+        if (!match) {
+            alert('Geçerli bir YouTube linki yapıştır.');
+            return;
+        }
+        signalrService.startYoutube(roomId, match[1]);
+        setYoutubeUrlInput('');
+        setShowYoutubeInput(false);
+    };
+
     // SignalR event'leri
     useEffect(() => {
         if (!isReady) return;
@@ -339,6 +366,21 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         signalrService.onMemberRoleChanged(handleMemberRoleChanged);
         signalrService.onJoinRejected(handleJoinRejected);
 
+        // ===== Soundboard (yalnızca Ana Salon) =====
+        const handleSoundPlayed = (u: string, soundUrl: string, soundName: string) => {
+            if (!isMounted) return;
+            try {
+                soundboardAudioRef.current?.pause();
+                const audio = new Audio(soundUrl);
+                audio.volume = masterVolumeRef.current;
+                applySinkId(audio, outputIdRef.current);
+                soundboardAudioRef.current = audio;
+                audio.play().catch(() => { /* autoplay engellenmiş olabilir */ });
+            } catch { /* geçersiz URL vb. — yoksay */ }
+            setMessages(prev => [...prev, { id: ++messageIdCounter.current, username: 'System', text: `${u} bir ses çaldı: ${soundName} 🔊`, type: 'system', timestamp: Date.now() }]);
+        };
+        if (roomId === 'Ana Salon') signalrService.onSoundPlayed(handleSoundPlayed);
+
         signalrService.onUserJoined(handleUserJoined);
         signalrService.onUserLeft(handleUserLeft);
         signalrService.onReceiveMessage(handleReceiveMessage);
@@ -356,6 +398,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         return () => {
             isMounted = false;
             signalrService.leaveRoom(roomId, username);
+            soundboardAudioRef.current?.pause();
+            signalrService.offSoundPlayed(handleSoundPlayed);
             signalrService.offForceDisconnect(handleForceDisconnect);
             signalrService.offUserJoined(handleUserJoined);
             signalrService.offUserLeft(handleUserLeft);
@@ -814,6 +858,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                 const uName = userObj?.username ?? 'Unknown';
                 return <AudioPlayer key={idx} stream={stream} volume={masterVolume * (userVolumes[uName] ?? 1.0)} sinkId={selectedOutputId} />;
             })}
+
+            {/* Senkron YouTube müzik oynatıcısı (yalnızca Ana Salon) */}
+            {isAnaSalon && <YoutubePlayerPanel roomId={roomId} />}
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible"
                 className="relative z-10 flex flex-col h-full max-w-[1400px] mx-auto w-full p-4 sm:p-6 lg:p-8">
@@ -1436,13 +1483,23 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             <form onSubmit={editingMessageId ? handleSaveEdit : handleSendMessage}
                                 className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
                                 
-                                <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
+                                <button type="button" onClick={() => { setShowEmojiPicker(p => !p); setShowSoundboard(false); setShowYoutubeInput(false); }} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
                                     <Smile size={20} />
                                 </button>
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
                                     <Paperclip size={20} />
                                 </button>
                                 <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
+                                {isAnaSalon && (
+                                    <>
+                                        <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard" className={`p-3 transition-colors cursor-pointer ${showSoundboard ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                            <Music2 size={20} />
+                                        </button>
+                                        <button type="button" onClick={() => { setShowYoutubeInput(p => !p); setShowSoundboard(false); setShowEmojiPicker(false); }} title="YouTube'dan müzik aç" className={`p-3 transition-colors cursor-pointer ${showYoutubeInput ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                            <Youtube size={20} />
+                                        </button>
+                                    </>
+                                )}
                                 
                                 <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
                                     placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
@@ -1457,6 +1514,29 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             <div className="absolute bottom-full mb-2 left-0 z-50">
                                 <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
                             </div>
+                            {isAnaSalon && (
+                                <div className="absolute bottom-full mb-2 left-0 z-50">
+                                    <SoundboardPanel isOpen={showSoundboard} onClose={() => setShowSoundboard(false)} roomId={roomId} apiBaseUrl={API_BASE_URL} />
+                                </div>
+                            )}
+                            {isAnaSalon && showYoutubeInput && (
+                                <div className="absolute bottom-full mb-2 left-0 z-50">
+                                    <form onSubmit={handleStartYoutube} className="flex items-center gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px]">
+                                        <Youtube size={18} className="text-red-500 shrink-0" />
+                                        <input
+                                            type="text"
+                                            value={youtubeUrlInput}
+                                            onChange={e => setYoutubeUrlInput(e.target.value)}
+                                            placeholder="YouTube linkini yapıştır..."
+                                            autoFocus
+                                            className="flex-1 min-w-0 bg-bg-base border border-border-main rounded-xl px-3 py-2 text-text-main text-sm outline-none focus:border-primary-main transition-colors"
+                                        />
+                                        <button type="submit" disabled={!youtubeUrlInput.trim()} className="px-3 py-2 rounded-xl bg-primary-main/20 text-primary-main text-xs font-semibold hover:bg-primary-main/30 transition-colors disabled:opacity-40">
+                                            Başlat
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
                         </motion.div>
                     </>
                 )}

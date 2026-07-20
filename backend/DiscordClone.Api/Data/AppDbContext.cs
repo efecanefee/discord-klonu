@@ -14,6 +14,7 @@ namespace DiscordClone.Api.Data
         public DbSet<RoomMember> RoomMembers { get; set; }
         public DbSet<RoomBan> RoomBans { get; set; }
         public DbSet<Channel> Channels { get; set; }
+        public DbSet<UserSound> UserSounds { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -195,6 +196,19 @@ namespace DiscordClone.Api.Data
                 .Property(b => b.Reason).HasColumnName("reason");
             modelBuilder.Entity<RoomBan>()
                 .Property(b => b.BannedAt).HasColumnName("banned_at");
+
+            modelBuilder.Entity<UserSound>()
+                .ToTable("user_sounds");
+            modelBuilder.Entity<UserSound>()
+                .Property(s => s.Id).HasColumnName("id");
+            modelBuilder.Entity<UserSound>()
+                .Property(s => s.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<UserSound>()
+                .Property(s => s.Name).HasColumnName("name");
+            modelBuilder.Entity<UserSound>()
+                .Property(s => s.Url).HasColumnName("url");
+            modelBuilder.Entity<UserSound>()
+                .Property(s => s.CreatedAt).HasColumnName("created_at");
         }
     }
 }
