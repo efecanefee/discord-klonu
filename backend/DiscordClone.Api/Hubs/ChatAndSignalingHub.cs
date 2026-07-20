@@ -31,6 +31,9 @@ namespace DiscordClone.Api.Hubs
             public double PositionSeconds { get; set; }
             public long UpdatedAtUnixMs { get; set; }
             public string StartedBy { get; set; } = string.Empty;
+            // "audio": herkes otomatik dinler; "video": watch party — davet gider,
+            // kabul eden birlikte izler.
+            public string Mode { get; set; } = "audio";
         }
 
         private readonly AppDbContext _db;
@@ -254,7 +257,7 @@ namespace DiscordClone.Api.Hubs
             {
                 var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 var effectivePos = yt.PositionSeconds + (yt.IsPlaying ? (now - yt.UpdatedAtUnixMs) / 1000.0 : 0);
-                await Clients.Caller.SendAsync("YoutubeState", yt.VideoId, yt.IsPlaying, effectivePos, yt.StartedBy);
+                await Clients.Caller.SendAsync("YoutubeState", yt.VideoId, yt.IsPlaying, effectivePos, yt.StartedBy, yt.Mode);
             }
         }
 
@@ -357,11 +360,12 @@ namespace DiscordClone.Api.Hubs
         }
 
         // ============ YOUTUBE SENKRON OYNATMA ============
-        public async Task StartYoutube(string roomId, string videoId)
+        public async Task StartYoutube(string roomId, string videoId, string mode = "audio")
         {
             if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
                 return;
             if (string.IsNullOrWhiteSpace(videoId) || videoId.Length > 20) return;
+            if (mode != "audio" && mode != "video") mode = "audio";
 
             var username = Context.User?.Identity?.Name ?? "";
             _youtubeStates[roomId] = new YoutubeRoomState
@@ -370,9 +374,10 @@ namespace DiscordClone.Api.Hubs
                 IsPlaying = true,
                 PositionSeconds = 0,
                 UpdatedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                StartedBy = username
+                StartedBy = username,
+                Mode = mode
             };
-            await Clients.Group(roomId).SendAsync("YoutubeStarted", videoId, username);
+            await Clients.Group(roomId).SendAsync("YoutubeStarted", videoId, username, mode);
         }
 
         public async Task SyncYoutube(string roomId, string action, double position)
