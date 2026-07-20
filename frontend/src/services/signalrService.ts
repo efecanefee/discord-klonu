@@ -386,7 +386,8 @@ class SignalRService {
     // ===== Soundboard =====
     public async playSound(roomId: string, soundUrl: string, soundName: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
-            await this.connection.invoke('PlaySound', roomId, soundUrl, soundName);
+            try { await this.connection.invoke('PlaySound', roomId, soundUrl, soundName); }
+            catch (err) { console.error('PlaySound hatası (backend güncel mi?):', err); }
         }
     }
     public onSoundPlayed(callback: (username: string, soundUrl: string, soundName: string) => void) {
@@ -398,18 +399,27 @@ class SignalRService {
 
     // ===== YouTube senkron oynatma =====
     public async startYoutube(roomId: string, videoId: string) {
-        if (this.connection.state === signalR.HubConnectionState.Connected) {
+        if (this.connection.state !== signalR.HubConnectionState.Connected) {
+            console.warn('StartYoutube: SignalR bağlantısı yok (state=', this.connection.state, ')');
+            throw new Error('SignalR bağlantısı yok.');
+        }
+        try {
             await this.connection.invoke('StartYoutube', roomId, videoId);
+        } catch (err) {
+            console.error('StartYoutube hatası (backend güncel mi?):', err);
+            throw err;
         }
     }
     public async syncYoutube(roomId: string, action: 'play' | 'pause' | 'seek', position: number) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
-            await this.connection.invoke('SyncYoutube', roomId, action, position);
+            try { await this.connection.invoke('SyncYoutube', roomId, action, position); }
+            catch (err) { console.error('SyncYoutube hatası:', err); }
         }
     }
     public async stopYoutube(roomId: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
-            await this.connection.invoke('StopYoutube', roomId);
+            try { await this.connection.invoke('StopYoutube', roomId); }
+            catch (err) { console.error('StopYoutube hatası:', err); }
         }
     }
     public onYoutubeStarted(callback: (videoId: string, username: string) => void) {

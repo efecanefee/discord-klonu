@@ -197,14 +197,20 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // Üst üste binmesin diye çalan son soundboard sesi
     const soundboardAudioRef = useRef<HTMLAudioElement | null>(null);
 
-    const handleStartYoutube = (e: React.FormEvent) => {
+    const handleStartYoutube = async (e: React.FormEvent) => {
         e.preventDefault();
         const match = youtubeUrlInput.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([A-Za-z0-9_-]{11})/);
         if (!match) {
             alert('Geçerli bir YouTube linki yapıştır.');
             return;
         }
-        signalrService.startYoutube(roomId, match[1]);
+        try {
+            await signalrService.startYoutube(roomId, match[1]);
+        } catch (err) {
+            console.error('YouTube başlatma hatası:', err);
+            alert('Müzik başlatılamadı. Backend güncel değilse bir süre sonra tekrar dene.');
+            return;
+        }
         setYoutubeUrlInput('');
         setShowYoutubeInput(false);
     };
