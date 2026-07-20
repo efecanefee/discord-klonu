@@ -398,13 +398,13 @@ class SignalRService {
     }
 
     // ===== YouTube senkron oynatma =====
-    public async startYoutube(roomId: string, videoId: string) {
+    public async startYoutube(roomId: string, videoId: string, mode: 'audio' | 'video' = 'audio') {
         if (this.connection.state !== signalR.HubConnectionState.Connected) {
             console.warn('StartYoutube: SignalR bağlantısı yok (state=', this.connection.state, ')');
             throw new Error('SignalR bağlantısı yok.');
         }
         try {
-            await this.connection.invoke('StartYoutube', roomId, videoId);
+            await this.connection.invoke('StartYoutube', roomId, videoId, mode);
         } catch (err) {
             console.error('StartYoutube hatası (backend güncel mi?):', err);
             throw err;
@@ -422,10 +422,10 @@ class SignalRService {
             catch (err) { console.error('StopYoutube hatası:', err); }
         }
     }
-    public onYoutubeStarted(callback: (videoId: string, username: string) => void) {
+    public onYoutubeStarted(callback: (videoId: string, username: string, mode: string) => void) {
         this.connection?.on('YoutubeStarted', callback);
     }
-    public offYoutubeStarted(callback: (videoId: string, username: string) => void) {
+    public offYoutubeStarted(callback: (videoId: string, username: string, mode: string) => void) {
         this.connection?.off('YoutubeStarted', callback);
     }
     public onYoutubeSync(callback: (action: string, position: number) => void) {
@@ -440,10 +440,10 @@ class SignalRService {
     public offYoutubeStopped(callback: () => void) {
         this.connection?.off('YoutubeStopped', callback);
     }
-    public onYoutubeState(callback: (videoId: string, isPlaying: boolean, position: number, startedBy: string) => void) {
+    public onYoutubeState(callback: (videoId: string, isPlaying: boolean, position: number, startedBy: string, mode: string) => void) {
         this.connection?.on('YoutubeState', callback);
     }
-    public offYoutubeState(callback: (videoId: string, isPlaying: boolean, position: number, startedBy: string) => void) {
+    public offYoutubeState(callback: (videoId: string, isPlaying: boolean, position: number, startedBy: string, mode: string) => void) {
         this.connection?.off('YoutubeState', callback);
     }
 

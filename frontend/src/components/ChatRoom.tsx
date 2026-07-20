@@ -197,18 +197,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // Üst üste binmesin diye çalan son soundboard sesi
     const soundboardAudioRef = useRef<HTMLAudioElement | null>(null);
 
-    const handleStartYoutube = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleStartYoutube = async (mode: 'audio' | 'video') => {
         const match = youtubeUrlInput.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([A-Za-z0-9_-]{11})/);
         if (!match) {
             alert('Geçerli bir YouTube linki yapıştır.');
             return;
         }
         try {
-            await signalrService.startYoutube(roomId, match[1]);
+            await signalrService.startYoutube(roomId, match[1], mode);
         } catch (err) {
             console.error('YouTube başlatma hatası:', err);
-            alert('Müzik başlatılamadı. Backend güncel değilse bir süre sonra tekrar dene.');
+            alert('Başlatılamadı. Backend güncel değilse bir süre sonra tekrar dene.');
             return;
         }
         setYoutubeUrlInput('');
@@ -866,7 +865,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             })}
 
             {/* Senkron YouTube müzik oynatıcısı (yalnızca Ana Salon) */}
-            {isAnaSalon && <YoutubePlayerPanel roomId={roomId} />}
+            {isAnaSalon && <YoutubePlayerPanel roomId={roomId} username={username} />}
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible"
                 className="relative z-10 flex flex-col h-full max-w-[1400px] mx-auto w-full p-4 sm:p-6 lg:p-8">
@@ -1527,20 +1526,32 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             )}
                             {isAnaSalon && showYoutubeInput && (
                                 <div className="absolute bottom-full mb-2 left-0 z-50">
-                                    <form onSubmit={handleStartYoutube} className="flex items-center gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px]">
-                                        <Youtube size={18} className="text-red-500 shrink-0" />
-                                        <input
-                                            type="text"
-                                            value={youtubeUrlInput}
-                                            onChange={e => setYoutubeUrlInput(e.target.value)}
-                                            placeholder="YouTube linkini yapıştır..."
-                                            autoFocus
-                                            className="flex-1 min-w-0 bg-bg-base border border-border-main rounded-xl px-3 py-2 text-text-main text-sm outline-none focus:border-primary-main transition-colors"
-                                        />
-                                        <button type="submit" disabled={!youtubeUrlInput.trim()} className="px-3 py-2 rounded-xl bg-primary-main/20 text-primary-main text-xs font-semibold hover:bg-primary-main/30 transition-colors disabled:opacity-40">
-                                            Başlat
-                                        </button>
-                                    </form>
+                                    <div className="flex flex-col gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px]">
+                                        <div className="flex items-center gap-2">
+                                            <Youtube size={18} className="text-red-500 shrink-0" />
+                                            <input
+                                                type="text"
+                                                value={youtubeUrlInput}
+                                                onChange={e => setYoutubeUrlInput(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter') handleStartYoutube('audio'); }}
+                                                placeholder="YouTube linkini yapıştır..."
+                                                autoFocus
+                                                className="flex-1 min-w-0 bg-bg-base border border-border-main rounded-xl px-3 py-2 text-text-main text-sm outline-none focus:border-primary-main transition-colors"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button type="button" onClick={() => handleStartYoutube('audio')} disabled={!youtubeUrlInput.trim()}
+                                                title="Odadaki herkes anında dinlemeye başlar"
+                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary-main/20 text-primary-main text-xs font-semibold hover:bg-primary-main/30 transition-colors disabled:opacity-40">
+                                                <Volume2 size={14} /> Ses olarak aç
+                                            </button>
+                                            <button type="button" onClick={() => handleStartYoutube('video')} disabled={!youtubeUrlInput.trim()}
+                                                title="Odadakilere izleme partisi daveti gönderir; kabul edenler birlikte izler"
+                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-40">
+                                                <Youtube size={14} /> Video olarak aç
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </motion.div>
