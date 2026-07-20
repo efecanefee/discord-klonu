@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Circle, Moon, MinusCircle, UserX, MessageSquare, Check, X } from 'lucide-react';
 
@@ -11,19 +12,45 @@ interface StatusMenuProps {
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }
 
+const MENU_WIDTH = 288; // w-72
+
 export default function StatusMenu({ isOpen, onClose, currentStatus, currentMessage, onUpdateStatus, buttonRef }: StatusMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [isEditingMessage, setIsEditingMessage] = useState(false);
   const [tempMessage, setTempMessage] = useState(currentMessage);
+  // Tetikleyici buton sayfanın herhangi bir yerinde olabilir (bu uygulamada
+  // profil çipi kenar çubuğunun ÜSTÜNDE); sabit "bottom-[80px]" varsayımı
+  // butonun ekranın altında olduğunu varsayıyordu ve menü ekran dışında
+  // açılıyordu. Bunun yerine butonun gerçek konumuna göre hesaplanır.
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     setTempMessage(currentMessage);
   }, [currentMessage, isOpen]);
 
+  useLayoutEffect(() => {
+    if (!isOpen || !buttonRef.current) { setPos(null); return; }
+    const rect = buttonRef.current.getBoundingClientRect();
+    const gap = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const menuHeight = menuRef.current?.offsetHeight ?? 260;
+
+    let left = rect.left;
+    if (left + MENU_WIDTH > vw - 8) left = Math.max(8, vw - MENU_WIDTH - 8);
+
+    // Önce butonun altına aç; sığmazsa üstüne
+    let top = rect.bottom + gap;
+    if (top + menuHeight > vh - 8) top = rect.top - menuHeight - gap;
+    if (top < 8) top = 8;
+
+    setPos({ top, left });
+  }, [isOpen, buttonRef]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
-        menuRef.current && 
+        menuRef.current &&
         !menuRef.current.contains(e.target as Node) &&
         buttonRef.current &&
         !buttonRef.current.contains(e.target as Node)
@@ -57,7 +84,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
     setIsEditingMessage(false);
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         ref={menuRef}
@@ -65,7 +92,14 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ duration: 0.15 }}
-        className="absolute bottom-[80px] left-4 w-72 bg-[#09090b] border border-white/10 rounded-xl shadow-2xl p-2 z-[60]"
+        style={{
+          position: 'fixed',
+          top: pos?.top ?? 0,
+          left: pos?.left ?? 0,
+          width: MENU_WIDTH,
+          visibility: pos ? 'visible' : 'hidden',
+        }}
+        className="bg-[#09090b] border border-white/10 rounded-xl shadow-2xl p-2 z-[100]"
       >
         <div className="mb-2 p-2">
           {isEditingMessage ? (
@@ -128,6 +162,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
           })}
         </div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
