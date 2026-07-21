@@ -205,25 +205,25 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
         <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#3B82F6]/5 blur-[120px]" />
       </div>
 
-      <div className="h-[88px] shrink-0 border-b border-white/5 bg-white/[0.02] flex items-center justify-between px-8 relative z-10">
-        <div className="flex items-center gap-4">
-          <button 
+      <div className="h-[88px] shrink-0 border-b border-white/5 bg-white/[0.02] flex items-center justify-between px-4 sm:px-8 relative z-10">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <button
             onClick={onLeave}
-            className="mr-1 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-xl text-white/50 hover:text-white transition-colors cursor-pointer"
+            className="shrink-0 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-xl text-white/50 hover:text-white transition-colors cursor-pointer"
           >
-            ← Geri
+            ←
           </button>
-          <div className="relative">
-            <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-[#18181b] border border-[#334155] shadow-lg">
+          <div className="relative shrink-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden flex items-center justify-center text-2xl bg-[#18181b] border border-[#334155] shadow-lg">
               {renderAvatar(targetUser.avatarId)}
             </div>
             <div className={`absolute -bottom-1 -right-1 w-4 h-4 border-2 border-[#09090b] rounded-full ${targetUser.customStatus === 'online' ? 'bg-green-500' : targetUser.customStatus === 'idle' ? 'bg-yellow-500' : targetUser.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2 truncate">
               {targetUser.username}
             </h2>
-            <p className="text-sm text-white/50">
+            <p className="text-xs sm:text-sm text-white/50 truncate">
               {targetUser.customStatus === 'online' ? 'Çevrimiçi' : targetUser.customStatus === 'idle' ? 'Boşta' : targetUser.customStatus === 'dnd' ? 'Rahatsız Etmeyin' : targetUser.lastSeen ? `Son görülme: ${(() => {
                 const date = new Date(targetUser.lastSeen);
                 const now = new Date();

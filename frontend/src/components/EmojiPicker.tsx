@@ -64,7 +64,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onClos
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 10 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute bottom-full mb-2 left-0 z-50 w-[340px] rounded-2xl overflow-hidden shadow-2xl"
+                        className="absolute bottom-full mb-2 left-0 z-50 w-[340px] max-w-[calc(100vw-1.5rem)] rounded-2xl overflow-hidden shadow-2xl"
                         style={{
                             background: 'var(--color-bg-card, #1a2035)',
                             border: '1px solid var(--color-border-main, #242b3d)',

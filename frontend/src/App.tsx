@@ -907,7 +907,7 @@ function App() {
     <>
     {roomTree}
     {voicePill}
-    <div className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
+    <div className="relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
 
       {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
       <div className="app-background" />
@@ -919,14 +919,6 @@ function App() {
 
       {authState === 'rooms' && (
         <>
-          {/* Hamburger Menu Button (Mobile) */}
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="absolute top-5 left-5 z-40 p-3 rounded-2xl bg-bg-surface/90 border border-white/10 hover:bg-bg-surface md:hidden text-white cursor-pointer"
-          >
-            <Menu size={24} />
-          </button>
-
           {/* Overlay (Mobile) */}
           {isSidebarOpen && (
             <div 
@@ -1157,7 +1149,18 @@ function App() {
       {/* Mobil tarih & saat şeridi + aktivite akışı — masaüstünde sağ kolonda */}
       {authState === 'rooms' && (
         <div className="md:hidden w-full max-w-[400px] mx-4 space-y-3">
-          <ClockPanel compact />
+          <div className="flex items-stretch gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              aria-label="Menüyü aç"
+              className="shrink-0 flex items-center justify-center px-4 rounded-3xl bg-bg-surface/60 border border-white/10 hover:bg-bg-surface text-white cursor-pointer"
+            >
+              <Menu size={24} />
+            </button>
+            <div className="flex-1 min-w-0">
+              <ClockPanel compact />
+            </div>
+          </div>
           <ActivityFeed rooms={rooms} />
         </div>
       )}
@@ -1697,9 +1700,9 @@ function App() {
       </div>
 
       {/* Removed external MADE BY EFECAN */}
-      {/* Sabit Sosyal Medya İkonları (yalnızca mobil) */}
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.3 }}
-        className="md:hidden fixed bottom-5 right-5 flex flex-col gap-3 z-50">
+      {/* Sosyal Medya İkonları (yalnızca mobil) — sabit değil, içerik akışında en altta */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.3 }}
+        className="md:hidden flex flex-row justify-center gap-3 mt-4 mb-2 w-full">
         <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer" 
            className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(var(--accent-rgb),0.6)] transition-all duration-300">
           <Github size={20} />

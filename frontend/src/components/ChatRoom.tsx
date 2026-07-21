@@ -141,6 +141,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const { settings, updateSettings } = useSettings();
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
+    // Mobilde üye listesi masaüstündeki gibi yan panelde değil, kayan çekmecede açılır.
+    const [showMobileMembers, setShowMobileMembers] = useState(false);
     const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
     const [isTyping, setIsTyping] = useState(false);
     // Yalnizca sekme basligini beslediginden ref: state olsaydi her gelen
@@ -989,6 +991,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             </button>
                         )}
 
+                        {/* Üyeler (yalnızca mobil, normal mod) — masaüstünde yan panel her zaman görünür */}
+                        {!isMediaActive && (
+                        <button onClick={() => setShowMobileMembers(true)} title="Odadakiler"
+                            className="md:hidden flex items-center justify-center p-2.5 rounded-xl border bg-bg-base border-border-main text-text-muted hover:text-primary-main hover:border-primary-main/40 transition-colors cursor-pointer relative">
+                            <Users size={18} />
+                            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary-main text-white text-[10px] font-bold">
+                                {Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}
+                            </span>
+                        </button>
+                        )}
+
                         {/* Ayrıl */}
                         <button onClick={onLeave}
                             className="flex items-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border-main hover:border-red-500/30 rounded-xl text-sm font-semibold transition-colors cursor-pointer">
@@ -1368,14 +1381,32 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 </div>
                             </motion.div>
 
-                            {/* Users Sidebar */}
-                            <motion.div variants={itemVariants} className="hidden md:flex w-72 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
+                            {/* Mobil çekmece karartması */}
+                            <AnimatePresence>
+                                {showMobileMembers && (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                        onClick={() => setShowMobileMembers(false)}
+                                        className="fixed inset-0 bg-black/60 z-40 md:hidden" />
+                                )}
+                            </AnimatePresence>
+
+                            {/* Users Sidebar — masaüstünde sabit yan panel, mobilde sağdan kayan çekmece */}
+                            <motion.div variants={itemVariants}
+                                className={`flex-col bg-bg-card border border-border-main shadow-card overflow-hidden shrink-0
+                                    md:static md:flex md:w-72 md:h-auto md:rounded-2xl md:z-auto md:translate-x-0 md:transition-none
+                                    fixed top-0 right-0 h-[100dvh] w-[85%] max-w-xs z-50 border-l transition-transform duration-300 ease-out
+                                    ${showMobileMembers ? 'flex translate-x-0' : 'flex translate-x-full md:translate-x-0'}`}>
                                 <div className="p-5 border-b border-border-main bg-bg-surface/30">
                                     <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center justify-between gap-2 mb-4">
                                         <span>Odada Olanlar</span>
-                                        <span className="bg-bg-surface px-2.5 py-1 rounded-[8px] border border-border-main text-text-main font-semibold text-[12px]">
-                                            {Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="bg-bg-surface px-2.5 py-1 rounded-[8px] border border-border-main text-text-main font-semibold text-[12px]">
+                                                {Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}
+                                            </span>
+                                            <button onClick={() => setShowMobileMembers(false)} className="md:hidden p-1 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-surface transition-colors" title="Kapat">
+                                                <X size={16} />
+                                            </button>
+                                        </div>
                                     </h3>
                                     <div className="flex flex-col gap-2">
                                         <span className="text-[13px] text-text-muted font-medium">Sistem Sesi</span>
@@ -1526,7 +1557,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             )}
                             {isAnaSalon && showYoutubeInput && (
                                 <div className="absolute bottom-full mb-2 left-0 z-50">
-                                    <div className="flex flex-col gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px]">
+                                    <div className="flex flex-col gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px] max-w-[calc(100vw-1.5rem)]">
                                         <div className="flex items-center gap-2">
                                             <Youtube size={18} className="text-red-500 shrink-0" />
                                             <input

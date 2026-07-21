@@ -119,7 +119,7 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.97 }}
           transition={{ duration: 0.15 }}
-          className="w-[300px] max-h-[360px] overflow-y-auto custom-scrollbar bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3"
+          className="w-[300px] max-w-[calc(100vw-1.5rem)] max-h-[360px] overflow-y-auto custom-scrollbar bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3"
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold text-text-main flex items-center gap-2">

@@ -185,6 +185,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     }, [roomDbId, roomId, activeChannelId]);
 
     const switchChannel = (ch: ChannelDto) => {
+        // Mobil kanal çekmecesi açıksa seçimden sonra kapat.
+        setShowMobileChannels(false);
         if (ch.type === 'voice') {
             const connId = signalrService.connectionId;
             if (!connId) return;
@@ -227,6 +229,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const [messageInput, setMessageInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
+    // Mobilde kanal ve üye panelleri kayan çekmecelerde açılır (masaüstünde sabit yan panel).
+    const [showMobileChannels, setShowMobileChannels] = useState(false);
+    const [showMobileMembers, setShowMobileMembers] = useState(false);
     const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
     const [isTyping, setIsTyping] = useState(false);
     // Yalnizca sekme basligini beslediginden ref: state olsaydi her gelen
@@ -774,6 +779,21 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                        {/* Kanallar (yalnızca mobil) */}
+                        <button onClick={() => setShowMobileChannels(true)} title="Kanallar"
+                            className="md:hidden flex items-center justify-center p-2.5 rounded-xl border bg-bg-base border-border-main text-text-muted hover:text-primary-main hover:border-primary-main/40 transition-colors cursor-pointer">
+                            <Hash size={18} />
+                        </button>
+
+                        {/* Üyeler (yalnızca mobil) */}
+                        <button onClick={() => setShowMobileMembers(true)} title="Odaya Katılanlar"
+                            className="md:hidden flex items-center justify-center p-2.5 rounded-xl border bg-bg-base border-border-main text-text-muted hover:text-primary-main hover:border-primary-main/40 transition-colors cursor-pointer relative">
+                            <Users size={18} />
+                            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-primary-main text-white text-[10px] font-bold">
+                                {merged.length || 1}
+                            </span>
+                        </button>
+
                         {/* Arama */}
                         <div className="relative flex items-center">
                             <AnimatePresence>
@@ -818,16 +838,34 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
                 {/* ===== İÇERİK ===== */}
                 <div className="flex flex-1 overflow-hidden gap-6 mb-6">
-                    {/* Kanal Sidebar (Özellik 8 — Faz 2b) */}
-                    <motion.div variants={itemVariants} className="hidden md:flex w-60 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
+                    {/* Mobil çekmece karartması (kanallar/üyeler) */}
+                    <AnimatePresence>
+                        {(showMobileChannels || showMobileMembers) && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                onClick={() => { setShowMobileChannels(false); setShowMobileMembers(false); }}
+                                className="fixed inset-0 bg-black/60 z-40 md:hidden" />
+                        )}
+                    </AnimatePresence>
+
+                    {/* Kanal Sidebar (Özellik 8 — Faz 2b) — masaüstünde sabit, mobilde soldan çekmece */}
+                    <motion.div variants={itemVariants}
+                        className={`flex-col bg-bg-card border border-border-main shadow-card overflow-hidden shrink-0
+                            md:static md:flex md:w-60 md:h-auto md:rounded-2xl md:z-auto md:translate-x-0 md:transition-none md:border-r
+                            fixed top-0 left-0 h-[100dvh] w-[80%] max-w-xs z-50 border-r transition-transform duration-300 ease-out
+                            ${showMobileChannels ? 'flex translate-x-0' : 'flex -translate-x-full md:translate-x-0'}`}>
                         <div className="p-4 border-b border-border-main bg-bg-surface/30 flex items-center justify-between">
                             <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-2"><Hash size={14} /> Kanallar</h3>
-                            {canManageRoom && (
-                                <button onClick={() => setShowAddChannel(v => !v)} title="Kanal ekle"
-                                    className="p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-surface transition-colors">
-                                    <Plus size={16} />
+                            <div className="flex items-center gap-1">
+                                {canManageRoom && (
+                                    <button onClick={() => setShowAddChannel(v => !v)} title="Kanal ekle"
+                                        className="p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-surface transition-colors">
+                                        <Plus size={16} />
+                                    </button>
+                                )}
+                                <button onClick={() => setShowMobileChannels(false)} className="md:hidden p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-surface transition-colors" title="Kapat">
+                                    <X size={16} />
                                 </button>
-                            )}
+                            </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
@@ -1055,14 +1093,23 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                         </div>
                     </motion.div>
 
-                    {/* Katılanlar Sidebar — çevrimiçi/çevrimdışı (Özellik 9) */}
-                    <motion.div variants={itemVariants} className="hidden md:flex w-72 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
+                    {/* Katılanlar Sidebar — masaüstünde sabit, mobilde sağdan çekmece */}
+                    <motion.div variants={itemVariants}
+                        className={`flex-col bg-bg-card border border-border-main shadow-card overflow-hidden shrink-0
+                            md:static md:flex md:w-72 md:h-auto md:rounded-2xl md:z-auto md:translate-x-0 md:transition-none
+                            fixed top-0 right-0 h-[100dvh] w-[85%] max-w-xs z-50 border-l transition-transform duration-300 ease-out
+                            ${showMobileMembers ? 'flex translate-x-0' : 'flex translate-x-full md:translate-x-0'}`}>
                         <div className="p-5 border-b border-border-main bg-bg-surface/30">
                             <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center justify-between gap-2">
                                 <span className="flex items-center gap-2"><Users size={14} /> Odaya Katılanlar</span>
-                                <span className="bg-bg-surface px-2.5 py-1 rounded-[8px] border border-border-main text-text-main font-semibold text-[12px]">
-                                    {merged.length || 1}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="bg-bg-surface px-2.5 py-1 rounded-[8px] border border-border-main text-text-main font-semibold text-[12px]">
+                                        {merged.length || 1}
+                                    </span>
+                                    <button onClick={() => setShowMobileMembers(false)} className="md:hidden p-1 rounded-lg text-text-muted hover:text-text-main hover:bg-bg-surface transition-colors" title="Kapat">
+                                        <X size={16} />
+                                    </button>
+                                </div>
                             </h3>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">

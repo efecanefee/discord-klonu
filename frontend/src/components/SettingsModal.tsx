@@ -142,51 +142,51 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
           transition={{ duration: settings.reducedMotion ? 0 : 0.3 }}
           className={`relative w-full max-w-2xl bg-bg-surface border border-border-main rounded-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-[600px] ${settings.reducedMotion ? 'shadow-none' : 'shadow-2xl'}`}
         >
-          {/* Sidebar */}
-          <div className="w-full md:w-64 bg-bg-base/50 border-r border-border-main p-4 flex flex-col gap-2 shrink-0">
-            <h2 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 px-2">Ayarlar</h2>
-            
+          {/* Sidebar — masaüstünde dikey kolon, mobilde yatay kaydırılabilir sekme şeridi */}
+          <div className="w-full md:w-64 bg-bg-base/50 border-b md:border-b-0 md:border-r border-border-main p-3 md:p-4 flex flex-row md:flex-col gap-2 shrink-0 overflow-x-auto md:overflow-x-visible scrollbar-hide">
+            <h2 className="hidden md:block text-xs font-bold text-text-muted uppercase tracking-wider mb-2 px-2">Ayarlar</h2>
+
             <button
               onClick={() => setActiveTab('audio')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
-                activeTab === 'audio' 
-                  ? 'bg-primary-main/20 text-text-main border border-primary-main/30' 
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm shrink-0 whitespace-nowrap ${
+                activeTab === 'audio'
+                  ? 'bg-primary-main/20 text-text-main border border-primary-main/30'
                   : 'text-text-muted hover:text-text-main hover:bg-surface-subtle border border-transparent'
               }`}
             >
               <Mic size={18} className={activeTab === 'audio' ? 'text-primary-main' : ''} />
               Ses ve Görüntü
             </button>
-            
+
             <button
               onClick={() => setActiveTab('notifications')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
-                activeTab === 'notifications' 
-                  ? 'bg-primary-main/20 text-text-main border border-primary-main/30' 
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm shrink-0 whitespace-nowrap ${
+                activeTab === 'notifications'
+                  ? 'bg-primary-main/20 text-text-main border border-primary-main/30'
                   : 'text-text-muted hover:text-text-main hover:bg-surface-subtle border border-transparent'
               }`}
             >
               <Bell size={18} className={activeTab === 'notifications' ? 'text-primary-main' : ''} />
               Bildirimler
             </button>
-            
+
             <button
               onClick={() => setActiveTab('ui')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
-                activeTab === 'ui' 
-                  ? 'bg-primary-main/20 text-text-main border border-primary-main/30' 
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm shrink-0 whitespace-nowrap ${
+                activeTab === 'ui'
+                  ? 'bg-primary-main/20 text-text-main border border-primary-main/30'
                   : 'text-text-muted hover:text-text-main hover:bg-surface-subtle border border-transparent'
               }`}
             >
               <Monitor size={18} className={activeTab === 'ui' ? 'text-primary-main' : ''} />
               Görünüm
             </button>
-            
+
             <button
               onClick={() => setActiveTab('privacy')}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm ${
-                activeTab === 'privacy' 
-                  ? 'bg-primary-main/20 text-text-main border border-primary-main/30' 
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm shrink-0 whitespace-nowrap ${
+                activeTab === 'privacy'
+                  ? 'bg-primary-main/20 text-text-main border border-primary-main/30'
                   : 'text-text-muted hover:text-text-main hover:bg-surface-subtle border border-transparent'
               }`}
             >

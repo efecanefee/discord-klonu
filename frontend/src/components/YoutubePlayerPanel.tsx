@@ -237,7 +237,7 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          className="absolute bottom-24 right-3 z-40 w-[304px] bg-bg-surface border border-border-main rounded-2xl shadow-2xl overflow-hidden"
+          className="absolute bottom-24 right-3 z-40 w-[304px] max-w-[calc(100vw-1.5rem)] bg-bg-surface border border-border-main rounded-2xl shadow-2xl overflow-hidden"
         >
           {isVideoInvite ? (
             // ===== İzleme partisi daveti =====
