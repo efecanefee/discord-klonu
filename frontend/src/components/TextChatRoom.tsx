@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen } from 'lucide-react';
+import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
@@ -20,6 +20,7 @@ export interface TextRoomInfo {
     name: string;
     description?: string;
     createdBy?: string;
+    roomCode?: string;
 }
 
 // Uzak katilimcinin sesi. Ayarlardaki cikis cihazina yonlendirilir.
@@ -113,6 +114,17 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         try { await roomApi.ban(roomDbId, uId); }
         catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
     };
+    // Davet linkini panoya kopyala (?invite=KOD)
+    const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+    const handleCopyInviteLink = async () => {
+        if (!roomInfo?.roomCode) return;
+        try {
+            await navigator.clipboard.writeText(`${window.location.origin}/?invite=${roomInfo.roomCode}`);
+            setInviteLinkCopied(true);
+            setTimeout(() => setInviteLinkCopied(false), 2000);
+        } catch { /* pano erişimi yok */ }
+    };
+
     // Sunucudan kalıcı çıkış — "Ayrıl"dan farklı olarak üyelik/bağ verisi silinir,
     // sunucu "Sunucularım"dan kaybolur. Mesajlar sohbette kalır.
     const handleLeaveServer = async () => {
@@ -848,6 +860,14 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                 {showSearch ? <X size={18} /> : <Search size={18} />}
                             </button>
                         </div>
+
+                        {/* Davet linkini kopyala */}
+                        {roomInfo?.roomCode && (
+                            <button onClick={handleCopyInviteLink} title="Davet linkini kopyala"
+                                className="flex items-center justify-center p-2.5 rounded-xl border bg-bg-base border-border-main text-text-muted hover:text-primary-main hover:border-primary-main/40 transition-colors cursor-pointer">
+                                {inviteLinkCopied ? <Check size={18} className="text-emerald-400" /> : <Link2 size={18} />}
+                            </button>
+                        )}
 
                         {/* Oda ayarları — sadece kurucu */}
                         {myRole === 'owner' && (

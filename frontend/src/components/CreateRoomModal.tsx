@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Hash, Volume2, MessageSquare, Loader2, Lock, Globe, Check, Copy } from 'lucide-react';
+import { X, Plus, Hash, Volume2, MessageSquare, Loader2, Lock, Globe, Check, Copy, Link2 } from 'lucide-react';
 
 interface CreatedRoomInfo {
   name: string;
@@ -26,6 +26,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   const [error, setError] = useState('');
   const [createdRoom, setCreatedRoom] = useState<CreatedRoomInfo | null>(null);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // Modal her açıldığında formu sıfırla
   useEffect(() => {
@@ -97,6 +98,15 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
       await navigator.clipboard.writeText(createdRoom.roomCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch { /* pano erişimi yok */ }
+  };
+
+  const handleCopyInviteLink = async () => {
+    if (!createdRoom?.roomCode) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/?invite=${createdRoom.roomCode}`);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
     } catch { /* pano erişimi yok */ }
   };
 
@@ -188,10 +198,17 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                     {copied ? <><Check size={14} className="text-[#10b981]" /> Kopyalandı</> : <><Copy size={14} /> Kopyala</>}
                   </span>
                 </button>
+                <button
+                  type="button"
+                  onClick={handleCopyInviteLink}
+                  className="w-full flex items-center justify-center gap-2 bg-bg-base border border-[#334155] hover:border-primary-main/50 rounded-xl px-4 py-3 text-sm text-text-muted hover:text-text-main transition-colors"
+                >
+                  {linkCopied ? <><Check size={15} className="text-[#10b981]" /> Link kopyalandı</> : <><Link2 size={15} /> Davet linkini kopyala</>}
+                </button>
                 <p className="text-[11px] text-text-muted leading-relaxed">
                   {createdRoom.isPrivate
-                    ? 'Bu oda gizli. Sadece bu kodu bilenler odayı bulup katılabilir. Kodu paylaşmayı unutma!'
-                    : 'Oda herkese açık listede görünür. Bu kod ile de doğrudan bulunabilir.'}
+                    ? 'Bu oda gizli. Sadece bu kodu ya da davet linkini bilenler odayı bulup katılabilir. Paylaşmayı unutma!'
+                    : 'Oda herkese açık listede görünür. Kod ya da davet linkiyle de doğrudan katılınabilir.'}
                 </p>
               </div>
 

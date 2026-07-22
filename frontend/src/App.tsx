@@ -236,6 +236,14 @@ function App() {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
+    // Davet linki (?invite=KOD) — login gerektirdiği için kodu beklet,
+    // oturum hazır olunca aşağıdaki pendingInvite effect'i işler.
+    const inviteParam = params.get('invite');
+    if (inviteParam) {
+      sessionStorage.setItem('pendingInvite', inviteParam.trim().toUpperCase());
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     // Check if token exists on load
     const token = localStorage.getItem('token');
     const savedUserId = localStorage.getItem('userId');
@@ -680,6 +688,34 @@ function App() {
     }
   };
 
+  // Davet linki: oturum hazır olunca bekleyen kodu işle (?invite=KOD)
+  useEffect(() => {
+    if (authState !== 'rooms') return;
+    const code = sessionStorage.getItem('pendingInvite');
+    if (!code) return;
+    sessionStorage.removeItem('pendingInvite');
+    (async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/rooms/search?query=${encodeURIComponent(code)}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error();
+        const data: RoomData[] = await res.json();
+        const room = data.find(r => (r.roomCode || '').toUpperCase() === code);
+        if (room) {
+          setActiveRoom(room);
+          setRoomId(room.name);
+          setInRoom(true);
+        } else {
+          alert(`Davet kodu geçersiz ya da oda silinmiş: ${code}`);
+        }
+      } catch {
+        alert('Davet linki işlenemedi. Daha sonra tekrar dene.');
+      }
+    })();
+  }, [authState, API_BASE_URL]);
+
   // Arama debounce
   useEffect(() => {
     const t = setTimeout(() => { handleRoomSearch(roomSearchQuery); }, 350);
@@ -803,7 +839,7 @@ function App() {
               onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
             />
           ) : (
-            <TextChatRoom key={activeRoom.id} username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy }} onLeave={handleDisconnectRoom}
+            <TextChatRoom key={activeRoom.id} username={username} avatarId={avatarId} roomId={roomId} roomDbId={activeRoom.id} myUserId={userId} roomInfo={{ name: activeRoom.name, description: activeRoom.description, createdBy: activeRoom.createdBy, roomCode: activeRoom.roomCode }} onLeave={handleDisconnectRoom}
               onOpenProfile={() => setIsProfileModalOpen(true)}
               onOpenDM={(pu) => { if (pu.userId) handleOpenRoomDM({ id: pu.userId, username: pu.username, firstName: '', lastName: '', avatarId: pu.avatarId || 'default', customStatus: 'online' }); }}
             />
