@@ -11,6 +11,13 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // Yeni SW beklemeden devreye girsin ve tüm sekmeleri devralsın —
+        // main.tsx'teki registerSW akışı sayfayı otomatik yeniler.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+      },
       manifest: {
         name: 'SandalyeciMetin',
         short_name: 'Sandalyeci',
