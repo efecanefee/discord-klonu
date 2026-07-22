@@ -298,7 +298,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                     </div>
 
                     <div 
-                      className={`rounded-2xl px-5 py-3 cursor-pointer ${isMe ? 'bg-primary-main text-white rounded-br-none shadow-[0_4px_20px_rgba(var(--accent-rgb),0.3)]' : 'bg-white/5 text-white/90 rounded-bl-none border border-white/10 shadow-lg'}`}
+                      className={`rounded-2xl px-5 py-3 cursor-pointer ${isMe ? 'bg-primary-main text-white rounded-br-none shadow-[0_4px_20px_rgba(var(--accent-rgb),0.3)]' : 'bubble-in text-white/90 rounded-bl-none shadow-lg'}`}
                       title="Kopyalamak için tıkla"
                       onClick={() => { if (!msg.fileUrl) navigator.clipboard.writeText(msg.content); }}
                     >
