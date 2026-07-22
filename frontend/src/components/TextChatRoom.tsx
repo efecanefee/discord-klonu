@@ -19,6 +19,7 @@ import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/
 import MentionAutocomplete from './MentionAutocomplete';
 import { notify } from '../utils/browserNotifications';
 import { getLastRead, setLastRead } from '../utils/lastRead';
+import ReactionChips, { type ReactionGroup } from './ReactionChips';
 
 export interface TextRoomInfo {
     name: string;
@@ -60,6 +61,7 @@ interface Message {
     fileUrl?: string;
     fileName?: string;
     replyToId?: number;
+    reactions?: ReactionGroup[];
 }
 
 const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'default', roomId, roomDbId, myUserId, roomInfo, onLeave, onOpenDM, onOpenProfile }) => {
@@ -280,6 +282,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const messageInputElRef = useRef<HTMLInputElement>(null);
     // "Yeni Mesajlar" ayracının üstünde duracağı mesajın id'si (history'den)
     const [firstUnreadId, setFirstUnreadId] = useState<number | null>(null);
+    // Hangi mesajın hızlı emoji paleti açık (msg.id)
+    const [reactionPickerFor, setReactionPickerFor] = useState<number | null>(null);
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -354,7 +358,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             setUsersInRoom(Object.entries(usersDict || {}).map(([connId, data]) => ({ connectionId: connId, username: data.username, avatarId: data.avatarId, userId: data.userId, role: data.role })));
         };
 
-        const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string; replyToId?: number }[]) => {
+        const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string; replyToId?: number; reactions?: ReactionGroup[] | null }[]) => {
             if (!isMounted) return;
             // "Yeni Mesajlar" ayracı: son okunandan yeni İLK yabancı mesaj —
             // bir kez hesaplanır, canlı mesajlarla kaymaz.
@@ -372,8 +376,15 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                 isEdited: m.isEdited,
                 fileUrl: m.fileUrl ?? undefined,
                 fileName: m.fileName ?? undefined,
-                replyToId: m.replyToId ?? undefined
+                replyToId: m.replyToId ?? undefined,
+                reactions: m.reactions ?? undefined
             })));
+        };
+
+        // Bir mesajın tepki seti güncellendi (tam set gelir — idempotent)
+        const handleReactionUpdated = (messageId: number, reactions: ReactionGroup[]) => {
+            if (!isMounted) return;
+            setMessages(prev => prev.map(m => m.serverId === messageId ? { ...m, reactions } : m));
         };
 
         const handleMessageDeleted = (messageId: number) => {
@@ -458,6 +469,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             }, 3000));
         };
         signalrService.onRoomUserTyping(handleRoomUserTyping);
+        signalrService.onReactionUpdated(handleReactionUpdated);
 
         signalrService.onForceDisconnect(handleForceDisconnect);
         signalrService.onMemberBanned(handleMemberBanned);
@@ -484,6 +496,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             roomTypingTimeoutsRef.current.clear();
             setTypingUsers(new Set());
             signalrService.offRoomUserTyping(handleRoomUserTyping);
+            signalrService.offReactionUpdated(handleReactionUpdated);
             signalrService.offForceDisconnect(handleForceDisconnect);
             signalrService.offUserJoined(handleUserJoined);
             signalrService.offUserLeft(handleUserLeft);
@@ -1208,8 +1221,28 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                                         <Reply size={12} className="text-text-main" />
                                                                     </button>
                                                                 )}
+                                                                {msg.serverId && !msg.pending && (
+                                                                    <div className="relative">
+                                                                        <button onClick={() => setReactionPickerFor(p => p === msg.id ? null : msg.id)} className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer" title="Tepki ekle">
+                                                                            <Smile size={12} className="text-text-main" />
+                                                                        </button>
+                                                                        {reactionPickerFor === msg.id && (
+                                                                            <div className="absolute bottom-full mb-1 right-0 flex gap-0.5 bg-bg-surface border border-border-main rounded-full px-1.5 py-1 shadow-xl z-30">
+                                                                                {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(e => (
+                                                                                    <button key={e} onClick={() => { signalrService.toggleReaction(activeChannelKey, msg.serverId!, e); setReactionPickerFor(null); }}
+                                                                                        className="w-7 h-7 flex items-center justify-center text-[16px] rounded-full hover:bg-border-main transition-colors cursor-pointer">
+                                                                                        {e}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
+                                                        {msg.reactions && msg.serverId && (
+                                                            <ReactionChips reactions={msg.reactions} myUsername={username} onToggle={(e) => signalrService.toggleReaction(activeChannelKey, msg.serverId!, e)} />
+                                                        )}
                                                     </div>
                                                 </div>
                                             </motion.div>

@@ -15,6 +15,7 @@ namespace DiscordClone.Api.Data
         public DbSet<RoomBan> RoomBans { get; set; }
         public DbSet<Channel> Channels { get; set; }
         public DbSet<UserSound> UserSounds { get; set; }
+        public DbSet<MessageReaction> MessageReactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -209,6 +210,24 @@ namespace DiscordClone.Api.Data
                 .Property(s => s.Url).HasColumnName("url");
             modelBuilder.Entity<UserSound>()
                 .Property(s => s.CreatedAt).HasColumnName("created_at");
+
+            // Mesaj tepkileri (emoji reaction)
+            modelBuilder.Entity<MessageReaction>()
+                .ToTable("message_reactions");
+            modelBuilder.Entity<MessageReaction>()
+                .Property(r => r.Id).HasColumnName("id");
+            modelBuilder.Entity<MessageReaction>()
+                .Property(r => r.MessageId).HasColumnName("message_id");
+            modelBuilder.Entity<MessageReaction>()
+                .Property(r => r.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<MessageReaction>()
+                .Property(r => r.Username).HasColumnName("username");
+            modelBuilder.Entity<MessageReaction>()
+                .Property(r => r.Emoji).HasColumnName("emoji");
+            modelBuilder.Entity<MessageReaction>()
+                .Property(r => r.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<MessageReaction>()
+                .HasIndex(r => new { r.MessageId, r.UserId, r.Emoji }).IsUnique();
         }
     }
 }

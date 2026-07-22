@@ -323,6 +323,19 @@ class SignalRService {
         }
     }
 
+    // Mesaj tepkileri (emoji reaction)
+    public onReactionUpdated(callback: (messageId: number, reactions: { emoji: string; count: number; usernames: string[] }[]) => void) {
+        this.connection?.on('ReactionUpdated', callback);
+    }
+    public offReactionUpdated(callback: (messageId: number, reactions: { emoji: string; count: number; usernames: string[] }[]) => void) {
+        this.connection?.off('ReactionUpdated', callback);
+    }
+    public async toggleReaction(roomId: string, messageId: number, emoji: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('ToggleReaction', roomId, messageId, emoji);
+        }
+    }
+
     // Oda içi yazıyor... bildirimi
     public onRoomUserTyping(callback: (username: string) => void) {
         this.connection?.on('RoomUserTyping', callback);

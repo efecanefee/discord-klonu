@@ -294,6 +294,22 @@ using (var scope = app.Services.CreateScope())
         } catch { }
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_user_sounds_user_id"" ON user_sounds (user_id);"); } catch { }
 
+        // 11. Mesaj tepkileri (emoji reaction)
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS message_reactions (
+                    id bigserial NOT NULL,
+                    message_id bigint NOT NULL,
+                    user_id text NOT NULL,
+                    username text NOT NULL DEFAULT '',
+                    emoji text NOT NULL,
+                    created_at bigint NOT NULL DEFAULT 0,
+                    CONSTRAINT ""PK_message_reactions"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_message_reactions_message_id_user_id_emoji"" ON message_reactions (message_id, user_id, emoji);"); } catch { }
+
     }
     catch (Exception ex)
     {

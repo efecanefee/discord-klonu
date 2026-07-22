@@ -250,7 +250,27 @@ namespace DiscordClone.Api.Hubs
                 .ToListAsync();
 
             history.Reverse(); // In memory reverse to chronological order
-            await Clients.Caller.SendAsync("RoomHistory", history);
+
+            // Mesajların tepkileri — tek sorgu (N+1 yok), mesaj başına gruplanmış set
+            var historyIds = history.Select(h => h.Id).ToList();
+            var reactionRows = await _db.MessageReactions
+                .Where(r => historyIds.Contains(r.MessageId))
+                .ToListAsync();
+            var reactionsByMessage = reactionRows
+                .GroupBy(r => r.MessageId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.GroupBy(r => r.Emoji)
+                          .Select(e => new { emoji = e.Key, count = e.Count(), usernames = e.Select(x => x.Username).ToList() })
+                          .ToList());
+
+            var historyWithReactions = history.Select(m => new
+            {
+                m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName, m.ReplyToId,
+                Reactions = reactionsByMessage.TryGetValue(m.Id, out var rx) ? (object)rx : null
+            }).ToList();
+
+            await Clients.Caller.SendAsync("RoomHistory", historyWithReactions);
 
             // Odada süren YouTube oynatması varsa geç katılana güncel durumu gönder
             if (_youtubeStates.TryGetValue(roomId, out var yt))
@@ -629,6 +649,46 @@ namespace DiscordClone.Api.Hubs
 
             // Alıcıya "senderId yazıyor..." sinyali gönder
             await Clients.User(receiverId).SendAsync("UserTyping", senderId);
+        }
+
+        // Mesaja emoji tepkisi ekle/kaldır (toggle) — gruba mesajın güncel tam seti yayınlanır
+        public async Task ToggleReaction(string roomId, long messageId, string emoji)
+        {
+            var userId = Context.UserIdentifier;
+            var username = Context.User?.Identity?.Name;
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(username)) return;
+            if (string.IsNullOrWhiteSpace(emoji) || emoji.Length > 16) return;
+
+            var existing = await _db.MessageReactions
+                .FirstOrDefaultAsync(r => r.MessageId == messageId && r.UserId == userId && r.Emoji == emoji);
+            if (existing != null)
+            {
+                _db.MessageReactions.Remove(existing);
+                await _db.SaveChangesAsync();
+            }
+            else
+            {
+                _db.MessageReactions.Add(new MessageReaction
+                {
+                    MessageId = messageId,
+                    UserId = userId,
+                    Username = username,
+                    Emoji = emoji
+                });
+                // Unique index yarışında (çift tık) sessizce yut — set zaten doğru
+                try { await _db.SaveChangesAsync(); } catch (DbUpdateException) { }
+            }
+
+            // Mesajın güncel tam reaction seti (idempotent — client state basit kalır)
+            var rows = await _db.MessageReactions
+                .Where(r => r.MessageId == messageId)
+                .ToListAsync();
+            var set = rows
+                .GroupBy(r => r.Emoji)
+                .Select(g => new { emoji = g.Key, count = g.Count(), usernames = g.Select(x => x.Username).ToList() })
+                .ToList();
+
+            await Clients.Group(roomId).SendAsync("ReactionUpdated", messageId, set);
         }
 
         // Oda içi "yazıyor..." — gruptaki diğerlerine kullanıcı adıyla yayınlanır
