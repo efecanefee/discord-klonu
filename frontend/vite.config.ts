@@ -10,11 +10,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // prompt: yeni SW indirilir ama bekletilir; main.tsx "hazır olunca"
+      // updateSW(true) ile devreye alır (skipWaiting mesajı + otomatik reload).
+      registerType: 'prompt',
       workbox: {
-        // Yeni SW beklemeden devreye girsin ve tüm sekmeleri devralsın —
-        // main.tsx'teki registerSW akışı sayfayı otomatik yeniler.
-        skipWaiting: true,
+        skipWaiting: false,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
       },

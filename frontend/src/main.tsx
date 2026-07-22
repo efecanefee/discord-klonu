@@ -6,15 +6,20 @@ import { SettingsProvider } from './contexts/SettingsContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import MotionRoot from './components/MotionRoot'
 import { registerSW } from 'virtual:pwa-register'
+import { setUpdateReady } from './utils/swUpdate'
 
-// PWA güncelleme akışı: varsayılan kayıt betiği yeni sürümü fark etmiyordu —
-// kullanıcılar Ctrl+Shift+R yapana dek eski önbellekte kalıyordu.
+// PWA güncelleme akışı ("hazır olunca yenile"):
 // - immediate: SW kaydı sayfa açılır açılmaz yapılır.
-// - autoUpdate modunda yeni SW devreye girince sayfa otomatik yenilenir
-//   (virtual modül controllerchange'te reload eder).
-// - Ek olarak: sekme her öne gelişte ve saatte bir sunucudan yeni sürüm kontrolü.
-registerSW({
+// - Sekme öne gelince + saatte bir sunucudan yeni sürüm kontrol edilir.
+// - Yeni sürüm İNDİRİLİR ama hemen uygulanmaz (prompt modu) — App, kullanıcı
+//   güvenli bir yerdeyken (oda/DM/ses yokken) otomatik uygular; odadaysa
+//   "Yeni sürüm hazır" bildirimi gösterir. Böylece mesaj yazarken/sesli
+//   sohbetteyken sayfa aniden yenilenmez.
+const updateSW = registerSW({
   immediate: true,
+  onNeedRefresh() {
+    setUpdateReady(() => updateSW(true))
+  },
   onRegisteredSW(_swUrl, registration) {
     if (!registration) return
     const check = () => registration.update().catch(() => { /* çevrimdışı olabilir */ })

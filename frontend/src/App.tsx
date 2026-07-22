@@ -13,6 +13,7 @@ import { useSettings } from './contexts/SettingsContext';
 import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
 import { notify } from './utils/browserNotifications';
+import { onUpdateReady, applyUpdate } from './utils/swUpdate';
 import { Lock, Mail, MessageSquare, Plus, User, Menu, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -122,6 +123,8 @@ function App() {
   // Odadan her dönüşte artar → "Sunucularım" listesi yeniden çekilir
   // (üyelik katılma/çıkma ile değişmiş olabilir; rooms.length bunu yakalamaz).
   const [serverListVersion, setServerListVersion] = useState(0);
+  // PWA: yeni sürüm indirildi, uygulanmayı bekliyor
+  const [swUpdateReady, setSwUpdateReady] = useState(false);
 
   const handleUpdatePrivacy = async (showLastSeen: boolean) => {
     setMyShowLastSeen(showLastSeen);
@@ -863,6 +866,31 @@ function App() {
   // oda değişiminde tam unmount/remount garantiler (useWebRTC temizliği unmount'ta
   // çalışır). key="room-session" ise farklı return dallarında React'in bu ağacı
   // aynı düğüm olarak korumasını sağlar.
+  // ===== PWA "hazır olunca yenile" akışı =====
+  // Yeni sürüm indirildiğinde haberdar ol
+  useEffect(() => onUpdateReady(() => setSwUpdateReady(true)), []);
+
+  // Güvenli anda otomatik uygula: oda/DM/arkaplan ses oturumu yokken
+  // (lobi veya login ekranında yenileme kimseyi rahatsız etmez).
+  useEffect(() => {
+    if (!swUpdateReady) return;
+    if (inRoom || inDMRoom || activeRoom) return;
+    const t = setTimeout(() => applyUpdate(), 800);
+    return () => clearTimeout(t);
+  }, [swUpdateReady, inRoom, inDMRoom, activeRoom]);
+
+  // Odadayken çıkmayan küçük bildirim — tıklayınca uygular
+  const swUpdateToast = swUpdateReady && (inRoom || inDMRoom || !!activeRoom) && (
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-4 py-2.5 rounded-2xl border shadow-2xl"
+      style={{ background: 'var(--glass-solid-bg)', borderColor: 'rgba(var(--accent-rgb),0.35)' }}>
+      <span className="text-[13px] font-medium" style={{ color: 'var(--color-text-main)' }}>Yeni sürüm hazır</span>
+      <button onClick={applyUpdate}
+        className="px-3 py-1.5 rounded-xl bg-primary-main text-white text-[12px] font-semibold hover:brightness-110 transition-all cursor-pointer">
+        Yenile
+      </button>
+    </div>
+  );
+
   const roomTree = activeRoom && (
       <div key="room-session" className={inRoom ? 'flex h-[100dvh] overflow-hidden bg-bg-base' : 'hidden'}>
         {/* Sol Mini Dock */}
@@ -945,6 +973,7 @@ function App() {
     return (
       <>
         {roomTree}
+        {swUpdateToast}
         {/* Oda içinden erişilebilen modallar */}
         <ProfileModal
           isOpen={isProfileModalOpen}
@@ -976,6 +1005,7 @@ function App() {
         {roomTree}
         <DMChatRoom currentUser={{ id: userId, username }} targetUser={activeDMUser} API_BASE_URL={API_BASE_URL} onLeave={() => { setInDMRoom(false); setActiveDMUser(null); }} />
         {voicePill}
+        {swUpdateToast}
       </>
     );
   }
@@ -995,6 +1025,7 @@ function App() {
     <>
     {roomTree}
     {voicePill}
+    {swUpdateToast}
     <div className="relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
 
       {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
