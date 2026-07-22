@@ -125,6 +125,26 @@ namespace DiscordClone.Api.Controllers
             }
         }
 
+        public class GoogleLoginDto { public string IdToken { get; set; } = string.Empty; }
+
+        /// <summary>
+        /// Google ile giriş — ALTYAPI İSKELETİ (henüz aktif değil).
+        /// Aktifleştirme planı:
+        ///  1) Google Cloud Console'da OAuth Client ID oluştur (web application).
+        ///  2) Frontend, Google Identity Services ile ID token alıp buraya POST'lar.
+        ///  3) Burada token Google'a doğrulatılır (Google.Apis.Auth paketi:
+        ///     GoogleJsonWebSignature.ValidateAsync — audience = Client ID).
+        ///  4) E-postayla mevcut kullanıcı bulunur ya da yeni kullanıcı oluşturulur
+        ///     (IsVerified = true, rastgele parola), ardından normal login akışındaki
+        ///     JWT üretimiyle aynı yanıt döner.
+        /// </summary>
+        [HttpPost("google")]
+        public IActionResult GoogleLogin([FromBody] GoogleLoginDto request)
+        {
+            // Yol haritası yukarıda — Client ID hazır olana dek bilinçli olarak kapalı.
+            return StatusCode(501, new { error = "Google ile giriş henüz aktif değil." });
+        }
+
         [HttpGet("verify-email")]
         public async Task<IActionResult> VerifyEmail([FromQuery] string userId, [FromQuery] string token)
         {

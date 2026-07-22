@@ -42,6 +42,16 @@ const AnimatedTitle = memo(function AnimatedTitle() {
   );
 });
 
+// Resmi Google "G" logosu (4 renkli). Google ile giriş butonu için.
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+  </svg>
+);
+
 // Kaba sifre gucu gostergesi. Amac kullaniciya yon vermek — gercek zorunluluk
 // backend'de olmali, buradaki skor yalnizca gorsel geri bildirim.
 const PASSWORD_LEVELS = [
@@ -424,6 +434,16 @@ function App() {
       fetchRecentDMs();
     }
   }, [authState, fetchRooms, fetchRecentDMs]);
+
+  // Google ile giriş — ALTYAPI İSKELETİ (buton şimdilik pasif).
+  // Aktifleştirme planı:
+  //  1) Google Cloud Console'da OAuth Client ID al (authorized origins: prod + localhost).
+  //  2) Google Identity Services script'iyle ID token al.
+  //  3) POST /api/auth/google'a gönder (backend stub hazır: AuthController.GoogleLogin).
+  //  4) Dönen JWT ile handleLogin'in başarı akışına (token/localStorage/connectSignalR) bağlan.
+  const handleGoogleLogin = () => {
+    // Pasif — buton disabled; Client ID hazır olunca yukarıdaki akış buraya gelecek.
+  };
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -1292,8 +1312,30 @@ function App() {
           </div>
           <AnimatedTitle />
           <p className="text-[14px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {authState === 'rooms' ? `Hoş geldin, ${username}` : (authState === 'login' ? 'Hesabına giriş yap' : 'Yeni hesap oluştur')}
+            {authState === 'rooms' ? `Hoş geldin, ${username}` : (authState === 'login' ? 'Tekrar hoş geldin — seni özledik 👋' : 'Aramıza katıl, saniyeler sürer ✨')}
           </p>
+
+          {/* Özellik rozetleri — giriş/kayıt ekranını dolduran güven şeridi */}
+          {(authState === 'login' || authState === 'register') && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.4 }}
+              className="flex items-center justify-center gap-2 mt-4 flex-wrap"
+            >
+              {[
+                { icon: '🎙️', label: 'Sesli sohbet' },
+                { icon: '🎬', label: 'İzleme partisi' },
+                { icon: '⚡', label: 'Gerçek zamanlı' },
+              ].map(f => (
+                <span key={f.label}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium select-none"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}>
+                  <span className="text-[12px]">{f.icon}</span>{f.label}
+                </span>
+              ))}
+            </motion.div>
+          )}
         </motion.div>
 
         <div className="space-y-5 flex-1 flex flex-col min-h-0">
@@ -1377,67 +1419,91 @@ function App() {
             <form onSubmit={authState === 'login' ? handleLogin : handleRegister} className="space-y-4">
               
               {authState === 'register' && (
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    onFocus={() => setFocused('username')}
-                    onBlur={() => setFocused(null)}
-                    placeholder="Kullanıcı Adı"
-                    autoComplete="username"
-                    className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
-                    style={{
-                      background: focused === 'username' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
-                      border: focused === 'username' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
-                    }}
-                  />
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-1 transition-colors duration-200"
+                    style={{ color: focused === 'username' ? 'rgba(var(--accent-rgb),0.9)' : 'rgba(255,255,255,0.35)' }}>
+                    Kullanıcı Adı
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200"
+                      style={{ color: focused === 'username' ? 'rgba(var(--accent-rgb),0.8)' : 'rgba(255,255,255,0.3)' }} />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      onFocus={() => setFocused('username')}
+                      onBlur={() => setFocused(null)}
+                      placeholder="kullanici_adin"
+                      autoComplete="username"
+                      className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                      style={{
+                        background: focused === 'username' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                        border: focused === 'username' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
+                        boxShadow: focused === 'username' ? '0 0 0 4px rgba(var(--accent-rgb),0.08)' : 'none',
+                      }}
+                    />
+                  </div>
                 </div>
               )}
 
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  onFocus={() => setFocused('email')}
-                  onBlur={() => setFocused(null)}
-                  placeholder="E-posta Adresi"
-                  autoComplete="email"
-                  className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
-                  style={{
-                    background: focused === 'email' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
-                    border: focused === 'email' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
-                  }}
-                />
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-1 transition-colors duration-200"
+                  style={{ color: focused === 'email' ? 'rgba(var(--accent-rgb),0.9)' : 'rgba(255,255,255,0.35)' }}>
+                  E-posta
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200"
+                    style={{ color: focused === 'email' ? 'rgba(var(--accent-rgb),0.8)' : 'rgba(255,255,255,0.3)' }} />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    onFocus={() => setFocused('email')}
+                    onBlur={() => setFocused(null)}
+                    placeholder="ornek@eposta.com"
+                    autoComplete="email"
+                    className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                    style={{
+                      background: focused === 'email' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                      border: focused === 'email' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
+                      boxShadow: focused === 'email' ? '0 0 0 4px rgba(var(--accent-rgb),0.08)' : 'none',
+                    }}
+                  />
+                </div>
               </div>
 
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onFocus={() => setFocused('password')}
-                  onBlur={() => setFocused(null)}
-                  placeholder="Şifre"
-                  autoComplete={authState === 'register' ? 'new-password' : 'current-password'}
-                  className="w-full pl-12 pr-12 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
-                  style={{
-                    background: focused === 'password' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
-                    border: focused === 'password' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(p => !p)}
-                  aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors cursor-pointer"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-1 transition-colors duration-200"
+                  style={{ color: focused === 'password' ? 'rgba(var(--accent-rgb),0.9)' : 'rgba(255,255,255,0.35)' }}>
+                  Şifre
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200"
+                    style={{ color: focused === 'password' ? 'rgba(var(--accent-rgb),0.8)' : 'rgba(255,255,255,0.3)' }} />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    onFocus={() => setFocused('password')}
+                    onBlur={() => setFocused(null)}
+                    placeholder="••••••••"
+                    autoComplete={authState === 'register' ? 'new-password' : 'current-password'}
+                    className="w-full pl-12 pr-12 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                    style={{
+                      background: focused === 'password' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                      border: focused === 'password' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
+                      boxShadow: focused === 'password' ? '0 0 0 4px rgba(var(--accent-rgb),0.08)' : 'none',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(p => !p)}
+                    aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               {authState === 'register' && (
@@ -1460,24 +1526,32 @@ function App() {
                     </div>
                   )}
 
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={passwordConfirm}
-                      onChange={e => setPasswordConfirm(e.target.value)}
-                      onFocus={() => setFocused('passwordConfirm')}
-                      onBlur={() => setFocused(null)}
-                      placeholder="Şifre (Tekrar)"
-                      autoComplete="new-password"
-                      className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
-                      style={{
-                        background: focused === 'passwordConfirm' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
-                        border: passwordConfirm && password !== passwordConfirm
-                          ? '1px solid rgba(239,68,68,0.6)'
-                          : focused === 'passwordConfirm' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
-                      }}
-                    />
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-1 transition-colors duration-200"
+                      style={{ color: focused === 'passwordConfirm' ? 'rgba(var(--accent-rgb),0.9)' : 'rgba(255,255,255,0.35)' }}>
+                      Şifre (Tekrar)
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200"
+                        style={{ color: focused === 'passwordConfirm' ? 'rgba(var(--accent-rgb),0.8)' : 'rgba(255,255,255,0.3)' }} />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={passwordConfirm}
+                        onChange={e => setPasswordConfirm(e.target.value)}
+                        onFocus={() => setFocused('passwordConfirm')}
+                        onBlur={() => setFocused(null)}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                        className="w-full pl-12 pr-5 py-4 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                        style={{
+                          background: focused === 'passwordConfirm' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
+                          border: passwordConfirm && password !== passwordConfirm
+                            ? '1px solid rgba(239,68,68,0.6)'
+                            : focused === 'passwordConfirm' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
+                          boxShadow: focused === 'passwordConfirm' ? '0 0 0 4px rgba(var(--accent-rgb),0.08)' : 'none',
+                        }}
+                      />
+                    </div>
                   </div>
                   {passwordConfirm && password !== passwordConfirm && (
                     <p className="text-[12px] px-1" style={{ color: 'rgba(239,68,68,0.9)' }}>Şifreler eşleşmiyor</p>
@@ -1493,6 +1567,30 @@ function App() {
                 <span className="relative flex items-center justify-center gap-2">
                   <Sparkles size={16} />
                   {isLoading ? 'Bekleniyor...' : (authState === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
+                </span>
+              </button>
+
+              {/* "veya" ayracı */}
+              <div className="flex items-center gap-3 pt-1">
+                <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.12))' }} />
+                <span className="text-[11px] uppercase tracking-widest font-medium" style={{ color: 'rgba(255,255,255,0.25)' }}>veya</span>
+                <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.12))' }} />
+              </div>
+
+              {/* Google ile giriş — ALTYAPI: şimdilik pasif (bkz. handleGoogleLogin) */}
+              <button
+                type="button"
+                disabled
+                onClick={handleGoogleLogin}
+                title="Google ile giriş çok yakında aktif olacak"
+                className="relative w-full py-3.5 rounded-2xl font-semibold text-[14px] flex items-center justify-center gap-2.5 cursor-not-allowed select-none"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)' }}
+              >
+                <span className="opacity-60"><GoogleIcon /></span>
+                Google ile {authState === 'login' ? 'giriş yap' : 'kayıt ol'}
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
+                  style={{ background: 'rgba(var(--accent-rgb),0.12)', color: 'rgba(var(--accent-rgb),0.9)', border: '1px solid rgba(var(--accent-rgb),0.3)' }}>
+                  Yakında
                 </span>
               </button>
 

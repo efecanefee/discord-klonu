@@ -8,7 +8,7 @@
 [![Frontend](https://img.shields.io/badge/frontend-React%2019%20%2B%20TypeScript-61dafb?logo=react&logoColor=white)](#-teknoloji)
 [![Backend](https://img.shields.io/badge/backend-.NET%2010%20%2B%20SignalR-512bd4?logo=dotnet&logoColor=white)](#-teknoloji)
 [![Database](https://img.shields.io/badge/database-PostgreSQL%20(Supabase)-336791?logo=postgresql&logoColor=white)](#-teknoloji)
-[![License](https://img.shields.io/badge/license-MIT-green)](#-lisans)
+[![License](https://img.shields.io/badge/license-Proprietary-red)](#-lisans)
 
 **🌐 Canlı:** [sandalyecimetin.vercel.app](https://sandalyecimetin.vercel.app)
 
@@ -183,7 +183,9 @@ discord-klonu/
 
 ## 📄 Lisans
 
-MIT — dilediğin gibi kullan, geliştir, paylaş.
+**Tescilli (Proprietary) — Tüm hakları saklıdır © 2026 Efecan Efe.**
+
+Kaynak kodu yalnızca inceleme amacıyla herkese açıktır; kopyalama, dağıtma, değiştirme ve kendi projende kullanma yazılı izin gerektirir. Ayrıntılar için [LICENSE](LICENSE) dosyasına bak.
 
 <div align="center">
 
