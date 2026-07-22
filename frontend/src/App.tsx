@@ -1289,6 +1289,19 @@ function App() {
               </div>
             </motion.div>
           ))}
+
+          {/* MADE BY EFECAN — özelliklerin altında */}
+          <div className="flex items-center justify-center pt-2 pointer-events-none">
+            <span
+              className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
+              style={{
+                fontFamily: "'Orbitron', sans-serif",
+                color: '#F8FAFC',
+                textShadow: '0 0 5px rgba(var(--accent-rgb),0.8), 0 0 10px rgba(var(--accent-rgb),0.6)'
+              }}>
+              MADE BY EFECAN
+            </span>
+          </div>
         </motion.div>
       )}
 
@@ -1298,14 +1311,14 @@ function App() {
           padding: authState === 'rooms' ? '36px 32px 24px 32px' : '28px 28px 16px 28px',
         }}>
 
-        <motion.div variants={itemVariants} className={`text-center ${authState === 'rooms' ? 'mb-7' : 'mb-5'}`}>
-          <div className={`relative group inline-block cursor-pointer ${authState === 'rooms' ? 'mb-5' : 'mb-3'}`} onClick={() => setIsMainLogoFlipped(!isMainLogoFlipped)}>
+        <motion.div variants={itemVariants} className={`text-center ${authState === 'rooms' ? 'mb-7' : 'mb-4'}`}>
+          <div className={`relative group inline-block cursor-pointer ${authState === 'rooms' ? 'mb-5' : 'mb-2'}`} onClick={() => setIsMainLogoFlipped(!isMainLogoFlipped)}>
             <div className="absolute -inset-3 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl pointer-events-none"
               style={{ background: 'radial-gradient(circle, rgba(var(--accent-rgb),0.4) 0%, transparent 70%)' }} />
             
             {/* 3D Flip Logo */}
             <div
-              className={`relative ${authState === 'rooms' ? 'w-24 h-24' : 'w-[72px] h-[72px]'}`}
+              className={`relative ${authState === 'rooms' ? 'w-24 h-24' : 'w-16 h-16'}`}
               style={{ perspective: '1000px' }}
             >
               <div 
@@ -1355,7 +1368,8 @@ function App() {
           </p>
         </motion.div>
 
-        <div className="space-y-5 flex-1 flex flex-col min-h-0">
+        {/* Auth ekranlarında içerik kart yüksekliğini aşarsa taşmak yerine kayar */}
+        <div className={`flex-1 flex flex-col min-h-0 ${authState === 'rooms' ? 'space-y-5' : 'space-y-4 overflow-y-auto custom-scrollbar -mx-2 px-2'}`}>
           {errorMsg && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} 
               className="p-3 rounded-lg text-sm text-center" 
@@ -1383,7 +1397,7 @@ function App() {
                    onBlur={() => setFocused(null)}
                    placeholder="E-posta Adresi"
                    autoComplete="email"
-                   className="w-full pl-12 pr-5 py-3 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                   className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                    style={{
                      background: focused === 'email' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                      border: focused === 'email' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1417,7 +1431,7 @@ function App() {
                    onBlur={() => setFocused(null)}
                    placeholder="Yeni Şifre"
                    autoComplete="new-password"
-                   className="w-full pl-12 pr-5 py-3 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                   className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                    style={{
                      background: focused === 'password' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                      border: focused === 'password' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1437,7 +1451,7 @@ function App() {
               
               {authState === 'register' && (
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-1 transition-colors duration-200"
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors duration-200"
                     style={{ color: focused === 'username' ? 'rgba(var(--accent-rgb),0.9)' : 'rgba(255,255,255,0.35)' }}>
                     Kullanıcı Adı
                   </label>
@@ -1452,7 +1466,7 @@ function App() {
                       onBlur={() => setFocused(null)}
                       placeholder="kullanici_adin"
                       autoComplete="username"
-                      className="w-full pl-12 pr-5 py-3 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                      className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                       style={{
                         background: focused === 'username' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                         border: focused === 'username' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1464,7 +1478,7 @@ function App() {
               )}
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-1 transition-colors duration-200"
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors duration-200"
                   style={{ color: focused === 'email' ? 'rgba(var(--accent-rgb),0.9)' : 'rgba(255,255,255,0.35)' }}>
                   E-posta
                 </label>
@@ -1479,7 +1493,7 @@ function App() {
                     onBlur={() => setFocused(null)}
                     placeholder="ornek@eposta.com"
                     autoComplete="email"
-                    className="w-full pl-12 pr-5 py-3 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                    className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                     style={{
                       background: focused === 'email' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                       border: focused === 'email' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1490,7 +1504,7 @@ function App() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-1 transition-colors duration-200"
+                <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors duration-200"
                   style={{ color: focused === 'password' ? 'rgba(var(--accent-rgb),0.9)' : 'rgba(255,255,255,0.35)' }}>
                   Şifre
                 </label>
@@ -1505,7 +1519,7 @@ function App() {
                     onBlur={() => setFocused(null)}
                     placeholder="••••••••"
                     autoComplete={authState === 'register' ? 'new-password' : 'current-password'}
-                    className="w-full pl-12 pr-12 py-3 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                    className="w-full pl-12 pr-12 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                     style={{
                       background: focused === 'password' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                       border: focused === 'password' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1544,7 +1558,7 @@ function App() {
                   )}
 
                   <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1.5 px-1 transition-colors duration-200"
+                    <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1 px-1 transition-colors duration-200"
                       style={{ color: focused === 'passwordConfirm' ? 'rgba(var(--accent-rgb),0.9)' : 'rgba(255,255,255,0.35)' }}>
                       Şifre (Tekrar)
                     </label>
@@ -1559,7 +1573,7 @@ function App() {
                         onBlur={() => setFocused(null)}
                         placeholder="••••••••"
                         autoComplete="new-password"
-                        className="w-full pl-12 pr-5 py-3 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                        className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
                         style={{
                           background: focused === 'passwordConfirm' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                           border: passwordConfirm && password !== passwordConfirm
@@ -1600,7 +1614,7 @@ function App() {
                 disabled
                 onClick={handleGoogleLogin}
                 title="Google ile giriş çok yakında aktif olacak"
-                className="relative w-full py-3 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2.5 cursor-not-allowed select-none"
+                className="relative w-full py-2.5 rounded-2xl font-semibold text-[13px] flex items-center justify-center gap-2.5 cursor-not-allowed select-none"
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)' }}
               >
                 <span className="opacity-60"><GoogleIcon /></span>
@@ -1825,11 +1839,28 @@ function App() {
           )}
         </div>
 
-        {/* MADE BY EFECAN */}
-        <div className="mt-auto pt-4 flex items-center justify-center pointer-events-none w-full">
+        {/* MADE BY EFECAN — auth ekranlarında sol panelin altında gösterilir */}
+        {authState === 'rooms' && (
+          <div className="mt-auto pt-4 flex items-center justify-center pointer-events-none w-full">
+            <span
+              className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
+              style={{
+                fontFamily: "'Orbitron', sans-serif",
+                color: '#F8FAFC',
+                textShadow: '0 0 5px rgba(var(--accent-rgb),0.8), 0 0 10px rgba(var(--accent-rgb),0.6)'
+              }}>
+              MADE BY EFECAN
+            </span>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Mobil auth footer — sol panel mobilde gizli olduğu için kartın altında */}
+      {authState !== 'rooms' && (
+        <div className="md:hidden flex items-center justify-center pt-1 pb-2 pointer-events-none">
           <span
             className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60 mix-blend-screen"
-            style={{ 
+            style={{
               fontFamily: "'Orbitron', sans-serif",
               color: '#F8FAFC',
               textShadow: '0 0 5px rgba(var(--accent-rgb),0.8), 0 0 10px rgba(var(--accent-rgb),0.6)'
@@ -1837,7 +1868,7 @@ function App() {
             MADE BY EFECAN
           </span>
         </div>
-      </motion.div>
+      )}
 
       {authState === 'rooms' && (
         <div className="hidden md:flex md:flex-col gap-4 md:shrink-0 w-[280px]">
