@@ -11,17 +11,26 @@ export const THEMES: { id: Theme; label: string }[] = [
   { id: 'oled', label: 'OLED' },
 ];
 
-export type Accent = 'violet' | 'blue' | 'emerald' | 'amber' | 'rose' | 'cyan';
+export type Accent =
+  | 'violet' | 'blue' | 'emerald' | 'amber' | 'rose' | 'cyan'
+  | 'ocean' | 'sunsetpurple' | 'pastelblue' | 'milano' | 'palesun';
 
 // swatch: yalnizca ayarlardaki nokta icin. Gercek degerler index.css'te —
 // burada tutulan tek sey kullaniciya gosterilecek onizleme rengi.
-export const ACCENTS: { id: Accent; label: string; swatch: string }[] = [
+// swatch2 varsa ikili tema: nokta çapraz iki renge bölünerek gösterilir.
+export const ACCENTS: { id: Accent; label: string; swatch: string; swatch2?: string }[] = [
   { id: 'violet', label: 'Mor', swatch: '#7c3aed' },
   { id: 'blue', label: 'Mavi', swatch: '#2563eb' },
   { id: 'emerald', label: 'Yeşil', swatch: '#059669' },
   { id: 'amber', label: 'Turuncu', swatch: '#d97706' },
   { id: 'rose', label: 'Kırmızı', swatch: '#e11d48' },
   { id: 'cyan', label: 'Camgöbeği', swatch: '#0891b2' },
+  // İkili renk temaları
+  { id: 'ocean', label: 'Okyanus', swatch: '#0E9AA7', swatch2: '#0575E6' },
+  { id: 'sunsetpurple', label: 'Turuncu & Mor', swatch: '#F97316', swatch2: '#6D28D9' },
+  { id: 'pastelblue', label: 'Pastel Mavi', swatch: '#5FA8D3', swatch2: '#A7C7E7' },
+  { id: 'milano', label: 'Milano Kırmızısı', swatch: '#B7070A', swatch2: '#FFFACD' },
+  { id: 'palesun', label: 'Güneş & Lacivert', swatch: '#3A5BA0', swatch2: '#FFE08A' },
 ];
 
 export interface Settings {

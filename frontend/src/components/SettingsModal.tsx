@@ -493,7 +493,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                 <div className="p-4 rounded-xl border border-border-main bg-surface-subtle">
                   <div className="flex flex-col mb-3">
                     <span className="font-semibold text-text-main">Tema</span>
-                    <span className="text-xs text-text-muted mt-1">Seçimin bu tarayıcıda kayıtlı kalır. "Sistem", cihazının açık/koyu tercihini takip eder.</span>
+                    <span className="text-xs text-text-muted mt-1">Seçimin bu tarayıcıda kayıtlı kalır. Koyu: standart görünüm · OLED: saf siyah zemin.</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {THEMES.map(t => (
@@ -515,7 +515,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                 <div className="p-4 rounded-xl border border-border-main bg-surface-subtle">
                   <div className="flex flex-col mb-3">
                     <span className="font-semibold text-text-main">Vurgu Rengi</span>
-                    <span className="text-xs text-text-muted mt-1">Butonlar, bağlantılar ve seçili öğeler bu rengi kullanır. Temadan bağımsız çalışır.</span>
+                    <span className="text-xs text-text-muted mt-1">Butonlar, bağlantılar ve seçili öğeler bu rengi kullanır. Çift renkli noktalar ikili temalardır. Temadan bağımsız çalışır.</span>
                   </div>
                   <div className="flex flex-wrap gap-3">
                     {ACCENTS.map(a => (
@@ -528,7 +528,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                         className={`w-9 h-9 rounded-full transition-transform cursor-pointer ring-offset-2 ring-offset-bg-surface ${
                           settings.accent === a.id ? 'ring-2 ring-white scale-110' : 'hover:scale-105'
                         }`}
-                        style={{ backgroundColor: a.swatch }}
+                        style={a.swatch2
+                          ? { background: `linear-gradient(135deg, ${a.swatch} 50%, ${a.swatch2} 50%)` }
+                          : { backgroundColor: a.swatch }}
                       />
                     ))}
                   </div>

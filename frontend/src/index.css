@@ -88,6 +88,46 @@ html[data-accent="cyan"] {
   --accent-light: #06b6d4;
 }
 
+/* ===== İkili renk temaları =====
+   İki rengin kombinasyonu: --accent (ana/buton zemini, çiftin dolgun olanı)
+   + --accent-light (gradyan ucu/parıltı, çiftin açık olanı). Butonlardaki
+   linear-gradient(--color-primary-main → --accent-light) ikisini birden gösterir. */
+html[data-accent="ocean"] {
+  /* Okyanus: ocean water + brilliant blue */
+  --accent: #0E9AA7;
+  --accent-hover: #0C8791;
+  --accent-rgb: 14, 154, 167;
+  --accent-light: #0575E6;
+}
+html[data-accent="sunsetpurple"] {
+  /* Turuncu & Mor: light orange + dark purple */
+  --accent: #F97316;
+  --accent-hover: #EA6A0C;
+  --accent-rgb: 249, 115, 22;
+  --accent-light: #6D28D9;
+}
+html[data-accent="pastelblue"] {
+  /* Pastel Mavi: sky blue + pastel blue */
+  --accent: #5FA8D3;
+  --accent-hover: #4E97C2;
+  --accent-rgb: 95, 168, 211;
+  --accent-light: #A7C7E7;
+}
+html[data-accent="milano"] {
+  /* Milano Kırmızısı: milano red + lemon chiffon */
+  --accent: #B7070A;
+  --accent-hover: #9E0608;
+  --accent-rgb: 183, 7, 10;
+  --accent-light: #FFFACD;
+}
+html[data-accent="palesun"] {
+  /* Güneş & Lacivert: uniform blue + pale sun yellow */
+  --accent: #3A5BA0;
+  --accent-hover: #334F8D;
+  --accent-rgb: 58, 91, 160;
+  --accent-light: #FFE08A;
+}
+
 /* Tema tanimlari tek kaynak: burasi. Bilesenler yalnizca <html>'e
    theme-* sinifini yazar, renk degeri tasimaz.
    Secici html.theme-* (0,1,1) oldugundan Tailwind'in :root (0,1,0)
