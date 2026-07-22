@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube } from 'lucide-react';
+import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -224,6 +224,24 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         } catch (err) {
             console.error('YouTube başlatma hatası:', err);
             alert('Başlatılamadı. Backend güncel değilse bir süre sonra tekrar dene.');
+            return;
+        }
+        setYoutubeUrlInput('');
+        setShowYoutubeInput(false);
+    };
+
+    // Linki kuyruğa ekle (çalan yoksa hub direkt başlatır)
+    const handleEnqueueYoutube = async () => {
+        const match = youtubeUrlInput.match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([A-Za-z0-9_-]{11})/);
+        if (!match) {
+            alert('Geçerli bir YouTube linki yapıştır.');
+            return;
+        }
+        try {
+            await signalrService.enqueueYoutube(roomId, match[1]);
+        } catch (err) {
+            console.error('Kuyruğa ekleme hatası:', err);
+            alert('Kuyruğa eklenemedi. Backend güncel değilse bir süre sonra tekrar dene.');
             return;
         }
         setYoutubeUrlInput('');
@@ -1702,6 +1720,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 title="Odadakilere izleme partisi daveti gönderir; kabul edenler birlikte izler"
                                                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-40">
                                                 <Youtube size={14} /> Aç
+                                            </button>
+                                            <button type="button" onClick={() => handleEnqueueYoutube()} disabled={!youtubeUrlInput.trim()}
+                                                title="Videoyu sıraya ekler; çalan bittiğinde otomatik geçilir"
+                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary-main/15 text-primary-main text-xs font-semibold hover:bg-primary-main/25 transition-colors disabled:opacity-40">
+                                                <ListPlus size={14} /> Kuyruğa ekle
                                             </button>
                                         </div>
                                     </div>

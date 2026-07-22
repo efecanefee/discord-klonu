@@ -473,6 +473,37 @@ class SignalRService {
         this.connection?.off('YoutubeState', callback);
     }
 
+    // ===== YouTube kuyruğu =====
+    public async enqueueYoutube(roomId: string, videoId: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('EnqueueYoutube', roomId, videoId);
+        }
+    }
+    public async skipYoutube(roomId: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            try { await this.connection.invoke('SkipYoutube', roomId); }
+            catch (err) { console.error('SkipYoutube hatası:', err); }
+        }
+    }
+    public async nextYoutube(roomId: string, endedVideoId: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            try { await this.connection.invoke('NextYoutube', roomId, endedVideoId); }
+            catch (err) { console.error('NextYoutube hatası:', err); }
+        }
+    }
+    public async removeFromYoutubeQueue(roomId: string, index: number) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            try { await this.connection.invoke('RemoveFromYoutubeQueue', roomId, index); }
+            catch (err) { console.error('RemoveFromYoutubeQueue hatası:', err); }
+        }
+    }
+    public onYoutubeQueueUpdated(callback: (queue: { videoId: string; addedBy: string }[]) => void) {
+        this.connection?.on('YoutubeQueueUpdated', callback);
+    }
+    public offYoutubeQueueUpdated(callback: (queue: { videoId: string; addedBy: string }[]) => void) {
+        this.connection?.off('YoutubeQueueUpdated', callback);
+    }
+
     // ===== Ses kanalları =====
     public async joinVoice(voiceKey: string) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {

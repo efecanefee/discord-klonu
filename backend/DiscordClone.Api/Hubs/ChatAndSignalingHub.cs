@@ -24,6 +24,12 @@ namespace DiscordClone.Api.Hubs
         // Oda başına aktif YouTube oynatma durumu (geç katılanlar için)
         private static readonly ConcurrentDictionary<string, YoutubeRoomState> _youtubeStates = new();
 
+        public class YoutubeQueueItem
+        {
+            public string VideoId { get; set; } = string.Empty;
+            public string AddedBy { get; set; } = string.Empty;
+        }
+
         public class YoutubeRoomState
         {
             public string VideoId { get; set; } = string.Empty;
@@ -34,6 +40,10 @@ namespace DiscordClone.Api.Hubs
             // "audio": herkes otomatik dinler; "video": watch party — davet gider,
             // kabul eden birlikte izler.
             public string Mode { get; set; } = "audio";
+            // Sıradaki videolar (bellek-içi; mutasyonlar lock(this) ile)
+            public List<YoutubeQueueItem> Queue { get; } = new();
+            // NextYoutube idempotency: son geçiş zamanı (çift ENDED sinyaline karşı)
+            public long LastAdvanceUnixMs { get; set; }
         }
 
         private readonly AppDbContext _db;
@@ -275,9 +285,13 @@ namespace DiscordClone.Api.Hubs
             // Odada süren YouTube oynatması varsa geç katılana güncel durumu gönder
             if (_youtubeStates.TryGetValue(roomId, out var yt))
             {
-                var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                var effectivePos = yt.PositionSeconds + (yt.IsPlaying ? (now - yt.UpdatedAtUnixMs) / 1000.0 : 0);
+                var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var effectivePos = yt.PositionSeconds + (yt.IsPlaying ? (nowMs - yt.UpdatedAtUnixMs) / 1000.0 : 0);
                 await Clients.Caller.SendAsync("YoutubeState", yt.VideoId, yt.IsPlaying, effectivePos, yt.StartedBy, yt.Mode);
+                List<YoutubeQueueItem> queueSnapshot;
+                lock (yt) { queueSnapshot = yt.Queue.ToList(); }
+                if (queueSnapshot.Count > 0)
+                    await Clients.Caller.SendAsync("YoutubeQueueUpdated", queueSnapshot);
             }
         }
 
@@ -418,8 +432,110 @@ namespace DiscordClone.Api.Hubs
         {
             if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
                 return;
-            _youtubeStates.TryRemove(roomId, out _);
+            _youtubeStates.TryRemove(roomId, out _); // kuyruk da state ile birlikte gider
             await Clients.Group(roomId).SendAsync("YoutubeStopped");
+        }
+
+        // Kuyruğa video ekle — çalan yoksa direkt başlat
+        public async Task EnqueueYoutube(string roomId, string videoId)
+        {
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return;
+            if (string.IsNullOrWhiteSpace(videoId) || videoId.Length > 20) return;
+
+            if (!_youtubeStates.TryGetValue(roomId, out var yt))
+            {
+                // Çalan bir şey yok — kuyruk yerine hemen başlat (izleme partisi akışı)
+                await StartYoutube(roomId, videoId, "video");
+                return;
+            }
+
+            var username = Context.User?.Identity?.Name ?? "";
+            List<YoutubeQueueItem> snapshot;
+            lock (yt)
+            {
+                if (yt.Queue.Count >= 25) return; // makul üst sınır
+                yt.Queue.Add(new YoutubeQueueItem { VideoId = videoId, AddedBy = username });
+                snapshot = yt.Queue.ToList();
+            }
+            await Clients.Group(roomId).SendAsync("YoutubeQueueUpdated", snapshot);
+        }
+
+        // Kuyruktan bir öğeyi çıkar (index ile)
+        public async Task RemoveFromYoutubeQueue(string roomId, int index)
+        {
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return;
+            if (!_youtubeStates.TryGetValue(roomId, out var yt)) return;
+
+            List<YoutubeQueueItem> snapshot;
+            lock (yt)
+            {
+                if (index < 0 || index >= yt.Queue.Count) return;
+                yt.Queue.RemoveAt(index);
+                snapshot = yt.Queue.ToList();
+            }
+            await Clients.Group(roomId).SendAsync("YoutubeQueueUpdated", snapshot);
+        }
+
+        // Video bitti (tüm client'lar gönderir) — guard sayesinde yalnızca ilki ilerletir
+        public async Task NextYoutube(string roomId, string endedVideoId)
+        {
+            await AdvanceYoutubeQueue(roomId, endedVideoId);
+        }
+
+        // Manuel geçiş (skip butonu) — guard'sız ilerlet
+        public async Task SkipYoutube(string roomId)
+        {
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return;
+            await AdvanceYoutubeQueue(roomId, null);
+        }
+
+        private async Task AdvanceYoutubeQueue(string roomId, string? expectedEndedVideoId)
+        {
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return;
+            if (!_youtubeStates.TryGetValue(roomId, out var yt)) return;
+
+            YoutubeQueueItem? next = null;
+            List<YoutubeQueueItem>? snapshot = null;
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            lock (yt)
+            {
+                // ENDED yarışı: yanlış videoyu bildiren ya da 2sn içinde tekrarlanan
+                // sinyaller yoksayılır (SkipYoutube expected=null ile guard'ı atlar)
+                if (expectedEndedVideoId != null)
+                {
+                    if (expectedEndedVideoId != yt.VideoId) return;
+                    if (now - yt.LastAdvanceUnixMs < 2000) return;
+                }
+
+                if (yt.Queue.Count > 0)
+                {
+                    next = yt.Queue[0];
+                    yt.Queue.RemoveAt(0);
+                    yt.VideoId = next.VideoId;
+                    yt.IsPlaying = true;
+                    yt.PositionSeconds = 0;
+                    yt.UpdatedAtUnixMs = now;
+                    yt.LastAdvanceUnixMs = now;
+                    yt.StartedBy = next.AddedBy;
+                    snapshot = yt.Queue.ToList();
+                }
+            }
+
+            if (next != null && snapshot != null)
+            {
+                await Clients.Group(roomId).SendAsync("YoutubeStarted", next.VideoId, next.AddedBy, yt.Mode);
+                await Clients.Group(roomId).SendAsync("YoutubeQueueUpdated", snapshot);
+            }
+            else
+            {
+                // Kuyruk boş — oturumu kapat
+                _youtubeStates.TryRemove(roomId, out _);
+                await Clients.Group(roomId).SendAsync("YoutubeStopped");
+            }
         }
 
         // Mesaj düzenleme

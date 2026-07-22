@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Youtube, Users } from 'lucide-react';
+import { X, Play, Youtube, Users, SkipForward, ListMusic, Trash2, ChevronDown } from 'lucide-react';
 import signalrService from '../services/signalrService';
 
 // YouTube IFrame API tipleri (minimal)
@@ -45,6 +45,9 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
   const [joined, setJoined] = useState(false);
   const [needsInteraction, setNeedsInteraction] = useState(false);
   const [error, setError] = useState('');
+  // Şarkı kuyruğu (hub'dan tam liste gelir)
+  const [queue, setQueue] = useState<{ videoId: string; addedBy: string }[]>([]);
+  const [showQueue, setShowQueue] = useState(false);
   const playerHostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
   // Uzaktan gelen komutları uygularken kendi onStateChange'imiz sync yaymasın
@@ -56,6 +59,11 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
   useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
   const usernameRef = useRef(username);
   useEffect(() => { usernameRef.current = username; }, [username]);
+  // Event closure'ları için güncel oturum/katılım bilgisi
+  const sessionRef = useRef<Session | null>(null);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  const joinedRef = useRef(false);
+  useEffect(() => { joinedRef.current = joined; }, [joined]);
 
   const suppress = useCallback((ms = 800) => {
     suppressRef.current = true;
@@ -98,6 +106,11 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
             signalrService.syncYoutube(roomIdRef.current, 'play', e.target.getCurrentTime());
           } else if (e.data === YTState.PAUSED) {
             signalrService.syncYoutube(roomIdRef.current, 'pause', e.target.getCurrentTime());
+          } else if (e.data === YTState.ENDED) {
+            // Video bitti — kuyruktaki sıradakine geç. TÜM client'lar gönderir,
+            // hub endedVideoId guard'ıyla yalnızca ilkini işler.
+            const vid = sessionRef.current?.videoId;
+            if (vid) signalrService.nextYoutube(roomIdRef.current, vid);
           }
         },
         onError: (e: any) => {
@@ -133,8 +146,8 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
       setError('');
       pendingJoinRef.current = { position: 0, isPlaying: true, receivedAt: Date.now() };
       const iStarted = by === usernameRef.current;
-      if (iStarted) {
-        // Başlatan kişi → anında katıl
+      if (iStarted || joinedRef.current) {
+        // Başlatan kişi ya da zaten partide olan (kuyruk geçişi) → anında katıl
         autoJoin(videoId, 0, true);
       } else {
         // İzleme partisi daveti — kullanıcı "Katıl" demeden oynatıcı açılmaz
@@ -167,19 +180,27 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
       setJoined(false);
       setNeedsInteraction(false);
       setError('');
+      setQueue([]);
+      setShowQueue(false);
       pendingJoinRef.current = null;
+    };
+
+    const handleQueueUpdated = (q: { videoId: string; addedBy: string }[]) => {
+      setQueue(q || []);
     };
 
     signalrService.onYoutubeStarted(handleStarted);
     signalrService.onYoutubeSync(handleSync);
     signalrService.onYoutubeState(handleState);
     signalrService.onYoutubeStopped(handleStopped);
+    signalrService.onYoutubeQueueUpdated(handleQueueUpdated);
 
     return () => {
       signalrService.offYoutubeStarted(handleStarted);
       signalrService.offYoutubeSync(handleSync);
       signalrService.offYoutubeState(handleState);
       signalrService.offYoutubeStopped(handleStopped);
+      signalrService.offYoutubeQueueUpdated(handleQueueUpdated);
       if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
       destroyPlayer();
     };
@@ -274,6 +295,40 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
               {error && (
                 <div className="px-3 pb-2 text-xs text-red-400">{error}</div>
               )}
+
+              {/* ===== Şarkı kuyruğu ===== */}
+              <div className="border-t border-border-main">
+                <div className="flex items-center justify-between px-3 py-1.5">
+                  <button onClick={() => setShowQueue(p => !p)} className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-main transition-colors">
+                    <ListMusic size={13} className="shrink-0" />
+                    Kuyruk ({queue.length})
+                    <ChevronDown size={12} className={`transition-transform ${showQueue ? 'rotate-180' : ''}`} />
+                  </button>
+                  {queue.length > 0 && (
+                    <button onClick={() => signalrService.skipYoutube(roomIdRef.current)} title="Sıradakine geç"
+                      className="flex items-center gap-1 text-xs text-text-muted hover:text-primary-main transition-colors">
+                      <SkipForward size={13} /> Geç
+                    </button>
+                  )}
+                </div>
+                {showQueue && queue.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto custom-scrollbar px-3 pb-2 space-y-1">
+                    {queue.map((q, i) => (
+                      <div key={`${q.videoId}-${i}`} className="flex items-center gap-2 text-xs text-text-muted bg-surface-subtle rounded-lg px-2 py-1.5">
+                        <span className="text-text-main font-semibold shrink-0">{i + 1}.</span>
+                        <span className="truncate flex-1" title={q.videoId}>{q.videoId} <span className="opacity-60">· {q.addedBy}</span></span>
+                        <button onClick={() => signalrService.removeFromYoutubeQueue(roomIdRef.current, i)} title="Kuyruktan çıkar"
+                          className="p-1 rounded hover:text-red-400 transition-colors shrink-0">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showQueue && queue.length === 0 && (
+                  <div className="px-3 pb-2 text-[11px] text-text-muted">Kuyruk boş — YouTube panelinden "Kuyruğa ekle" ile şarkı ekle.</div>
+                )}
+              </div>
             </>
           )}
         </motion.div>
