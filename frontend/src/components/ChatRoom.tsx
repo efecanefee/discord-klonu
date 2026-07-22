@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus } from 'lucide-react';
+import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2 } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -74,12 +74,44 @@ const AudioPlayer: React.FC<{ stream: MediaStream; volume: number; sinkId: strin
     return <audio ref={audioRef} autoPlay />;
 };
 
-const RemoteVideoPlayer: React.FC<{ stream: MediaStream; label: string }> = ({ stream, label }) => {
+const RemoteVideoPlayer: React.FC<{
+    stream: MediaStream;
+    label: string;
+    volume?: number;                          // kişi başı ses (AudioPlayer üzerinden çalar)
+    onVolumeChange?: (v: number) => void;
+}> = ({ stream, label, volume, onVolumeChange }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
         if (videoRef.current) videoRef.current.srcObject = stream;
     }, [stream]);
+
+    // Fullscreen state'i tarayıcı event'inden takip et (Esc ile çıkış dahil)
+    useEffect(() => {
+        const onFsChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
+        document.addEventListener('fullscreenchange', onFsChange);
+        return () => document.removeEventListener('fullscreenchange', onFsChange);
+    }, []);
+
+    const toggleFullscreen = () => {
+        if (document.fullscreenElement === containerRef.current) {
+            document.exitFullscreen().catch(() => { /* yoksay */ });
+        } else {
+            containerRef.current?.requestFullscreen().catch(() => { /* desteklenmiyor */ });
+        }
+    };
+
+    const togglePiP = async () => {
+        try {
+            if (document.pictureInPictureElement === videoRef.current) {
+                await document.exitPictureInPicture();
+            } else {
+                await videoRef.current?.requestPictureInPicture();
+            }
+        } catch { /* PiP desteklenmiyor olabilir */ }
+    };
 
     // Track değişimlerini dinle — video track eklenince/silinince re-render
     const [hasVideo, setHasVideo] = useState(() => stream.getVideoTracks().some(t => t.enabled && t.readyState === 'live'));
@@ -101,10 +133,36 @@ const RemoteVideoPlayer: React.FC<{ stream: MediaStream; label: string }> = ({ s
     if (!hasVideo) return null;
 
     return (
-        <div className="relative w-full h-full flex justify-center items-center rounded-xl overflow-hidden border border-border-main bg-black">
-            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain" />
+        <div ref={containerRef} className="group/video relative w-full h-full flex justify-center items-center rounded-xl overflow-hidden border border-border-main bg-black">
+            {/* Ses AudioPlayer'dan gelir — video muted, çift ses olmaz */}
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain" />
             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm flex items-center gap-1.5">
                 {label}
+            </div>
+
+            {/* Meet tarzı hover kontrolleri: ses / PiP / tam ekran */}
+            <div className="absolute bottom-2 right-2 flex items-center gap-1.5 opacity-0 group-hover/video:opacity-100 transition-opacity duration-150">
+                {onVolumeChange && (
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm">
+                        {(volume ?? 1) === 0
+                            ? <VolumeX size={14} className="text-red-400 shrink-0 cursor-pointer" onClick={() => onVolumeChange(1)} />
+                            : <Volume2 size={14} className="text-white shrink-0 cursor-pointer" onClick={() => onVolumeChange(0)} />}
+                        <input
+                            type="range" min="0" max="1" step="0.01" value={volume ?? 1}
+                            onChange={e => onVolumeChange(parseFloat(e.target.value))}
+                            className="w-16 accent-white cursor-pointer"
+                            title="Ses seviyesi"
+                        />
+                    </div>
+                )}
+                <button onClick={togglePiP} title="Küçük pencerede izle (PiP)"
+                    className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm cursor-pointer">
+                    <PictureInPicture2 size={14} />
+                </button>
+                <button onClick={toggleFullscreen} title={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran'}
+                    className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm cursor-pointer">
+                    {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
             </div>
         </div>
     );
@@ -808,6 +866,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const hasRemoteVideo = Array.from(remoteStreams.values()).some(s => s.getVideoTracks().length > 0);
     const isMediaActive = isCameraOn || isScreenSharing || hasRemoteVideo;
 
+    // Medya moduna girip çıkınca sohbet paneli farklı ağaçta yeniden mount olur
+    // ve kaydırma en üste (en eskiye) düşer — en altta (en yenide) başlat.
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }, [isMediaActive]);
+
     // Mesaj filtresi (search)
     const filteredMessages = searchQuery.trim()
         ? messages.filter(m => m.type === 'message' && m.text.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -1136,7 +1200,19 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         <div className="relative rounded-xl overflow-hidden border border-border-main bg-black col-span-full">
                                             <video autoPlay muted className="w-full h-full object-contain" ref={el => { if (el) el.srcObject = screenStream; }} />
                                             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg">{username} (Ekran)</div>
-                                            <button onClick={toggleScreenShare} className="absolute top-3 right-3 px-3 py-1.5 bg-red-500/90 hover:bg-red-600 text-white rounded-lg text-xs font-semibold cursor-pointer">Durdur</button>
+                                            <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                                                <button
+                                                    onClick={(e) => {
+                                                        const el = (e.currentTarget as HTMLElement).closest('.relative') as HTMLElement | null;
+                                                        if (document.fullscreenElement) document.exitFullscreen().catch(() => { /* yoksay */ });
+                                                        else el?.requestFullscreen().catch(() => { /* desteklenmiyor */ });
+                                                    }}
+                                                    title="Tam ekran"
+                                                    className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg cursor-pointer">
+                                                    <Maximize2 size={14} />
+                                                </button>
+                                                <button onClick={toggleScreenShare} className="px-3 py-1.5 bg-red-500/90 hover:bg-red-600 text-white rounded-lg text-xs font-semibold cursor-pointer">Durdur</button>
+                                            </div>
                                         </div>
                                     )}
                                     {isCameraOn && !isScreenSharing && (
@@ -1152,9 +1228,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         const uName = usersInRoom.find(u => u.connectionId === connId)?.username ?? 'Bilinmeyen';
                                         return (
                                             <div key={connId} className="relative">
-                                                <RemoteVideoPlayer stream={stream} label={uName} />
+                                                <RemoteVideoPlayer
+                                                    stream={stream}
+                                                    label={uName}
+                                                    volume={userVolumes[uName] ?? 1.0}
+                                                    onVolumeChange={(v) => setUserVolumes(prev => ({ ...prev, [uName]: v }))}
+                                                />
                                                 {mutedUsers[connId] && (
-                                                    <div className="absolute bottom-2 right-2 px-1.5 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm" title="Mikrofonu kapalı">
+                                                    <div className="absolute top-2 right-2 px-1.5 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm" title="Mikrofonu kapalı">
                                                         <MicOff size={14} className="text-red-500" />
                                                     </div>
                                                 )}

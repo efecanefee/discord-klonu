@@ -210,7 +210,9 @@ export function useWebRTC() {
         } else {
             try {
                 const display = await navigator.mediaDevices.getDisplayMedia({
-                    video: { frameRate: 30 },
+                    // 1080p hedefle (tarayıcı kaynağa göre düşürebilir); 30fps üstü
+                    // bant genişliğini boşa harcar, metin netliği çözünürlükten gelir.
+                    video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } },
                     audio: true
                 });
 
@@ -242,6 +244,8 @@ export function useWebRTC() {
 
                 // Peer'lara ekran track'i ekle/değiştir + renegotiation
                 const screenTrack = display.getVideoTracks()[0];
+                // Metin/detay odaklı içerik ipucu: encoder keskinliği önceliklendirir
+                try { screenTrack.contentHint = 'detail'; } catch { /* eski tarayıcı */ }
                 peerConnections.current.forEach(async (pc, connId) => {
                     const existingSender = pc.getSenders().find(s => s.track?.kind === 'video');
                     if (existingSender) {
@@ -253,6 +257,18 @@ export function useWebRTC() {
                             pc.addTrack(screenTrack, display);
                         }
                     }
+                    // Kalite: bitrate tavanını yükselt + çözünürlüğü koru (kare hızından feda et).
+                    // WebRTC'nin varsayılan ~2.5Mbps tavanı ekran metnini bulanıklaştırıyor.
+                    try {
+                        const sender = pc.getSenders().find(s => s.track === screenTrack);
+                        if (sender) {
+                            const params = sender.getParameters();
+                            if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+                            params.encodings[0].maxBitrate = 5_000_000; // 5 Mbps
+                            params.degradationPreference = 'maintain-resolution';
+                            await sender.setParameters(params);
+                        }
+                    } catch { /* setParameters desteklenmeyen tarayıcıda varsayılan kalır */ }
                     try {
                         const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
                         await pc.setLocalDescription(offer);
@@ -286,10 +302,19 @@ export function useWebRTC() {
                     pc.addTrack(track, videoStreamRef.current!);
                 });
             }
-            // Ekran track ekle (varsa)
+            // Ekran track ekle (varsa) — geç katılan da yüksek kaliteli alsın
             if (screenStreamRef.current) {
                 screenStreamRef.current.getTracks().forEach(track => {
-                    pc.addTrack(track, screenStreamRef.current!);
+                    const sender = pc.addTrack(track, screenStreamRef.current!);
+                    if (track.kind === 'video') {
+                        try {
+                            const params = sender.getParameters();
+                            if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+                            params.encodings[0].maxBitrate = 5_000_000;
+                            params.degradationPreference = 'maintain-resolution';
+                            sender.setParameters(params).catch(() => { /* varsayılan kalır */ });
+                        } catch { /* desteklenmiyorsa varsayılan */ }
+                    }
                 });
             }
 
