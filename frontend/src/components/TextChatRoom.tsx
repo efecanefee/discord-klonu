@@ -15,6 +15,8 @@ import { useVoiceChannel } from '../hooks/useVoiceChannel';
 import { roleBadgeEmoji, sortByRole, roleRank, roleLabel } from '../utils/roles';
 import { useSettings } from '../contexts/SettingsContext';
 import { applySinkId } from '../utils/audioOutput';
+import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/mentions';
+import MentionAutocomplete from './MentionAutocomplete';
 
 export interface TextRoomInfo {
     name: string;
@@ -271,6 +273,10 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // Gelen "yazıyor" sinyalleri: kullanıcı başına 3sn'lik silme zamanlayıcısı
     const roomTypingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+    // @mention autocomplete
+    const [mentionQuery, setMentionQuery] = useState<{ start: number; query: string } | null>(null);
+    const [mentionIndex, setMentionIndex] = useState(0);
+    const messageInputElRef = useRef<HTMLInputElement>(null);
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -552,12 +558,45 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     // Yazıyor bildirimi — isTyping true iken tekrar gönderilmez (~2sn throttle)
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setMessageInput(e.target.value);
+        // @mention autocomplete: caret'e göre aktif sorguyu çıkar
+        const q = getActiveMentionQuery(e.target.value, e.target.selectionStart ?? e.target.value.length);
+        setMentionQuery(q);
+        setMentionIndex(0);
         if (!isTyping) {
             setIsTyping(true);
             signalrService.sendRoomTyping(activeChannelKey).catch(() => { /* bağlantı yoksa sessiz geç */ });
         }
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
+    };
+
+    // @mention adayları — üye listesinden (çevrimdışılar dahil), kendim hariç
+    const mentionCandidates = mentionQuery === null ? [] : merged
+        .filter(m => m.username !== username && m.username.toLowerCase().startsWith(mentionQuery.query.toLowerCase()))
+        .slice(0, 8)
+        .map(m => ({ username: m.username, avatarId: m.avatarId }));
+
+    // Seçilen adayı input'a yaz: "@ad " + kalan metin
+    const handleSelectMention = (selected: string) => {
+        if (mentionQuery === null) return;
+        const caret = messageInputElRef.current?.selectionStart ?? messageInput.length;
+        const next = `${messageInput.slice(0, mentionQuery.start)}@${selected} ${messageInput.slice(caret)}`;
+        setMessageInput(next);
+        setMentionQuery(null);
+        const pos = mentionQuery.start + selected.length + 2;
+        requestAnimationFrame(() => {
+            messageInputElRef.current?.focus();
+            messageInputElRef.current?.setSelectionRange(pos, pos);
+        });
+    };
+
+    // Dropdown açıkken ok tuşları/Enter/Tab/Esc input'ta yakalanır
+    const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (mentionQuery === null || mentionCandidates.length === 0) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionCandidates.length); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionCandidates.length) % mentionCandidates.length); }
+        else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleSelectMention(mentionCandidates[mentionIndex].username); }
+        else if (e.key === 'Escape') { setMentionQuery(null); }
     };
 
     // Optimistic UI — mesaj gönder
@@ -693,6 +732,19 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
     const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
+    // Düz metin parçasında @mention'ları vurgular (bilinen üye adlarıyla sınırlı)
+    const renderWithMentions = (chunk: string, key: string) => {
+        const segs = parseMentions(chunk, merged.map(m => m.username).concat(username));
+        if (!segs.some(s => s.type === 'mention')) return <span key={key}>{chunk}</span>;
+        return (
+            <span key={key}>
+                {segs.map((s, i) => s.type === 'mention'
+                    ? <span key={i} className="px-1 py-0.5 rounded-md bg-primary-main/20 text-primary-main font-semibold">@{s.value}</span>
+                    : <span key={i}>{s.value}</span>)}
+            </span>
+        );
+    };
+
     const renderTextWithLinks = (plainText: string, keyPrefix: string) => {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const textParts: React.ReactNode[] = [];
@@ -701,7 +753,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
         while ((match = urlRegex.exec(plainText)) !== null) {
             if (match.index > lastIdx) {
-                textParts.push(<span key={`${keyPrefix}_t${lastIdx}`}>{plainText.slice(lastIdx, match.index)}</span>);
+                textParts.push(renderWithMentions(plainText.slice(lastIdx, match.index), `${keyPrefix}_t${lastIdx}`));
             }
             const url = match[0];
             const isImage = /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(url);
@@ -723,7 +775,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             lastIdx = match.index + url.length;
         }
         if (lastIdx < plainText.length) {
-            textParts.push(<span key={`${keyPrefix}_t${lastIdx}`}>{plainText.slice(lastIdx)}</span>);
+            textParts.push(renderWithMentions(plainText.slice(lastIdx), `${keyPrefix}_t${lastIdx}`));
         }
         return textParts.length > 0 ? textParts : plainText;
     };
@@ -1103,7 +1155,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                         })()}
 
                                                         <div className="relative group/msg" id={`text-msg-${msg.id}`}>
-                                                            <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
+                                                            <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/10 border border-primary-main/40 text-text-main rounded-tl-sm' : 'bg-bg-surface border border-border-main text-text-main rounded-tl-sm'}`}>
                                                                 {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
                                                                 {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
                                                                     <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
@@ -1233,7 +1285,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                         </button>
                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
 
-                        <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
+                        <input type="text" ref={messageInputElRef} value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
+                            onKeyDown={editingMessageId ? undefined : handleInputKeyDown}
+                            onBlur={() => setMentionQuery(null)}
                             placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
                             className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
 
@@ -1246,6 +1300,14 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                     <div className="absolute bottom-full mb-2 left-0 z-50">
                         <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
                     </div>
+                    {!editingMessageId && mentionQuery !== null && (
+                        <MentionAutocomplete
+                            candidates={mentionCandidates}
+                            activeIndex={mentionIndex}
+                            onSelect={handleSelectMention}
+                            onHover={setMentionIndex}
+                        />
+                    )}
                 </motion.div>
             </motion.div>
         </div>
