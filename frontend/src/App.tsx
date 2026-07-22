@@ -108,6 +108,9 @@ function App() {
   // Sunucularim paneli: varsayilan kapali — istek uzerine acilir, listesi de
   // ancak o zaman yuklenir (lobide gereksiz fetch ve render maliyeti yok).
   const [isServersOpen, setIsServersOpen] = useState(false);
+  // Odadan her dönüşte artar → "Sunucularım" listesi yeniden çekilir
+  // (üyelik katılma/çıkma ile değişmiş olabilir; rooms.length bunu yakalamaz).
+  const [serverListVersion, setServerListVersion] = useState(0);
 
   const handleUpdatePrivacy = async (showLastSeen: boolean) => {
     setMyShowLastSeen(showLastSeen);
@@ -761,8 +764,9 @@ function App() {
   // Topluluk YAZI odaları → TextChatRoom (sadece mesajlaşma).
   const isVoiceStyle = !!activeRoom && (activeRoom.id < 0 || activeRoom.name === 'Ana Salon' || activeRoom.name === 'Müzik Odası' || activeRoom.type === 'voice');
 
-  // Tam kapatma: oda oturumu unmount olur, ses/WebRTC kapanır.
-  const handleDisconnectRoom = () => { setInRoom(false); setRoomId(''); setActiveRoom(null); setRoomDMUser(null); };
+  // Tam kapatma: oda oturumu unmount olur, ses/WebRTC kapanır. Üyelik
+  // değişmiş olabilir (katılma / sunucudan çıkma) → "Sunucularım" tazelensin.
+  const handleDisconnectRoom = () => { setInRoom(false); setRoomId(''); setActiveRoom(null); setRoomDMUser(null); setServerListVersion(v => v + 1); };
   // Lobiye dön: ses odalarında oturum arkaplanda mount kalır, ses sürer
   // (Discord tarzı). Yazı odalarında tutmanın anlamı yok — tam kapat.
   const handleReturnToLobby = () => {
@@ -1664,7 +1668,7 @@ function App() {
             <MyServersPanel
               open={isServersOpen}
               onToggle={() => setIsServersOpen(o => !o)}
-              refreshSignal={rooms.length}
+              refreshSignal={rooms.length + serverListVersion * 1000}
               onSelectRoom={(r) => {
                 const full = rooms.find(x => x.id === r.id);
                 handleJoinRoom(full ?? { id: r.id, name: r.name, type: 'text', description: r.description, createdBy: '', createdAt: new Date().toISOString(), isPrivate: r.isPrivate, roomCode: r.roomCode });

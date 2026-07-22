@@ -113,15 +113,16 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         try { await roomApi.ban(roomDbId, uId); }
         catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
     };
-    // Sunucudan (üyelikten) ayrıl — "Ayrıl"dan farklı olarak kalıcı üyeliği siler.
+    // Sunucudan kalıcı çıkış — "Ayrıl"dan farklı olarak üyelik/bağ verisi silinir,
+    // sunucu "Sunucularım"dan kaybolur. Mesajlar sohbette kalır.
     const handleLeaveServer = async () => {
-        if (!window.confirm(`"${roomInfo?.name || roomId}" sunucusundan ayrılmak istediğine emin misin? Tekrar katılman gerekir.`)) return;
+        if (!window.confirm(`"${roomInfo?.name || roomId}" sunucusundan kalıcı olarak çıkılsın ve üyelik verin silinsin mi? Sunucu listenden kaybolur; tekrar katılman gerekir.`)) return;
         try {
             await roomApi.leaveRoom(roomDbId);
             signalrService.leaveRoom(roomId, username);
             onLeave();
         } catch (e) {
-            alert(e instanceof Error ? e.message : 'Sunucudan ayrılınamadı.');
+            alert(e instanceof Error ? e.message : 'Sunucudan çıkılamadı.');
         }
     };
 
@@ -828,11 +829,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             </button>
                         )}
 
-                        {/* Sunucudan Ayrıl — kalıcı üyelikten çıkış (owner hariç, topluluk odaları) */}
+                        {/* Sunucudan kalıcı çıkış — üyelik/bağ verisi silinir (owner hariç, topluluk odaları) */}
                         {roomDbId > 0 && myRole !== 'owner' && (
-                            <button onClick={handleLeaveServer} title="Sunucudan ayrıl (üyelikten çık)"
+                            <button onClick={handleLeaveServer} title="Sunucudan çık ve verileri kendimden sil (üyelik silinir, sunucu listenden kaybolur)"
                                 className="flex items-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border-main hover:border-red-500/30 rounded-xl text-sm font-semibold transition-colors cursor-pointer">
-                                <DoorOpen size={17} /><span className="hidden sm:inline">Sunucudan Ayrıl</span>
+                                <DoorOpen size={17} /><span className="hidden lg:inline">Sunucudan Çık ve Verileri Kendimden Sil</span><span className="hidden sm:inline lg:hidden">Sunucudan Çık</span>
                             </button>
                         )}
 
