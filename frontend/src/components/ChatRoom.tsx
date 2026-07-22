@@ -254,9 +254,21 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         selectedMicId, selectedOutputId,
         switchMicrophone, setSelectedOutputId,
         speakingUsers, connectionIssues,
+        getMicLevel,
     } = useWebRTC();
 
     const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playSendSound, playReceiveSound } = useAudioNotifications();
+
+    // Oda içi gürültü kapısı çubuğu: cihaz menüsü açıkken aktif kapının
+    // seviyesini oku (Ayarlar'daki gibi ek mikrofon stream'i AÇMADAN).
+    const [inRoomMicLevel, setInRoomMicLevel] = useState(0);
+    useEffect(() => {
+        if (!showDeviceMenu || !settings.noiseGateEnabled) { setInRoomMicLevel(0); return; }
+        let raf = 0;
+        const loop = () => { setInRoomMicLevel(getMicLevel()); raf = requestAnimationFrame(loop); };
+        loop();
+        return () => cancelAnimationFrame(raf);
+    }, [showDeviceMenu, settings.noiseGateEnabled, getMicLevel]);
 
     // ===== Soundboard + YouTube (yalnızca Ana Salon) =====
     const isAnaSalon = roomId === 'Ana Salon';
@@ -1102,13 +1114,38 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-white/5 transition-colors">
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="text-sm font-semibold text-text-main">Giriş Hassasiyeti</span>
-                                                <span className="text-[10px] text-text-muted leading-tight">Eşik altındaki sesi tamamen keser · eşik Ayarlar'dan</span>
+                                                <span className="text-[10px] text-text-muted leading-tight">Eşik altındaki sesi tamamen keser</span>
                                             </div>
                                             <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${settings.noiseGateEnabled ? 'bg-primary-main' : 'bg-white/10'}`}>
                                                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.noiseGateEnabled ? 'translate-x-4' : 'translate-x-1'}`} />
                                             </div>
                                             <input type="checkbox" className="hidden" checked={settings.noiseGateEnabled} onChange={() => updateSettings({ noiseGateEnabled: !settings.noiseGateEnabled })} />
                                         </label>
+
+                                        {/* Eşik kaydırıcısı + canlı seviye — Ayarlar'daki kontrolün oda içi eşi */}
+                                        {settings.noiseGateEnabled && (
+                                            <div className="px-2 pt-1.5 pb-1 space-y-2">
+                                                <div className="relative h-2 w-full rounded-full bg-black/40 overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full transition-[width] duration-75 ${inRoomMicLevel >= settings.noiseGateThreshold ? 'bg-emerald-400' : 'bg-surface-subtle-strong'}`}
+                                                        style={{ width: `${inRoomMicLevel}%` }}
+                                                    />
+                                                    <div
+                                                        className="absolute top-0 bottom-0 w-0.5 bg-primary-main"
+                                                        style={{ left: `${settings.noiseGateThreshold}%` }}
+                                                    />
+                                                </div>
+                                                <input
+                                                    type="range" min={0} max={100} step={1}
+                                                    value={settings.noiseGateThreshold}
+                                                    onChange={e => updateSettings({ noiseGateThreshold: Number(e.target.value) })}
+                                                    className="w-full h-1.5 bg-black/40 rounded-full appearance-none cursor-pointer accent-primary-main"
+                                                />
+                                                <p className="text-[10px] text-text-muted leading-tight">
+                                                    Konuşurken çubuk <b className="text-emerald-400">yeşile</b> dönmeli. Sesin kesiliyorsa eşiği azalt.
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                     {audioOutputs.length > 0 && (
                                         <div>

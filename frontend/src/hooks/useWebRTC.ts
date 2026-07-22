@@ -641,6 +641,10 @@ export function useWebRTC() {
         gateRef.current?.setThreshold(settings.noiseGateThreshold);
     }, [settings.noiseGateEnabled, settings.noiseGateThreshold]);
 
+    // Anlık mikrofon seviyesi (0-100) — oda içi gürültü kapısı kaydırıcısının
+    // canlı çubuğu için. Aktif kapının analizörünü okur, ek stream açmaz.
+    const getMicLevel = useCallback(() => gateRef.current?.getLevel() ?? 0, []);
+
     const toggleMute = useCallback(() => {
         if (streamRef.current) {
             const audioTrack = streamRef.current.getAudioTracks()[0];
@@ -672,6 +676,7 @@ export function useWebRTC() {
         isScreenSharing,
         toggleMute,
         setMicEnabled,
+        getMicLevel,
         toggleCamera,
         toggleScreenShare,
         switchMicrophone,
