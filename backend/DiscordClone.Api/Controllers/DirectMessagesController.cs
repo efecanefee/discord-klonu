@@ -92,5 +92,50 @@ namespace DiscordClone.Api.Controllers
 
             return Ok(sortedUsers);
         }
+
+        /// <summary>
+        /// Kişi başına okunmamış DM sayıları (login sonrası rozetleri doldurmak için)
+        /// </summary>
+        [HttpGet("unread-counts")]
+        public async Task<IActionResult> GetUnreadCounts()
+        {
+            var currentUsername = User.Identity?.Name;
+            if (string.IsNullOrEmpty(currentUsername)) return Unauthorized();
+
+            var currentUser = await _db.Users.FirstOrDefaultAsync(u => u.Username == currentUsername);
+            if (currentUser == null) return Unauthorized();
+
+            var counts = await _db.DirectMessages
+                .Where(m => m.ReceiverId == currentUser.Id && !m.IsRead && !m.IsDeleted)
+                .GroupBy(m => m.SenderId)
+                .Select(g => new { otherUserId = g.Key, count = g.Count() })
+                .ToListAsync();
+
+            return Ok(counts);
+        }
+
+        /// <summary>
+        /// Bir kişiden gelen okunmamış DM'leri okundu işaretle (REST — hub'daki
+        /// MarkMessagesAsRead ile aynı iş; bağlantı olmayan akışlar için)
+        /// </summary>
+        [HttpPost("mark-read/{otherUserId}")]
+        public async Task<IActionResult> MarkRead(string otherUserId)
+        {
+            var currentUsername = User.Identity?.Name;
+            if (string.IsNullOrEmpty(currentUsername)) return Unauthorized();
+
+            var currentUser = await _db.Users.FirstOrDefaultAsync(u => u.Username == currentUsername);
+            if (currentUser == null) return Unauthorized();
+
+            var unread = await _db.DirectMessages
+                .Where(m => m.SenderId == otherUserId && m.ReceiverId == currentUser.Id && !m.IsRead)
+                .ToListAsync();
+            if (unread.Count > 0)
+            {
+                foreach (var m in unread) m.IsRead = true;
+                await _db.SaveChangesAsync();
+            }
+            return NoContent();
+        }
     }
 }

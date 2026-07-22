@@ -18,6 +18,7 @@ import { applySinkId } from '../utils/audioOutput';
 import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/mentions';
 import MentionAutocomplete from './MentionAutocomplete';
 import { notify } from '../utils/browserNotifications';
+import { getLastRead, setLastRead } from '../utils/lastRead';
 
 export interface TextRoomInfo {
     name: string;
@@ -277,6 +278,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const [mentionQuery, setMentionQuery] = useState<{ start: number; query: string } | null>(null);
     const [mentionIndex, setMentionIndex] = useState(0);
     const messageInputElRef = useRef<HTMLInputElement>(null);
+    // "Yeni Mesajlar" ayracının üstünde duracağı mesajın id'si (history'den)
+    const [firstUnreadId, setFirstUnreadId] = useState<number | null>(null);
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -353,6 +356,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
         const handleRoomHistory = (history: { id: number; username: string; avatarId: string; text: string; timestamp: number; isEdited?: boolean; fileUrl?: string; fileName?: string; replyToId?: number }[]) => {
             if (!isMounted) return;
+            // "Yeni Mesajlar" ayracı: son okunandan yeni İLK yabancı mesaj —
+            // bir kez hesaplanır, canlı mesajlarla kaymaz.
+            const lastRead = getLastRead(activeChannelKey);
+            const firstUnread = (history || []).find(m => m.timestamp > lastRead && m.username !== username);
+            setFirstUnreadId(firstUnread ? firstUnread.id : null);
             setMessages((history || []).map(m => ({
                 id: m.id,
                 serverId: m.id,
@@ -532,6 +540,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             }
         }
     }, [messages, username, settings.pushNotificationsEnabled]);
+
+    // Görünürken gelen mesajlar okundu sayılır (ayraç bir sonraki girişte doğru olur)
+    useEffect(() => {
+        if (messages.length === 0) return;
+        if (!document.hidden) setLastRead(activeChannelKey);
+    }, [messages, activeChannelKey]);
 
     // Scroll bottom
     useEffect(() => {
@@ -1110,14 +1124,27 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             <div className="space-y-6">
                                 <AnimatePresence initial={false}>
                                     {visibleMessages.map((msg) => {
+                                        // "Yeni Mesajlar" ayracı — son okunandan yeni ilk mesajın üstünde
+                                        const unreadDivider = msg.serverId != null && msg.serverId === firstUnreadId && (
+                                            <div key={`unread-${msg.id}`} className="flex items-center gap-3 my-3" aria-label="Yeni mesajlar">
+                                                <div className="flex-1 h-px bg-red-400/50" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">Yeni Mesajlar</span>
+                                                <div className="flex-1 h-px bg-red-400/50" />
+                                            </div>
+                                        );
                                         if (msg.type === 'system') return (
-                                            <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} key={msg.id} className="flex justify-center my-4">
-                                                <span className="bg-bg-surface border border-border-main px-4 py-1.5 rounded-[12px] text-[12px] text-text-muted shadow-sm">{msg.text}</span>
-                                            </motion.div>
+                                            <React.Fragment key={msg.id}>
+                                                {unreadDivider}
+                                                <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center my-4">
+                                                    <span className="bg-bg-surface border border-border-main px-4 py-1.5 rounded-[12px] text-[12px] text-text-muted shadow-sm">{msg.text}</span>
+                                                </motion.div>
+                                            </React.Fragment>
                                         );
                                         const isMine = msg.username === username;
                                         return (
-                                            <motion.div initial={{ opacity: 0, scale: 0.98, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.2 }} key={msg.id}
+                                            <React.Fragment key={msg.id}>
+                                            {unreadDivider}
+                                            <motion.div initial={{ opacity: 0, scale: 0.98, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.2 }}
                                                 className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                 <div className={`flex max-w-[85%] sm:max-w-[75%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                                                     <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-primary-main shadow-[0_0_10px_rgba(var(--accent-rgb),0.2)] overflow-hidden text-xl">
@@ -1186,6 +1213,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                     </div>
                                                 </div>
                                             </motion.div>
+                                            </React.Fragment>
                                         );
                                     })}
                                 </AnimatePresence>

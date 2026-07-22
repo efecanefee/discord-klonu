@@ -52,6 +52,8 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // "Yeni Mesajlar" ayracının üstünde duracağı mesajın id'si (history'den)
+  const [firstUnreadId, setFirstUnreadId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchHistory();
@@ -127,7 +129,11 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        const data = await res.json();
+        const data: DirectMessage[] = await res.json();
+        // "Yeni Mesajlar" ayracı: karşı taraftan gelen ilk okunmamış mesaj
+        // (sendMarkAsRead hepsini okundu yapmadan önce yakala)
+        const firstUnread = data.find(m => m.senderId === targetUser.id && !m.isRead);
+        setFirstUnreadId(firstUnread ? firstUnread.id : null);
         setMessages(data);
       }
     } catch (e) {
@@ -249,10 +255,17 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             const replyMsg = msg.replyToId ? messages.find(m => m.id === msg.replyToId) : null;
 
             return (
+              <React.Fragment key={msg.id || idx}>
+              {msg.id === firstUnreadId && (
+                <div className="flex items-center gap-3 my-3" aria-label="Yeni mesajlar">
+                  <div className="flex-1 h-px bg-red-400/50" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">Yeni Mesajlar</span>
+                  <div className="flex-1 h-px bg-red-400/50" />
+                </div>
+              )}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                key={msg.id || idx}
                 className={`flex w-full group/msg ${isMe ? 'justify-end' : 'justify-start'}`}
               >
                 <div className="flex flex-col max-w-[70%]">
@@ -304,6 +317,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                   </div>
                 </div>
               </motion.div>
+              </React.Fragment>
             );
           })
         )}

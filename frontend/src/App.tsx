@@ -722,6 +722,28 @@ function App() {
     })();
   }, [authState, API_BASE_URL]);
 
+  // Login sonrası: çevrimdışıyken gelen DM'lerin okunmamış sayaçlarını yükle
+  useEffect(() => {
+    if (authState !== 'rooms') return;
+    (async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/directmessages/unread-counts`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data: { otherUserId: string; count: number }[] = await res.json();
+        if (data.length > 0) {
+          setUnreadCounts(prev => {
+            const next = { ...prev };
+            for (const d of data) next[d.otherUserId] = Math.max(next[d.otherUserId] || 0, d.count);
+            return next;
+          });
+        }
+      } catch { /* rozetler bu oturumda canlı event'lerle dolar */ }
+    })();
+  }, [authState, API_BASE_URL]);
+
   // Arama debounce
   useEffect(() => {
     const t = setTimeout(() => { handleRoomSearch(roomSearchQuery); }, 350);
