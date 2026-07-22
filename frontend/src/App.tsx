@@ -12,6 +12,7 @@ import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
+import { notify } from './utils/browserNotifications';
 import { Lock, Mail, MessageSquare, Plus, User, Menu, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -335,6 +336,11 @@ function App() {
             ...prev,
             [contactId]: (prev[contactId] || 0) + 1
           }));
+          // Tarayıcı bildirimi (sekme gizliyken; ayara saygılı)
+          if (settings.dmNotificationsEnabled) {
+            const senderName = dm.senderUsername || dm.SenderUsername || 'Yeni mesaj';
+            notify(`${senderName} (DM)`, dm.content || dm.Content || 'Yeni özel mesaj', { tag: `dm-${contactId}` });
+          }
         }
       }
 
@@ -385,7 +391,7 @@ function App() {
       signalrService.offReceiveDirectMessage(handleReceiveDM);
       signalrService.offUserStatusChanged(handleUserStatusChanged);
     };
-  }, [userId, inDMRoom, roomDMUser]);
+  }, [userId, inDMRoom, roomDMUser, settings.dmNotificationsEnabled]);
 
   const fetchRecentDMs = useCallback(async () => {
     const token = localStorage.getItem('token');

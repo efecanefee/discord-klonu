@@ -20,6 +20,7 @@ import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
 import { applySinkId } from '../utils/audioOutput';
 import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/mentions';
 import MentionAutocomplete from './MentionAutocomplete';
+import { notify } from '../utils/browserNotifications';
 
 interface ChatRoomProps {
     username: string;
@@ -152,7 +153,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const unreadCount = useRef(0);
     const isPageVisible = useRef(true);
     const originalTitle = useRef(document.title);
-    const notificationPermission = useRef<NotificationPermission>('default');
     // Pagination
     const [displayCount, setDisplayCount] = useState(50);
     const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -517,15 +517,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         }
     };
 
-    // Sayfa görünürlüğü + tab title + bildirim izni
+    // Sayfa görünürlüğü + tab title (bildirim izni ayarlardaki toggle'dan istenir)
     useEffect(() => {
-        // Bildirim izni iste
-        if ('Notification' in window) {
-            Notification.requestPermission().then(p => {
-                notificationPermission.current = p;
-            });
-        }
-
         const handleVisibilityChange = () => {
             isPageVisible.current = !document.hidden;
             if (!document.hidden) {
@@ -539,7 +532,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
 
-    // Tab title ve push notification — yeni mesaj gelince
+    // Tab title ve tarayıcı bildirimi — yeni mesaj gelince (sekme gizliyken)
     useEffect(() => {
         if (messages.length === 0) return;
         const lastMsg = messages[messages.length - 1];
@@ -550,17 +543,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             unreadCount.current += 1;
             document.title = `(${unreadCount.current}) SandalyeciMetin`;
 
-            // Push notification
-            if (notificationPermission.current === 'granted') {
-                new Notification(`${lastMsg.username}`, {
-                    body: lastMsg.text.length > 60 ? lastMsg.text.slice(0, 60) + '...' : lastMsg.text,
-                    icon: '/logo.png',
-                    tag: 'chat-message', // Aynı tag ile gelenleri günceller, spam yapmaz
-                    silent: false,
-                });
+            if (settings.pushNotificationsEnabled) {
+                const mentioned = containsMention(lastMsg.text, username);
+                notify(mentioned ? `${lastMsg.username} seni etiketledi` : lastMsg.username, lastMsg.text, { tag: mentioned ? 'mention' : 'chat-message' });
             }
         }
-    }, [messages, username]);
+    }, [messages, username, settings.pushNotificationsEnabled]);
 
     // Scroll bottom
     useEffect(() => {
