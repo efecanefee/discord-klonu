@@ -631,6 +631,15 @@ namespace DiscordClone.Api.Hubs
             await Clients.User(receiverId).SendAsync("UserTyping", senderId);
         }
 
+        // Oda içi "yazıyor..." — gruptaki diğerlerine kullanıcı adıyla yayınlanır
+        public async Task SendRoomTyping(string roomId)
+        {
+            var username = Context.User?.Identity?.Name;
+            if (string.IsNullOrEmpty(username)) return;
+
+            await Clients.OthersInGroup(roomId).SendAsync("RoomUserTyping", username);
+        }
+
         public async Task MarkMessagesAsRead(string senderId)
         {
             var currentUserId = Context.UserIdentifier;

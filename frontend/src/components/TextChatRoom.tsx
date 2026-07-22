@@ -257,6 +257,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const chatScrollRef = useRef<HTMLDivElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Gelen "yazıyor" sinyalleri: kullanıcı başına 3sn'lik silme zamanlayıcısı
+    const roomTypingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -412,6 +414,25 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
             onLeave();
         };
 
+        // Oda içi "yazıyor..." — 3sn sinyal gelmezse listeden düş
+        const handleRoomUserTyping = (u: string) => {
+            if (!isMounted || u === username) return;
+            setTypingUsers(prev => prev.has(u) ? prev : new Set(prev).add(u));
+            const timeouts = roomTypingTimeoutsRef.current;
+            const existing = timeouts.get(u);
+            if (existing) clearTimeout(existing);
+            timeouts.set(u, setTimeout(() => {
+                timeouts.delete(u);
+                setTypingUsers(prev => {
+                    if (!prev.has(u)) return prev;
+                    const next = new Set(prev);
+                    next.delete(u);
+                    return next;
+                });
+            }, 3000));
+        };
+        signalrService.onRoomUserTyping(handleRoomUserTyping);
+
         signalrService.onForceDisconnect(handleForceDisconnect);
         signalrService.onMemberBanned(handleMemberBanned);
         signalrService.onMemberKicked(handleMemberKicked);
@@ -433,6 +454,10 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         return () => {
             isMounted = false;
             signalrService.leaveRoom(activeChannelKey, username);
+            roomTypingTimeoutsRef.current.forEach(t => clearTimeout(t));
+            roomTypingTimeoutsRef.current.clear();
+            setTypingUsers(new Set());
+            signalrService.offRoomUserTyping(handleRoomUserTyping);
             signalrService.offForceDisconnect(handleForceDisconnect);
             signalrService.offUserJoined(handleUserJoined);
             signalrService.offUserLeft(handleUserLeft);
@@ -512,10 +537,13 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         }
     }, []);
 
-    // Yazıyor bildirimi (yerel)
+    // Yazıyor bildirimi — isTyping true iken tekrar gönderilmez (~2sn throttle)
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setMessageInput(e.target.value);
-        if (!isTyping) setIsTyping(true);
+        if (!isTyping) {
+            setIsTyping(true);
+            signalrService.sendRoomTyping(activeChannelKey).catch(() => { /* bağlantı yoksa sessiz geç */ });
+        }
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
     };

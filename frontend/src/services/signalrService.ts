@@ -323,6 +323,19 @@ class SignalRService {
         }
     }
 
+    // Oda içi yazıyor... bildirimi
+    public onRoomUserTyping(callback: (username: string) => void) {
+        this.connection?.on('RoomUserTyping', callback);
+    }
+    public offRoomUserTyping(callback: (username: string) => void) {
+        this.connection?.off('RoomUserTyping', callback);
+    }
+    public async sendRoomTyping(roomId: string) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            await this.connection.invoke('SendRoomTyping', roomId);
+        }
+    }
+
     // Okundu Bilgisi
     public onMessagesRead(callback: (userId: string) => void) {
         this.connection?.on('MessagesRead', callback);

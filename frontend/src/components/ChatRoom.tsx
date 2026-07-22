@@ -157,6 +157,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Gelen "yazıyor" sinyalleri: kullanıcı başına 3sn'lik silme zamanlayıcısı
+    const roomTypingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -388,6 +390,25 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         };
         if (roomId === 'Ana Salon') signalrService.onSoundPlayed(handleSoundPlayed);
 
+        // Oda içi "yazıyor..." — 3sn sinyal gelmezse listeden düş
+        const handleRoomUserTyping = (u: string) => {
+            if (!isMounted || u === username) return;
+            setTypingUsers(prev => prev.has(u) ? prev : new Set(prev).add(u));
+            const timeouts = roomTypingTimeoutsRef.current;
+            const existing = timeouts.get(u);
+            if (existing) clearTimeout(existing);
+            timeouts.set(u, setTimeout(() => {
+                timeouts.delete(u);
+                setTypingUsers(prev => {
+                    if (!prev.has(u)) return prev;
+                    const next = new Set(prev);
+                    next.delete(u);
+                    return next;
+                });
+            }, 3000));
+        };
+        signalrService.onRoomUserTyping(handleRoomUserTyping);
+
         signalrService.onUserJoined(handleUserJoined);
         signalrService.onUserLeft(handleUserLeft);
         signalrService.onReceiveMessage(handleReceiveMessage);
@@ -406,6 +427,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             isMounted = false;
             signalrService.leaveRoom(roomId, username);
             soundboardAudioRef.current?.pause();
+            roomTypingTimeoutsRef.current.forEach(t => clearTimeout(t));
+            roomTypingTimeoutsRef.current.clear();
+            signalrService.offRoomUserTyping(handleRoomUserTyping);
             signalrService.offSoundPlayed(handleSoundPlayed);
             signalrService.offForceDisconnect(handleForceDisconnect);
             signalrService.offUserJoined(handleUserJoined);
@@ -546,12 +570,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         }
     }, []);
 
-    // Yazıyor bildirimi
+    // Yazıyor bildirimi — isTyping true iken tekrar gönderilmez (~2sn throttle)
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setMessageInput(e.target.value);
         if (!isTyping) {
             setIsTyping(true);
-            // signalrService.sendTyping?.(roomId, username); // SignalR'a typing gönder
+            signalrService.sendRoomTyping(roomId).catch(() => { /* bağlantı yoksa sessiz geç */ });
         }
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 2000);
