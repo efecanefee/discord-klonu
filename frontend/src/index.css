@@ -194,7 +194,7 @@ html.reduce-motion *::after {
 @media (hover: hover) {
   .room-card:hover {
     transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--rc) 30%, transparent);
+    border-color: color-mix(in srgb, var(--rc) 16%, transparent);
     background-color: color-mix(in srgb, var(--rc) 8%, transparent);
     /* Halka golge kartin disina tasar; komsu kartlar sonra boyandigi icin
        isik onlarin arkasinda kaliyordu. Hover'daki karti one al. */
@@ -215,10 +215,17 @@ html.reduce-motion *::after {
   transition: opacity 220ms ease;
 }
 .room-card-glow {
-  background: radial-gradient(circle at 18% 50%, var(--rc-glow) 0%, transparent 62%);
+  /* Kademeli sönümlenen, daha odaklı hüzme: köşelere kadar taşmaz, git gide
+     yumuşayarak kaybolur. */
+  background: radial-gradient(
+    120px circle at 15% 50%,
+    var(--rc-glow) 0%,
+    color-mix(in srgb, var(--rc-glow) 45%, transparent) 38%,
+    transparent 70%
+  );
 }
 .room-card-shadow {
-  box-shadow: 0 6px 18px var(--rc-glow);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--rc-glow) 65%, transparent);
 }
 .room-card:hover .room-card-glow,
 .room-card:hover .room-card-shadow {

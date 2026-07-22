@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Youtube, Users, Volume2 } from 'lucide-react';
+import { X, Play, Youtube, Users } from 'lucide-react';
 import signalrService from '../services/signalrService';
 
 // YouTube IFrame API tipleri (minimal)
@@ -31,17 +31,14 @@ interface YoutubePlayerPanelProps {
   username: string;
 }
 
-type Mode = 'audio' | 'video';
 interface Session {
   videoId: string;
   startedBy: string;
-  mode: Mode;
 }
 
-// Ana Salon'da senkron YouTube oynatıcısı.
-// - "Ses olarak aç": herkes anında dinlemeye başlar (küçük oynatıcı, ses odaklı).
-// - "Video olarak aç": odadakilere izleme partisi DAVETİ gider; sadece "Katıl"
-//   diyenler videoyu birlikte, senkron izler.
+// Ana Salon'da senkron YouTube izleme partisi.
+// "Aç": odadakilere izleme partisi DAVETİ gider; sadece "Katıl" diyenler
+// videoyu birlikte, senkron izler. Başlatan kişi anında katılır.
 // Not: YouTube TOS gereği oynatıcı görünür kalmalı (>=200x200).
 const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, username }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -130,40 +127,29 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
   }, [createPlayer, suppress]);
 
   useEffect(() => {
-    const handleStarted = (videoId: string, by: string, mode: string) => {
-      const m: Mode = mode === 'video' ? 'video' : 'audio';
-      setSession({ videoId, startedBy: by, mode: m });
+    const handleStarted = (videoId: string, by: string) => {
+      setSession({ videoId, startedBy: by });
       setNeedsInteraction(false);
       setError('');
       pendingJoinRef.current = { position: 0, isPlaying: true, receivedAt: Date.now() };
       const iStarted = by === usernameRef.current;
-      if (m === 'video' && !iStarted) {
+      if (iStarted) {
+        // Başlatan kişi → anında katıl
+        autoJoin(videoId, 0, true);
+      } else {
         // İzleme partisi daveti — kullanıcı "Katıl" demeden oynatıcı açılmaz
         setJoined(false);
         destroyPlayer();
-      } else {
-        // Ses (herkes) veya videoyu başlatan kişi → anında katıl
-        autoJoin(videoId, 0, true);
       }
     };
 
-    const handleState = (videoId: string, isPlaying: boolean, position: number, by: string, mode: string) => {
-      // Odaya sonradan girenler için güncel durum
-      const m: Mode = mode === 'video' ? 'video' : 'audio';
-      setSession({ videoId, startedBy: by, mode: m });
+    const handleState = (videoId: string, isPlaying: boolean, position: number, by: string) => {
+      // Odaya sonradan girenler için güncel durum — davet göster, otomatik katılma
+      setSession({ videoId, startedBy: by });
       pendingJoinRef.current = { position, isPlaying, receivedAt: Date.now() };
       setError('');
-      if (m === 'video') {
-        // Devam eden izleme partisi — davet göster, otomatik katılma
-        setJoined(false);
-        destroyPlayer();
-      } else {
-        // Ses — oynatıcıyı kur ama autoplay engeli için tıkla-katıl göster
-        setJoined(true);
-        suppress();
-        createPlayer(videoId, { autoplay: false, startAt: position });
-        setNeedsInteraction(true);
-      }
+      setJoined(false);
+      destroyPlayer();
     };
 
     const handleSync = (action: string, position: number) => {
@@ -228,7 +214,7 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
     pendingJoinRef.current = null;
   };
 
-  const isVideoInvite = session && session.mode === 'video' && !joined;
+  const isVideoInvite = session && !joined;
 
   return (
     <AnimatePresence>
@@ -259,11 +245,11 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
               </div>
             </div>
           ) : (
-            // ===== Oynatıcı (ses veya katılınmış video) =====
+            // ===== Oynatıcı (katılınmış izleme partisi) =====
             <>
               <div className="flex items-center justify-between px-3 py-2 border-b border-border-main">
                 <span className="flex items-center gap-2 text-xs text-text-muted min-w-0">
-                  {session.mode === 'audio' ? <Volume2 size={14} className="text-primary-main shrink-0" /> : <Youtube size={14} className="text-red-500 shrink-0" />}
+                  <Youtube size={14} className="text-red-500 shrink-0" />
                   <span className="truncate">başlatan: <span className="text-text-main font-medium">{session.startedBy}</span></span>
                 </span>
                 <button onClick={handleStop} title="Herkes için durdur" className="p-1.5 text-text-muted hover:text-red-400 rounded-full hover:bg-surface-subtle transition-colors shrink-0">
@@ -280,7 +266,7 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
                     className="absolute inset-2 flex flex-col items-center justify-center gap-2 bg-black/80 text-white rounded-lg hover:bg-black/70 transition-colors"
                   >
                     <span className="p-3 rounded-full bg-primary-main/90"><Play size={20} /></span>
-                    <span className="text-sm font-semibold">{session.mode === 'audio' ? 'Müziğe katılmak için tıkla' : 'İzlemek için tıkla'}</span>
+                    <span className="text-sm font-semibold">İzlemek için tıkla</span>
                   </button>
                 )}
               </div>

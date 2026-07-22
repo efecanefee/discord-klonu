@@ -473,6 +473,30 @@ namespace DiscordClone.Api.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Kullanıcının kendi üyeliğinden çıkması (sunucudan ayrıl). Owner ayrılamaz.
+        /// </summary>
+        [HttpDelete("{id}/leave")]
+        public async Task<IActionResult> LeaveRoom(int id)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+
+            var member = await _db.RoomMembers.FirstOrDefaultAsync(m => m.RoomId == id && m.UserId == CurrentUserId);
+            if (member == null) return NoContent();  // zaten üye değil — idempotent
+
+            if (member.Role == RoomRoles.Owner)
+                return BadRequest("Kurucu sunucudan ayrılamaz; odayı silmelisin.");
+
+            _db.RoomMembers.Remove(member);
+            await _db.SaveChangesAsync();
+
+            var room = await _db.Rooms.FindAsync(id);
+            if (room != null)
+                await _hubContext.Clients.Group(room.Name).SendAsync("MemberKicked", id, CurrentUserId);
+
+            return NoContent();
+        }
+
         public class BanDto { public string? Reason { get; set; } }
 
         /// <summary>

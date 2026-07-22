@@ -99,6 +99,14 @@ export const roomApi = {
     await ok(res);
   },
 
+  async leaveRoom(roomId: number): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/leave`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    await ok(res);
+  },
+
   async kick(roomId: number, userId: string): Promise<void> {
     const res = await fetch(`${API_BASE_URL}/api/rooms/${roomId}/members/${userId}`, {
       method: 'DELETE',

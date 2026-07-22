@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff } from 'lucide-react';
+import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
@@ -112,6 +112,17 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         setPopoverUserKey(null);
         try { await roomApi.ban(roomDbId, uId); }
         catch (e) { alert(e instanceof Error ? e.message : 'İşlem başarısız.'); }
+    };
+    // Sunucudan (üyelikten) ayrıl — "Ayrıl"dan farklı olarak kalıcı üyeliği siler.
+    const handleLeaveServer = async () => {
+        if (!window.confirm(`"${roomInfo?.name || roomId}" sunucusundan ayrılmak istediğine emin misin? Tekrar katılman gerekir.`)) return;
+        try {
+            await roomApi.leaveRoom(roomDbId);
+            signalrService.leaveRoom(roomId, username);
+            onLeave();
+        } catch (e) {
+            alert(e instanceof Error ? e.message : 'Sunucudan ayrılınamadı.');
+        }
     };
 
     // Tek bir üye satırı (çevrimiçi + çevrimdışı gruplarında paylaşılır)
@@ -817,7 +828,15 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             </button>
                         )}
 
-                        {/* Ayrıl */}
+                        {/* Sunucudan Ayrıl — kalıcı üyelikten çıkış (owner hariç, topluluk odaları) */}
+                        {roomDbId > 0 && myRole !== 'owner' && (
+                            <button onClick={handleLeaveServer} title="Sunucudan ayrıl (üyelikten çık)"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border-main hover:border-red-500/30 rounded-xl text-sm font-semibold transition-colors cursor-pointer">
+                                <DoorOpen size={17} /><span className="hidden sm:inline">Sunucudan Ayrıl</span>
+                            </button>
+                        )}
+
+                        {/* Ayrıl (lobiye dön — üyelik korunur) */}
                         <button onClick={onLeave}
                             className="flex items-center gap-2 px-4 py-2.5 bg-bg-base hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border-main hover:border-red-500/30 rounded-xl text-sm font-semibold transition-colors cursor-pointer">
                             <LogOut size={17} /><span className="hidden sm:inline">Ayrıl</span>
