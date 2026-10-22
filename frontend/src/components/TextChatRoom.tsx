@@ -18,6 +18,7 @@ import RoomSettingsModal from './RoomSettingsModal';
 import { renderAvatar } from '../constants/avatars';
 import { roomApi, type RoomMemberDto, type ChannelDto } from '../services/roomApi';
 import { useVoiceChannel } from '../hooks/useVoiceChannel';
+import { useStickToBottom } from '../hooks/useStickToBottom';
 import { roleBadgeEmoji, sortByRole, roleRank, roleLabel } from '../utils/roles';
 import { useSettings } from '../contexts/SettingsContext';
 import { applySinkId } from '../utils/audioOutput';
@@ -278,7 +279,6 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     // Pagination
     const [displayCount, setDisplayCount] = useState(50);
     const chatScrollRef = useRef<HTMLDivElement>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // Gelen "yazıyor" sinyalleri: kullanıcı başına 3sn'lik silme zamanlayıcısı
     const roomTypingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -569,18 +569,6 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         if (!document.hidden) setLastRead(activeChannelKey);
     }, [messages, activeChannelKey]);
 
-    // Scroll bottom
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
-    // Scroll to load more (pagination)
-    const handleChatScroll = useCallback(() => {
-        if (!chatScrollRef.current) return;
-        if (chatScrollRef.current.scrollTop < 60) {
-            setDisplayCount(prev => prev + 30);
-        }
-    }, []);
 
     // Yazıyor bildirimi — isTyping true iken tekrar gönderilmez (~2sn throttle)
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -631,6 +619,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         e.preventDefault();
         if (!messageInput.trim()) return;
         const text = messageInput.trim();
+        // Kendi mesajını gönderen yukarıdaysa da en alta iner
+        scrollToBottom();
 
         const tempId = ++messageIdCounter.current;
         setMessages(prev => [...prev, {
@@ -747,6 +737,15 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         : messages;
 
     const visibleMessages = filteredMessages.slice(-displayCount);
+
+    // Sohbet en son mesajdan açılır ve alttayken altta kalır; üste yaklaşınca eski mesajlar yüklenir
+    const loadOlderMessages = useCallback(() => setDisplayCount(prev => prev + 30), []);
+    const lastVisible = visibleMessages[visibleMessages.length - 1];
+    const { onScroll: handleChatScroll, scrollToBottom } = useStickToBottom(chatScrollRef, {
+        contentKey: `${visibleMessages.length}:${lastVisible?.id}:${lastVisible?.pending}:${displayCount}:${typingUsers.size}`,
+        resetKey: `${activeChannelKey}:${searchQuery.trim() !== ''}`,
+        onReachTop: loadOlderMessages,
+    });
 
     const containerVariants: Variants = {
         hidden: { opacity: 0, y: 10 },
@@ -1304,7 +1303,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
-                                <div ref={messagesEndRef} className="h-2" />
+                                <div className="h-2" />
                             </div>
                         </div>
                     </motion.div>
