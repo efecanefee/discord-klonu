@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { popoverMotion } from '../utils/motion';
 
 const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
     {
@@ -60,10 +61,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect, isOpen, onClos
                     <div className="fixed inset-0 z-40" onClick={onClose} />
 
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                        transition={{ duration: 0.15 }}
+                        {...popoverMotion}
                         className="absolute bottom-full mb-2 left-0 z-50 w-[340px] max-w-[calc(100vw-1.5rem)] rounded-2xl overflow-hidden shadow-2xl"
                         style={{
                             background: 'var(--color-bg-card, #1a2035)',

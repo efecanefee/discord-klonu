@@ -103,7 +103,7 @@ const ActivityFeed = memo(function ActivityFeed({ rooms }: ActivityFeedProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.3, ease: 'easeOut' }}
-      className="relative shrink-0 p-4 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-[18px] overflow-hidden"
+      className="relative shrink-0 p-4 glass-panel overflow-hidden"
     >
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-primary-main/40 to-transparent" />
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { popoverMotion } from '../utils/motion';
 import { MessageSquare, Pencil, Shield, ShieldOff, LogOut, Ban } from 'lucide-react';
 import { renderAvatar } from '../constants/avatars';
 import AvatarLightbox from './AvatarLightbox';
@@ -57,10 +58,7 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: 4 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.15 }}
+      {...popoverMotion}
       onClick={(e) => e.stopPropagation()}
       className="w-56 rounded-2xl overflow-hidden shadow-2xl"
       style={{ background: '#09090b', border: '1px solid #334155' }}

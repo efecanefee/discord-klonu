@@ -5,6 +5,7 @@ import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera,
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { motion, AnimatePresence } from 'framer-motion';
+import { messageMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
 import SoundboardPanel from './SoundboardPanel';
@@ -1565,7 +1566,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 return (
                                                     <React.Fragment key={msg.id}>
                                                     {unreadDivider}
-                                                    <motion.div initial={{ opacity: 0, scale: 0.98, y: 5 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.2 }}
+                                                    <motion.div {...messageMotion}
                                                         className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
                                                         <div className={`flex max-w-[85%] sm:max-w-[75%] gap-3 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                                                             <div className="w-10 h-10 mt-1 rounded-full bg-bg-surface flex flex-shrink-0 items-center justify-center border-2 border-primary-main shadow-[0_0_10px_rgba(var(--accent-rgb),0.2)] overflow-hidden text-xl">

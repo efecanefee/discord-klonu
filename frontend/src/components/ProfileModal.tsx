@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { modalMotion, overlayMotion } from '../utils/motion';
 import { X, Save, User, UserCircle, Upload, Loader2 } from 'lucide-react';
 import { AVATARS, renderAvatar, isCustomAvatar } from '../constants/avatars';
 
@@ -113,20 +114,16 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
+      {isOpen && (
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+        key="ProfileModal"
+        {...overlayMotion}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
+          {...modalMotion}
           className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-bg-surface border border-[#334155] rounded-3xl overflow-y-auto custom-scrollbar shadow-2xl flex flex-col md:flex-row"
         >
           {/* Sol Panel: Form ve Seçim */}
@@ -285,6 +282,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 };

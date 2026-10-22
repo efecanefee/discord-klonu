@@ -78,12 +78,14 @@ const RoomCard = memo(function RoomCard({ room, isOwner, showMeta = false, apiBa
     >
       <div className="room-card-shadow" aria-hidden />
       <div className="room-card-glow" aria-hidden />
+      <div className="room-card-bar" aria-hidden />
 
       <div className="relative flex items-center gap-4 min-w-0">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+        <div className="room-card-icon w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{
-            background: `color-mix(in srgb, ${visuals.color} 10%, transparent)`,
-            border: `1px solid color-mix(in srgb, ${visuals.color} 20%, transparent)`,
+            background: `linear-gradient(135deg, color-mix(in srgb, ${visuals.color} 18%, transparent), color-mix(in srgb, ${visuals.color} 6%, transparent))`,
+            border: `1px solid color-mix(in srgb, ${visuals.color} 26%, transparent)`,
+            boxShadow: `0 6px 16px -6px color-mix(in srgb, ${visuals.color} 45%, transparent)`,
           }}>
           <RoomIcon size={18} style={{ color: visuals.color }} />
         </div>
@@ -94,7 +96,7 @@ const RoomCard = memo(function RoomCard({ room, isOwner, showMeta = false, apiBa
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/70" />
-            <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>{visuals.sub}</span>
+            <span className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>{visuals.sub}</span>
           </div>
           {showMeta && room.createdBy && room.createdBy !== 'system' && (
             <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
