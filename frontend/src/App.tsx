@@ -32,7 +32,7 @@ import FloatingOrbs from './components/FloatingOrbs';
 // render'inda 15 motion.span'in yeniden olusturulmasini engeller.
 const AnimatedTitle = memo(function AnimatedTitle() {
   return (
-    <h1 className="font-display text-[24px] sm:text-[26px] md:text-[30px] font-[800] text-white mb-2 tracking-tight flex justify-center text-shine"
+    <h1 className="font-display text-[24px] sm:text-[26px] md:text-[clamp(18px,2.5vw,30px)] font-[800] whitespace-nowrap text-white mb-2 tracking-tight flex justify-center text-shine"
       style={{ textShadow: '0 0 40px rgba(var(--accent-rgb),0.35)' }}>
       {'SandalyeciMetin'.split('').map((char, index) => (
         <motion.span
@@ -1917,7 +1917,7 @@ function App() {
       )}
 
       {authState === 'rooms' && (
-        <div className="stagger-col hidden md:flex md:flex-col gap-4 md:shrink-0 w-[300px] md:max-h-[calc(100vh-48px)]">
+        <div className="stagger-col hidden md:flex md:flex-col gap-4 md:shrink-0 md:w-[260px] lg:w-[300px] md:max-h-[calc(100vh-40px)] min-h-0">
           {/* Sunucularim: varsayilan kapali — baslik her zaman gorunur, liste
               tiklandiginda acilir ve ancak o zaman yuklenir. */}
           <div className={`glass-panel overflow-hidden flex flex-col p-0 relative ${isServersOpen ? 'flex-1 min-h-0' : 'shrink-0'}`}>
@@ -1932,14 +1932,16 @@ function App() {
             />
           </div>
 
-          {/* Tarih & Saat */}
-          <ClockPanel />
+          {/* Tarih & Saat — kısa pencerelerde yer Notlar'a kalsın diye gizlenir */}
+          <div className="shrink-0 [@media(max-height:760px)]:hidden">
+            <ClockPanel />
+          </div>
 
           {/* Son Aktiviteler — oda kurulma/silinme akışı */}
           <ActivityFeed rooms={rooms} />
 
           {/* Notlar — kısa not ve tarihli oylama akışı; kalan yüksekliği doldurur */}
-          <NotesFeed username={username} userId={userId} className="flex-1 min-h-[300px]" />
+          <NotesFeed username={username} userId={userId} className="flex-1 min-h-[160px]" />
 
           {/* Sağ Alt Bölme — Sosyal İkonlar */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 28 }}

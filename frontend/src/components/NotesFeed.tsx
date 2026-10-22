@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart3, CalendarClock, Check, Loader2, MessageSquareText, Send, SmilePlus, Trash2, X } from 'lucide-react';
 import signalrService, { type ConnectionStatus } from '../services/signalrService';
@@ -166,42 +167,78 @@ const PollBox = ({ post, now, myUsername, onVote }: Pick<PostItemProps, 'post' |
   );
 };
 
+// Hızlı tepki seçici. Panel ve liste overflow ile kırptığı için body'ye
+// portal edilir ve butonun üstüne (sığmazsa altına) fixed konumlanır.
+const PICKER_W = 214;
+const PICKER_H = 80;
+
 const ReactButton = ({ onPick }: { onPick: (emoji: string) => void }) => {
-  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const place = useCallback(() => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return null;
+    const left = Math.min(Math.max(8, r.right - PICKER_W), window.innerWidth - PICKER_W - 8);
+    const above = r.top - PICKER_H - 6;
+    return { top: above >= 8 ? above : r.bottom + 6, left };
+  }, []);
+
+  const toggle = () => setPos(p => (p ? null : place()));
+
+  // Liste kayarsa ya da pencere boyutu değişirse seçici butonu takip etsin
+  const open = pos !== null;
+  useEffect(() => {
+    if (!open) return;
+    const follow = () => setPos(place());
+    window.addEventListener('resize', follow);
+    window.addEventListener('scroll', follow, true);
+    return () => {
+      window.removeEventListener('resize', follow);
+      window.removeEventListener('scroll', follow, true);
+    };
+  }, [open, place]);
+
   return (
-    <div className="relative">
+    <>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={toggle}
         title="Tepki ekle"
-        className="flex h-6 w-6 items-center justify-center rounded-full text-white/35 transition-colors hover:bg-white/10 hover:text-white/80 cursor-pointer"
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors cursor-pointer ${
+          pos ? 'bg-white/10 text-white/80' : 'text-white/35 hover:bg-white/10 hover:text-white/80'
+        }`}
       >
         <SmilePlus size={14} />
       </button>
-      <AnimatePresence>
-        {open && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-            <motion.div
-              {...popoverMotion}
-              className="absolute bottom-full right-0 z-50 mb-1.5 grid grid-cols-6 gap-0.5 rounded-2xl border border-white/10 p-1.5 shadow-2xl"
-              style={{ background: 'var(--color-bg-card, #1a2035)' }}
-            >
-              {QUICK_EMOJIS.map(e => (
-                <button
-                  key={e}
-                  type="button"
-                  onClick={() => { onPick(e); setOpen(false); }}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-[18px] transition-transform hover:bg-white/10 active:scale-90 cursor-pointer"
-                >
-                  {e}
-                </button>
-              ))}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
+      {createPortal(
+        <AnimatePresence>
+          {pos && (
+            <>
+              <div className="fixed inset-0 z-[90]" onClick={() => setPos(null)} />
+              <motion.div
+                {...popoverMotion}
+                className="fixed z-[100] grid grid-cols-6 gap-0.5 rounded-2xl border border-white/10 p-1.5 shadow-2xl"
+                style={{ top: pos.top, left: pos.left, width: PICKER_W, background: 'var(--color-bg-card, #181b27)' }}
+              >
+                {QUICK_EMOJIS.map(e => (
+                  <button
+                    key={e}
+                    type="button"
+                    onClick={() => { onPick(e); setPos(null); }}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-[18px] leading-none transition-transform hover:bg-white/10 active:scale-90 cursor-pointer"
+                  >
+                    {e}
+                  </button>
+                ))}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
   );
 };
 
@@ -233,11 +270,13 @@ const PostItem = memo(function PostItem({ post, now, myUsername, isMine, onVote,
 
         {isPoll && <PollBox post={post} now={now} myUsername={myUsername} onVote={onVote} />}
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <ReactionChips reactions={post.reactions} myUsername={myUsername} onToggle={e => onReact(post.id, e)} />
-          <div className={post.reactions.length > 0 ? 'mt-1' : ''}>
-            <ReactButton onPick={e => onReact(post.id, e)} />
-          </div>
+        <div className="mt-1.5 flex items-start gap-1">
+          {post.reactions.length > 0 && (
+            <div className="min-w-0 [&>div]:mt-0">
+              <ReactionChips reactions={post.reactions} myUsername={myUsername} onToggle={e => onReact(post.id, e)} />
+            </div>
+          )}
+          <ReactButton onPick={e => onReact(post.id, e)} />
         </div>
       </div>
 
@@ -511,9 +550,8 @@ const NotesFeed = memo(function NotesFeed({ username, userId, className = '' }: 
         )}
       </div>
 
-      <Composer onPosted={upsert} />
-
-      <div className="-mx-1 mt-2 min-h-0 flex-1 overflow-y-auto custom-scrollbar px-1">
+      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto custom-scrollbar px-1">
+        <div className="mb-2"><Composer onPosted={upsert} /></div>
         {loading ? (
           <div className="flex justify-center py-6 text-white/30"><Loader2 size={16} className="animate-spin" /></div>
         ) : loadError ? (
