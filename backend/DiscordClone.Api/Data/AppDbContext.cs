@@ -19,6 +19,9 @@ namespace DiscordClone.Api.Data
         public DbSet<SoundFavorite> SoundFavorites { get; set; }
         public DbSet<MessageReaction> MessageReactions { get; set; }
         public DbSet<PushSubscriptionEntry> PushSubscriptions { get; set; }
+        public DbSet<FeedPost> FeedPosts { get; set; }
+        public DbSet<FeedPollVote> FeedPollVotes { get; set; }
+        public DbSet<FeedReaction> FeedReactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -289,6 +292,35 @@ namespace DiscordClone.Api.Data
                 .Property(r => r.CreatedAt).HasColumnName("created_at");
             modelBuilder.Entity<MessageReaction>()
                 .HasIndex(r => new { r.MessageId, r.UserId, r.Emoji }).IsUnique();
+
+            // Ana ekran not akışı
+            modelBuilder.Entity<FeedPost>().ToTable("feed_posts");
+            modelBuilder.Entity<FeedPost>().Property(p => p.Id).HasColumnName("id");
+            modelBuilder.Entity<FeedPost>().Property(p => p.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<FeedPost>().Property(p => p.Username).HasColumnName("username");
+            modelBuilder.Entity<FeedPost>().Property(p => p.Kind).HasColumnName("kind");
+            modelBuilder.Entity<FeedPost>().Property(p => p.Text).HasColumnName("text");
+            modelBuilder.Entity<FeedPost>().Property(p => p.EventAt).HasColumnName("event_at");
+            modelBuilder.Entity<FeedPost>().Property(p => p.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<FeedPost>().Property(p => p.Reminded).HasColumnName("reminded");
+
+            modelBuilder.Entity<FeedPollVote>().ToTable("feed_poll_votes");
+            modelBuilder.Entity<FeedPollVote>().Property(v => v.Id).HasColumnName("id");
+            modelBuilder.Entity<FeedPollVote>().Property(v => v.PostId).HasColumnName("post_id");
+            modelBuilder.Entity<FeedPollVote>().Property(v => v.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<FeedPollVote>().Property(v => v.Username).HasColumnName("username");
+            modelBuilder.Entity<FeedPollVote>().Property(v => v.Choice).HasColumnName("choice");
+            modelBuilder.Entity<FeedPollVote>().Property(v => v.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<FeedPollVote>().HasIndex(v => new { v.PostId, v.UserId }).IsUnique();
+
+            modelBuilder.Entity<FeedReaction>().ToTable("feed_reactions");
+            modelBuilder.Entity<FeedReaction>().Property(r => r.Id).HasColumnName("id");
+            modelBuilder.Entity<FeedReaction>().Property(r => r.PostId).HasColumnName("post_id");
+            modelBuilder.Entity<FeedReaction>().Property(r => r.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<FeedReaction>().Property(r => r.Username).HasColumnName("username");
+            modelBuilder.Entity<FeedReaction>().Property(r => r.Emoji).HasColumnName("emoji");
+            modelBuilder.Entity<FeedReaction>().Property(r => r.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<FeedReaction>().HasIndex(r => new { r.PostId, r.UserId, r.Emoji }).IsUnique();
         }
     }
 }

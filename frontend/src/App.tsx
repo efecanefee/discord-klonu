@@ -23,6 +23,7 @@ import signalrService from './services/signalrService';
 import RoomCard from './components/RoomCard';
 import ClockPanel from './components/ClockPanel';
 import ActivityFeed from './components/ActivityFeed';
+import NotesFeed from './components/NotesFeed';
 import VoiceConnectedPill from './components/VoiceConnectedPill';
 import MobileBottomNav from './components/MobileBottomNav';
 import FloatingOrbs from './components/FloatingOrbs';
@@ -1916,7 +1917,7 @@ function App() {
       )}
 
       {authState === 'rooms' && (
-        <div className="stagger-col hidden md:flex md:flex-col gap-4 md:shrink-0 w-[280px]">
+        <div className="stagger-col hidden md:flex md:flex-col gap-4 md:shrink-0 w-[300px] md:max-h-[calc(100vh-48px)]">
           {/* Sunucularim: varsayilan kapali — baslik her zaman gorunur, liste
               tiklandiginda acilir ve ancak o zaman yuklenir. */}
           <div className={`glass-panel overflow-hidden flex flex-col p-0 relative ${isServersOpen ? 'flex-1 min-h-0' : 'shrink-0'}`}>
@@ -1936,6 +1937,9 @@ function App() {
 
           {/* Son Aktiviteler — oda kurulma/silinme akışı */}
           <ActivityFeed rooms={rooms} />
+
+          {/* Notlar — kısa not ve tarihli oylama akışı; kalan yüksekliği doldurur */}
+          <NotesFeed username={username} userId={userId} className="flex-1 min-h-[300px]" />
 
           {/* Sağ Alt Bölme — Sosyal İkonlar */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 28 }}
@@ -1959,6 +1963,12 @@ function App() {
       </div>
 
       {/* Removed external MADE BY EFECAN */}
+      {/* Notlar (yalnızca mobil) — oda listesinin altında, sosyal ikonların üstünde */}
+      {authState === 'rooms' && (
+        <div className="md:hidden relative z-10 w-full max-w-[400px] mt-4">
+          <NotesFeed username={username} userId={userId} className="max-h-[75vh]" />
+        </div>
+      )}
       {/* Sosyal Medya İkonları (yalnızca mobil) — sabit değil, içerik akışında en altta */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.3 }}
         className="md:hidden flex flex-row justify-center gap-3 mt-4 mb-2 w-full">

@@ -1,4 +1,5 @@
 import * as signalR from '@microsoft/signalr';
+import type { FeedPostDto, FeedReactionGroup, FeedVotes } from './feedApi';
 
 // Hub baglanti durumu — UI'daki "baglanti koptu" uyarisi bunu dinler.
 export type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected';
@@ -446,6 +447,32 @@ class SignalRService {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             await this.connection.invoke('SendUserTyping', receiverId);
         }
+    }
+
+    // Ana ekran not akışı — gönderi/oy/tepki değişiklikleri herkese yayınlanır
+    public onFeedPostCreated(callback: (post: FeedPostDto) => void) {
+        this.connection?.on('FeedPostCreated', callback);
+    }
+    public offFeedPostCreated(callback: (post: FeedPostDto) => void) {
+        this.connection?.off('FeedPostCreated', callback);
+    }
+    public onFeedPostDeleted(callback: (postId: number) => void) {
+        this.connection?.on('FeedPostDeleted', callback);
+    }
+    public offFeedPostDeleted(callback: (postId: number) => void) {
+        this.connection?.off('FeedPostDeleted', callback);
+    }
+    public onFeedVotesUpdated(callback: (postId: number, votes: FeedVotes) => void) {
+        this.connection?.on('FeedVotesUpdated', callback);
+    }
+    public offFeedVotesUpdated(callback: (postId: number, votes: FeedVotes) => void) {
+        this.connection?.off('FeedVotesUpdated', callback);
+    }
+    public onFeedReactionUpdated(callback: (postId: number, reactions: FeedReactionGroup[]) => void) {
+        this.connection?.on('FeedReactionUpdated', callback);
+    }
+    public offFeedReactionUpdated(callback: (postId: number, reactions: FeedReactionGroup[]) => void) {
+        this.connection?.off('FeedReactionUpdated', callback);
     }
 
     // Mesaj tepkileri (emoji reaction)
