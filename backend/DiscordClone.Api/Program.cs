@@ -17,16 +17,32 @@ builder.Services.AddControllers(); // REST API Controller'larını ekliyoruz (Au
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient(); // Dosya yüklemede Supabase Storage'a istek için
 
-// Email & Resend
+// Email & Resend — anahtar repoda tutulmaz, ortam degiskeninden gelir (Resend__ApiKey)
+var resendApiKey = builder.Configuration["Resend:ApiKey"];
+if (string.IsNullOrWhiteSpace(resendApiKey))
+    Console.WriteLine("[Startup] UYARI: Resend__ApiKey tanimli degil, e-posta gonderilemeyecek.");
 builder.Services.AddResend(options =>
 {
-    options.ApiToken = builder.Configuration["Resend:ApiKey"] ?? "re_fallback";
+    options.ApiToken = string.IsNullOrWhiteSpace(resendApiKey) ? "re_missing" : resendApiKey;
 });
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IRoomAuthorizationService, RoomAuthorizationService>();
 
 // JWT Kimlik Doğrulama Konfigürasyonu
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKey123!_DiscordClone_UpdatedForForceLogout_2026";
+// Anahtar ortam degiskeninden gelir (Jwt__Key). Koddaki sabit bir anahtar herkesin
+// token uretebilmesi demek; production'da anahtar yoksa uygulama hic acilmaz.
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    if (!builder.Environment.IsDevelopment())
+        throw new Exception("Jwt__Key environment variable eksik!");
+    // Gelistirmede her acilista rastgele anahtar — eski tokenlar gecersiz olur, sorun degil
+    jwtKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
+}
+if (Encoding.ASCII.GetByteCount(jwtKey) < 32)
+    throw new Exception("Jwt__Key en az 32 karakter olmali!");
+// AuthController token uretirken ayni anahtari buradan okur
+builder.Configuration["Jwt:Key"] = jwtKey;
 var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
@@ -342,29 +358,5 @@ app.MapGet("/api/rooms/{roomId}/users", (string roomId) =>
    .RequireCors("AllowFrontend");
 
 app.MapHub<ChatAndSignalingHub>("/hub/chat");
-
-app.MapGet("/api/test-db", async (AppDbContext db) =>
-{
-    try
-    {
-        var msg = new DiscordClone.Api.Models.ChatMessage
-        {
-            RoomId = "test_room",
-            UserId = "test_user",
-            Username = "test_user",
-            AvatarId = "default",
-            Text = "test message",
-            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            IsDeleted = false
-        };
-        db.Messages.Add(msg);
-        await db.SaveChangesAsync();
-        return Microsoft.AspNetCore.Http.Results.Ok("Success! Message ID: " + msg.Id);
-    }
-    catch (Exception ex)
-    {
-        return Microsoft.AspNetCore.Http.Results.BadRequest(ex.InnerException?.Message ?? ex.Message);
-    }
-});
 
 app.Run();

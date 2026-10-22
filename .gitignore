@@ -7,3 +7,8 @@
 .claude/
 BUGUNUN_PLANI.md
 GELISTIRME_PLANI.md
+
+# Yerel SQLite kalintilari (veri Supabase PostgreSQL de)
+*.db
+*.db-shm
+*.db-wal
