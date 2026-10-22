@@ -25,7 +25,13 @@ builder.Services.AddSignalR(options =>
 builder.Services.AddHttpClient(); // Dosya yüklemede Supabase Storage'a istek için
 
 // Email & Resend — anahtar repoda tutulmaz, ortam degiskeninden gelir (Resend__ApiKey)
-var resendApiKey = builder.Configuration["Resend:ApiKey"];
+// Ortam degiskeni farkli adlarla girilmis olabilir (Render panelinde Jwt__Key yerine
+// JWT_KEY gibi); yaygin adlarin hepsi kabul edilir, ilk dolu olan kullanilir.
+static string? FirstConfigured(IConfiguration config, params string[] keys) =>
+    keys.Select(k => config[k]).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+
+var resendApiKey = FirstConfigured(builder.Configuration,
+    "Resend:ApiKey", "RESEND_API_KEY", "RESEND_APIKEY", "ResendApiKey");
 if (string.IsNullOrWhiteSpace(resendApiKey))
     Console.WriteLine("[Startup] UYARI: Resend__ApiKey tanimli degil, e-posta gonderilemeyecek.");
 builder.Services.AddResend(options =>
@@ -38,11 +44,12 @@ builder.Services.AddScoped<IRoomAuthorizationService, RoomAuthorizationService>(
 // JWT Kimlik Doğrulama Konfigürasyonu
 // Anahtar ortam degiskeninden gelir (Jwt__Key). Koddaki sabit bir anahtar herkesin
 // token uretebilmesi demek; production'da anahtar yoksa uygulama hic acilmaz.
-var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtKey = FirstConfigured(builder.Configuration,
+    "Jwt:Key", "JWT_KEY", "JWT_SECRET", "JWT_SECRET_KEY", "JwtKey", "Jwt:Secret");
 if (string.IsNullOrWhiteSpace(jwtKey))
 {
     if (!builder.Environment.IsDevelopment())
-        throw new Exception("Jwt__Key environment variable eksik!");
+        throw new Exception("Jwt__Key environment variable eksik! (JWT_KEY / JWT_SECRET adlari da kabul edilir)");
     // Gelistirmede her acilista rastgele anahtar — eski tokenlar gecersiz olur, sorun degil
     jwtKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(48));
 }
