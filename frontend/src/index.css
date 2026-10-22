@@ -821,3 +821,15 @@ html.reduce-motion .voice-join-ring { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .voice-join-ring { display: none; }
 }
+
+/* ===== Mobil ===== */
+@media (max-width: 767px) {
+  /* Body kaydirmiyor; kaydirma ana kapsayicida. Arka plan onunla birlikte
+     kayip altta bos kalmasin diye ekrana sabitlenir. */
+  .app-background { position: fixed; }
+
+  /* Giris/kayit ekrani mobilde sade: lav ve kureler yok, yalnizca
+     statik ustten gelen yumusak isik. Masaustu aynen kalir. */
+  .app-background--auth .lava,
+  .app-background--auth .orbs { display: none; }
+}
