@@ -50,6 +50,11 @@ export function useWebRTC() {
 
     const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
     const iceCandidateQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+    // Her peer'dan gelen track'ler — karsi tarafin hangi stream'e ekledigine
+    // bakmadan biz tutariz. Onceden ontrack'teki event.streams[0] haritaya
+    // yaziliyordu; kamera/ekran track'i baska bir stream'le gelince mikrofonlu
+    // stream'in yerini aliyor ve karsi tarafin sesi kesiliyordu.
+    const remoteTracks = useRef<Map<string, Set<MediaStreamTrack>>>(new Map());
     // streamRef = peer'lara giden islenmis stream (gurultu kapisindan gecmis).
     // rawStreamRef = ham mikrofon; yalnizca stop() icin tutulur, yoksa mikrofon
     // isigi sonmez.
@@ -107,41 +112,41 @@ export function useWebRTC() {
         updateSettings({ microphoneId: deviceId });
     }, [updateSettings]);
 
+    // Tüm peer'larla yeniden anlaş (track eklendi/çıkarıldı)
+    const renegotiate = async (pc: RTCPeerConnection, connId: string, label: string) => {
+        try {
+            const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+            await pc.setLocalDescription(offer);
+            signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
+        } catch (e) {
+            console.error(`[WebRTC] ${label} renegotiation hatası:`, e);
+        }
+    };
+
+    // Verilen track'leri gönderen sender'ları kaldır. Sender'ı "ilk video
+    // sender" diye değil track kimliğiyle buluyoruz: kamera ve ekran aynı anda
+    // açıkken kamerayı kapatmak eskiden ekran paylaşımını kesebiliyordu.
+    const stopSending = (tracks: MediaStreamTrack[], signalType: 'camera-stopped' | 'screen-stopped', label: string) => {
+        peerConnections.current.forEach(async (pc, connId) => {
+            const senders = pc.getSenders().filter(s => s.track && tracks.includes(s.track));
+            if (senders.length > 0) {
+                senders.forEach(s => pc.removeTrack(s));
+                await renegotiate(pc, connId, label);
+            }
+            // Karşı tarafa bildir (güvenilir fallback)
+            signalrService.sendSignalToUser(JSON.stringify({ type: signalType }), connId);
+        });
+    };
+
     // Kamera aç/kapat
     const toggleCamera = useCallback(async () => {
         if (isCameraOn) {
-            // Kamerayı kapat
-            videoStreamRef.current?.getTracks().forEach(t => t.stop());
+            const tracks = videoStreamRef.current?.getTracks() ?? [];
+            tracks.forEach(t => t.stop());
             videoStreamRef.current = null;
             setLocalVideoStream(null);
             setIsCameraOn(false);
-
-            // Peer'lardan video track'i kaldır ve renegotiate yap
-            peerConnections.current.forEach(async (pc, connId) => {
-                const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                if (sender) {
-                    pc.removeTrack(sender);
-                    // Renegotiation — karşı taraf stream'i temizlesin
-                    try {
-                        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                        await pc.setLocalDescription(offer);
-                        signalrService.sendSignalToUser(
-                            JSON.stringify({ type: 'offer', sdp: offer }),
-                            connId
-                        );
-                    } catch (e) {
-                        console.error('[WebRTC] Camera stop renegotiation hatası:', e);
-                    }
-                }
-            });
-
-            // Kamera kapandığında karşı tarafa bildir (güvenilir fallback)
-            peerConnections.current.forEach((_, connId) => {
-                signalrService.sendSignalToUser(
-                    JSON.stringify({ type: 'camera-stopped' }),
-                    connId
-                );
-            });
+            stopSending(tracks, 'camera-stopped', 'Camera stop');
         } else {
             try {
                 const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -149,142 +154,79 @@ export function useWebRTC() {
                 setLocalVideoStream(videoStream);
                 setIsCameraOn(true);
 
-                // Peer'lara video track ekle + renegotiation
+                // Peer'lara video track ekle + renegotiation. Mevcut bir video
+                // sender'ı (ekran paylaşımı olabilir) değiştirmiyoruz, ayrı ekliyoruz.
                 const videoTrack = videoStream.getVideoTracks()[0];
                 peerConnections.current.forEach(async (pc, connId) => {
-                    const existingSender = pc.getSenders().find(s => s.track?.kind === 'video');
-                    if (existingSender) {
-                        existingSender.replaceTrack(videoTrack);
-                    } else {
-                        if (streamRef.current) {
-                            pc.addTrack(videoTrack, streamRef.current);
-                        } else {
-                            pc.addTrack(videoTrack, videoStream);
-                        }
-                    }
-                    try {
-                        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                        await pc.setLocalDescription(offer);
-                        signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
-                    } catch (e) {
-                        console.error('[WebRTC] Kamera renegotiation hatası:', e);
-                    }
+                    pc.addTrack(videoTrack, streamRef.current ?? videoStream);
+                    await renegotiate(pc, connId, 'Kamera');
                 });
             } catch (e) {
                 console.error('[WebRTC] Kamera açılamadı:', e);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCameraOn]);
 
     // Ekran paylaşımı aç/kapat
     const toggleScreenShare = useCallback(async () => {
         if (isScreenSharing) {
-            // Ekran paylaşımını durdur
-            screenStreamRef.current?.getTracks().forEach(t => t.stop());
+            const tracks = screenStreamRef.current?.getTracks() ?? [];
+            tracks.forEach(t => t.stop());
             screenStreamRef.current = null;
             setScreenStream(null);
             setIsScreenSharing(false);
-
-            // Karşı tarafa "video bitti" sinyali gönder — boş track yerine null track
-            peerConnections.current.forEach(async (pc, connId) => {
-                const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                if (sender) {
-                    pc.removeTrack(sender);
-                    // Renegotiation — karşı taraf stream'i temizlesin
-                    try {
-                        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                        await pc.setLocalDescription(offer);
-                        signalrService.sendSignalToUser(
-                            JSON.stringify({ type: 'offer', sdp: offer }),
-                            connId
-                        );
-                    } catch (e) {
-                        console.error('[WebRTC] Screen stop renegotiation hatası:', e);
-                    }
-                }
-            });
-
-            // Ekran paylaşımı durduğunda karşı tarafa bildir (güvenilir fallback)
-            peerConnections.current.forEach((_, connId) => {
-                signalrService.sendSignalToUser(
-                    JSON.stringify({ type: 'screen-stopped' }),
-                    connId
-                );
-            });
+            stopSending(tracks, 'screen-stopped', 'Screen stop');
         } else {
             try {
                 const display = await navigator.mediaDevices.getDisplayMedia({
                     // 1080p hedefle (tarayıcı kaynağa göre düşürebilir); 30fps üstü
                     // bant genişliğini boşa harcar, metin netliği çözünürlükten gelir.
                     video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } },
-                    audio: true
+                    // Ekran sesi: yankı/gürültü filtresi müziği ve oyun sesini bozar
+                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
                 });
 
                 // Kullanıcı tarayıcıdan durdurursa — tam cleanup yap (peer connections dahil)
                 display.getVideoTracks()[0].onended = () => {
+                    if (screenStreamRef.current !== display) return;
+                    const tracks = display.getTracks();
+                    tracks.forEach(t => t.stop());
                     screenStreamRef.current = null;
                     setScreenStream(null);
                     setIsScreenSharing(false);
-                    // Peer bağlantılarından video track'i kaldır ve renegotiation yap
-                    peerConnections.current.forEach(async (pc, connId) => {
-                        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                        if (sender) {
-                            pc.removeTrack(sender);
-                            try {
-                                const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                                await pc.setLocalDescription(offer);
-                                signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
-                            } catch (e) {
-                                console.error('[WebRTC] Browser-stop renegotiation hatası:', e);
-                            }
-                        }
-                        signalrService.sendSignalToUser(JSON.stringify({ type: 'screen-stopped' }), connId);
-                    });
+                    stopSending(tracks, 'screen-stopped', 'Browser-stop');
                 };
 
                 screenStreamRef.current = display;
                 setScreenStream(display);
                 setIsScreenSharing(true);
 
-                // Peer'lara ekran track'i ekle/değiştir + renegotiation
                 const screenTrack = display.getVideoTracks()[0];
+                // Ekran sesi yalnızca kullanıcı paylaşım penceresinde "sesi de paylaş"ı
+                // seçtiyse gelir (Chrome: sekme veya tüm ekran). Eskiden hiç gönderilmiyordu.
+                const screenAudioTrack = display.getAudioTracks()[0];
                 // Metin/detay odaklı içerik ipucu: encoder keskinliği önceliklendirir
                 try { screenTrack.contentHint = 'detail'; } catch { /* eski tarayıcı */ }
                 peerConnections.current.forEach(async (pc, connId) => {
-                    const existingSender = pc.getSenders().find(s => s.track?.kind === 'video');
-                    if (existingSender) {
-                        existingSender.replaceTrack(screenTrack);
-                    } else {
-                        if (streamRef.current) {
-                            pc.addTrack(screenTrack, streamRef.current);
-                        } else {
-                            pc.addTrack(screenTrack, display);
-                        }
-                    }
+                    const sender = pc.addTrack(screenTrack, streamRef.current ?? display);
+                    if (screenAudioTrack) pc.addTrack(screenAudioTrack, streamRef.current ?? display);
                     // Kalite: bitrate tavanını yükselt + çözünürlüğü koru (kare hızından feda et).
                     // WebRTC'nin varsayılan ~2.5Mbps tavanı ekran metnini bulanıklaştırıyor.
                     try {
-                        const sender = pc.getSenders().find(s => s.track === screenTrack);
-                        if (sender) {
-                            const params = sender.getParameters();
-                            if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
-                            params.encodings[0].maxBitrate = 5_000_000; // 5 Mbps
-                            params.degradationPreference = 'maintain-resolution';
-                            await sender.setParameters(params);
-                        }
+                        const params = sender.getParameters();
+                        if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+                        params.encodings[0].maxBitrate = 5_000_000; // 5 Mbps
+                        params.degradationPreference = 'maintain-resolution';
+                        await sender.setParameters(params);
                     } catch { /* setParameters desteklenmeyen tarayıcıda varsayılan kalır */ }
-                    try {
-                        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                        await pc.setLocalDescription(offer);
-                        signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
-                    } catch (e) {
-                        console.error('[WebRTC] Ekran renegotiation hatası:', e);
-                    }
+                    await renegotiate(pc, connId, 'Ekran');
                 });
             } catch (e) {
                 console.error('[WebRTC] Ekran paylaşımı başlatılamadı:', e);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isScreenSharing]);
 
     useEffect(() => {
@@ -331,41 +273,40 @@ export function useWebRTC() {
                 }
             };
 
-            pc.ontrack = event => {
-                const [remoteStream] = event.streams;
+            // Peer'in canli track'lerinden yeni bir MediaStream yayinla (yeni nesne
+            // ki React ve <audio>/<video> elemanlari degisikligi gorsun).
+            const publishRemote = () => {
+                const set = remoteTracks.current.get(targetConnectionId);
+                const live = set ? [...set].filter(t => t.readyState === 'live') : [];
                 setRemoteStreams(prev => {
                     const newMap = new Map(prev);
-                    newMap.set(targetConnectionId, remoteStream);
+                    if (live.length > 0) newMap.set(targetConnectionId, new MediaStream(live));
+                    else newMap.delete(targetConnectionId);
                     return newMap;
                 });
+            };
 
-                // Her track ended olunca stream'i güncelle
-                event.track.addEventListener('ended', () => {
-                    setRemoteStreams(prev => {
-                        const newMap = new Map(prev);
-                        const stream = newMap.get(targetConnectionId);
-                        if (stream) {
-                            const liveTracks = stream.getTracks().filter(t => t.readyState === 'live');
-                            if (liveTracks.length === 0) {
-                                // Hiç canlı track kalmadı, stream'i sil
-                                newMap.delete(targetConnectionId);
-                            } else {
-                                // Sadece video track bitti, stream'i güncelle (audio kalsın)
-                                const newStream = new MediaStream(liveTracks);
-                                newMap.set(targetConnectionId, newStream);
-                            }
-                        }
-                        return newMap;
-                    });
-                });
+            pc.ontrack = event => {
+                const track = event.track;
+                let set = remoteTracks.current.get(targetConnectionId);
+                if (!set) { set = new Set(); remoteTracks.current.set(targetConnectionId, set); }
+                set.add(track);
 
-                // Speaking indicator — ses analizi sadece ses track'i için
-                if (event.track.kind === 'audio') {
+                const drop = () => {
+                    if (remoteTracks.current.get(targetConnectionId)?.delete(track)) publishRemote();
+                };
+                track.addEventListener('ended', drop);
+                // Karsi taraf removeTrack + yeniden anlasma yapinca track kendi stream'inden cikar
+                event.streams.forEach(st => st.addEventListener('removetrack', e => { if (e.track === track) drop(); }));
+                publishRemote();
+
+                // Speaking indicator — yalnizca ilk ses track'i (mikrofon) icin; ekran sesi konusma sayilmasin
+                if (track.kind === 'audio' && !analyserRefs.current.has(targetConnectionId)) {
                     try {
                         const audioCtx = new window.AudioContext();
                         // remoteStream yerine sadece bu track'ten oluşan yeni bir stream kullan,
                         // aksi halde stream içinde sessiz video track varsa hata fırlatabilir.
-                        const source = audioCtx.createMediaStreamSource(new MediaStream([event.track]));
+                        const source = audioCtx.createMediaStreamSource(new MediaStream([track]));
                         const analyser = audioCtx.createAnalyser();
                         analyser.fftSize = 512;
                         source.connect(analyser);
@@ -464,6 +405,7 @@ export function useWebRTC() {
                 peerConnections.current.get(connectionId)?.close();
                 peerConnections.current.delete(connectionId);
                 iceCandidateQueues.current.delete(connectionId);
+                remoteTracks.current.delete(connectionId);
                 
                 const analyserData = analyserRefs.current.get(connectionId);
                 if (analyserData) {
@@ -520,21 +462,29 @@ export function useWebRTC() {
                             iceCandidateQueues.current.set(senderConnectionId, queue);
                         }
                     } else if (signalData.type === 'screen-stopped' || signalData.type === 'camera-stopped') {
-                        // Karşı tarafın ekran/kamera paylaşımı durdu, stream'den video track'leri temizle
-                        setRemoteStreams(prev => {
-                            const newMap = new Map(prev);
-                            const stream = newMap.get(senderConnectionId);
-                            if (stream) {
-                                const audioTracks = stream.getAudioTracks().filter(t => t.readyState === 'live');
-                                if (audioTracks.length > 0) {
-                                    // Sadece audio kalsın
-                                    newMap.set(senderConnectionId, new MediaStream(audioTracks));
-                                } else {
-                                    newMap.delete(senderConnectionId);
-                                }
+                        // Yedek temizlik: karşı taraf track'i kaldırınca bizdeki kopyası "muted"
+                        // olur. Yalnızca onları at — ekran kapanırken kamera (ya da tersi) ve
+                        // mikrofon kalsın. Yeniden anlaşma geç gelebilir, bir kez daha bak.
+                        const prune = () => {
+                            const set = remoteTracks.current.get(senderConnectionId);
+                            if (!set) return;
+                            const first = [...set].find(t => t.kind === 'audio');
+                            let changed = false;
+                            set.forEach(t => {
+                                if (t !== first && (t.muted || t.readyState === 'ended')) { set.delete(t); changed = true; }
+                            });
+                            if (changed) {
+                                const live = [...set].filter(t => t.readyState === 'live');
+                                setRemoteStreams(prev => {
+                                    const newMap = new Map(prev);
+                                    if (live.length > 0) newMap.set(senderConnectionId, new MediaStream(live));
+                                    else newMap.delete(senderConnectionId);
+                                    return newMap;
+                                });
                             }
-                            return newMap;
-                        });
+                        };
+                        prune();
+                        setTimeout(prune, 1500);
                     }
                 } catch (e) {
                     console.error(`[WebRTC] Sinyal hatası (${signalData.type}):`, e);
@@ -548,6 +498,7 @@ export function useWebRTC() {
                 peerConnections.current.forEach(pc => pc.close());
                 peerConnections.current.clear();
                 iceCandidateQueues.current.clear();
+                remoteTracks.current.clear();
                 analyserRefs.current.forEach(a => clearInterval(a.interval));
                 analyserRefs.current.clear();
                 setRemoteStreams(new Map());
@@ -605,6 +556,7 @@ export function useWebRTC() {
             screenStreamRef.current?.getTracks().forEach(t => t.stop());
             currentPCs.forEach(pc => pc.close());
             currentPCs.clear();
+            remoteTracks.current.clear();
             setRemoteStreams(new Map());
         };
     }, []);

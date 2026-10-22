@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import signalrService from '../services/signalrService';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2 } from 'lucide-react';
@@ -14,6 +14,7 @@ import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
 import { useSettings } from '../contexts/SettingsContext';
+import { playSelfLeaveSound } from '../utils/sound';
 import { renderAvatar } from '../constants/avatars';
 import { roomApi } from '../services/roomApi';
 import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
@@ -66,12 +67,45 @@ const STATUS_COLORS: Record<UserStatus, string> = {
     music: 'bg-purple-500',
 };
 
-const AudioPlayer: React.FC<{ stream: MediaStream; volume: number; sinkId: string }> = ({ stream, volume, sinkId }) => {
+const TrackAudio: React.FC<{ track: MediaStreamTrack; volume: number; sinkId: string }> = ({ track, volume, sinkId }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
+    const stream = useMemo(() => new MediaStream([track]), [track]);
     useEffect(() => { if (audioRef.current) audioRef.current.srcObject = stream; }, [stream]);
     useEffect(() => { if (audioRef.current) audioRef.current.volume = volume; }, [volume]);
     useEffect(() => { applySinkId(audioRef.current, sinkId); }, [sinkId, stream]);
     return <audio ref={audioRef} autoPlay />;
+};
+
+// Bir kişinin tüm ses track'leri (mikrofon + varsa ekran sesi) — her biri ayrı
+// <audio>'da çalar; tek elemana birden fazla ses track'i verince tarayıcı
+// yalnızca birini çalabiliyor.
+const AudioPlayer: React.FC<{ stream: MediaStream; volume: number; sinkId: string }> = ({ stream, volume, sinkId }) => (
+    <>
+        {stream.getAudioTracks().map(t => <TrackAudio key={t.id} track={t} volume={volume} sinkId={sinkId} />)}
+    </>
+);
+
+// Kişinin her video track'i (kamera ve ekran aynı anda olabilir) ayrı oynatıcıda
+const RemoteVideoTracks: React.FC<{
+    stream: MediaStream;
+    label: string;
+    volume?: number;
+    onVolumeChange?: (v: number) => void;
+}> = ({ stream, label, volume, onVolumeChange }) => {
+    const videoTracks = stream.getVideoTracks();
+    const streams = useMemo(
+        () => videoTracks.map(t => ({ id: t.id, stream: new MediaStream([t]) })),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [videoTracks.map(t => t.id).join(',')]
+    );
+    return (
+        <>
+            {streams.map((v, i) => (
+                <RemoteVideoPlayer key={v.id} stream={v.stream} label={i === 0 ? label : `${label} (${i + 1})`}
+                    volume={volume} onVolumeChange={onVolumeChange} />
+            ))}
+        </>
+    );
 };
 
 const RemoteVideoPlayer: React.FC<{
@@ -545,6 +579,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         return () => {
             isMounted = false;
             signalrService.leaveRoom(roomId, username);
+            // Odadan ayrıldığını duyulur kıl (eskiden sessizce kapanıyordu)
+            playSelfLeaveSound();
             soundboardAudioRef.current?.pause();
             roomTypingTimeoutsRef.current.forEach(t => clearTimeout(t));
             roomTypingTimeoutsRef.current.clear();
@@ -1044,10 +1080,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                 </div>
             )}
             {/* Audio streams */}
-            {Array.from(remoteStreams.entries()).map(([connId, stream], idx) => {
+            {Array.from(remoteStreams.entries()).map(([connId, stream]) => {
                 const userObj = usersInRoom.find(u => u.connectionId === connId);
                 const uName = userObj?.username ?? 'Unknown';
-                return <AudioPlayer key={idx} stream={stream} volume={masterVolume * (userVolumes[uName] ?? 1.0)} sinkId={selectedOutputId} />;
+                return <AudioPlayer key={connId} stream={stream} volume={masterVolume * (userVolumes[uName] ?? 1.0)} sinkId={selectedOutputId} />;
             })}
 
             {/* Senkron YouTube müzik oynatıcısı (yalnızca Ana Salon) */}
@@ -1236,7 +1272,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                         <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
                             <div className="relative flex-1 flex flex-col bg-black/40 rounded-2xl overflow-hidden">
                                 <div className={`flex-1 grid gap-2 p-2 ${(() => {
-                                    const total = (isCameraOn && !isScreenSharing ? 1 : 0) + (isScreenSharing ? 1 : 0) + Array.from(remoteStreams.values()).filter(s => s.getVideoTracks().length > 0).length;
+                                    const total = (isCameraOn && !isScreenSharing ? 1 : 0) + (isScreenSharing ? 1 : 0) + Array.from(remoteStreams.values()).reduce((n, s) => n + s.getVideoTracks().length, 0);
                                     return total <= 1 ? 'grid-cols-1' : total <= 4 ? 'grid-cols-2' : 'grid-cols-3';
                                 })()}`}>
                                     {screenStream && (
@@ -1271,7 +1307,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         const uName = usersInRoom.find(u => u.connectionId === connId)?.username ?? 'Bilinmeyen';
                                         return (
                                             <div key={connId} className="relative">
-                                                <RemoteVideoPlayer
+                                                <RemoteVideoTracks
                                                     stream={stream}
                                                     label={uName}
                                                     volume={userVolumes[uName] ?? 1.0}
@@ -1313,11 +1349,19 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             <div className={`w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-sm flex-shrink-0 ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
                                                 {renderAvatar(u.avatarId || 'default')}
                                             </div>
-                                            <div className="flex flex-col min-w-0">
+                                            <div className="flex flex-col min-w-0 flex-1">
                                                 <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}</span>
                                                 {connectionIssues.has(u.connectionId)
                                                     ? <span title="Ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80">bağlanılamadı</span>
                                                     : mutedUsers[u.connectionId] && <MicOff size={10} className="text-red-400 mt-0.5" />}
+                                                {/* Medya modunda da kişi başı ses ayarı (eskiden yalnızca normal görünümde vardı) */}
+                                                {u.username !== username && (
+                                                    <input type="range" min="0" max="1" step="0.01" value={userVolumes[u.username] ?? 1.0}
+                                                        onChange={e => setUserVolumes(prev => ({ ...prev, [u.username]: parseFloat(e.target.value) }))}
+                                                        title={`${u.username} ses seviyesi`}
+                                                        aria-label={`${u.username} ses seviyesi`}
+                                                        className="mt-1 w-full h-1 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main" />
+                                                )}
                                             </div>
                                         </div>
                                     );
