@@ -15,6 +15,8 @@ namespace DiscordClone.Api.Data
         public DbSet<RoomBan> RoomBans { get; set; }
         public DbSet<Channel> Channels { get; set; }
         public DbSet<UserSound> UserSounds { get; set; }
+        public DbSet<SoundboardSave> SoundboardSaves { get; set; }
+        public DbSet<SoundFavorite> SoundFavorites { get; set; }
         public DbSet<MessageReaction> MessageReactions { get; set; }
         public DbSet<PushSubscriptionEntry> PushSubscriptions { get; set; }
         public DbSet<FeedPost> FeedPosts { get; set; }
@@ -226,6 +228,35 @@ namespace DiscordClone.Api.Data
                 .Property(s => s.Url).HasColumnName("url");
             modelBuilder.Entity<UserSound>()
                 .Property(s => s.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<UserSound>()
+                .Property(s => s.IsPublic).HasColumnName("is_public");
+            modelBuilder.Entity<UserSound>()
+                .Property(s => s.IsDeleted).HasColumnName("is_deleted");
+
+            // Ses Mağazası: kullanıcının soundboard'una eklediği başkalarının sesleri
+            modelBuilder.Entity<SoundboardSave>()
+                .ToTable("soundboard_saves");
+            modelBuilder.Entity<SoundboardSave>()
+                .HasKey(s => new { s.UserId, s.SoundId });
+            modelBuilder.Entity<SoundboardSave>()
+                .Property(s => s.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<SoundboardSave>()
+                .Property(s => s.SoundId).HasColumnName("sound_id");
+            modelBuilder.Entity<SoundboardSave>()
+                .Property(s => s.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<UserSound>()
+                .Property(s => s.PlayCount).HasColumnName("play_count");
+
+            modelBuilder.Entity<SoundFavorite>()
+                .ToTable("sound_favorites");
+            modelBuilder.Entity<SoundFavorite>()
+                .HasKey(f => new { f.UserId, f.SoundId });
+            modelBuilder.Entity<SoundFavorite>()
+                .Property(f => f.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<SoundFavorite>()
+                .Property(f => f.SoundId).HasColumnName("sound_id");
+            modelBuilder.Entity<SoundFavorite>()
+                .Property(f => f.CreatedAt).HasColumnName("created_at");
 
             // Mesaj tepkileri (emoji reaction)
             modelBuilder.Entity<PushSubscriptionEntry>()

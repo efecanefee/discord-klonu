@@ -5,6 +5,7 @@ import { renderAvatar } from '../constants/avatars';
 import signalrService from '../services/signalrService';
 import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
+import { useStickToBottom } from '../hooks/useStickToBottom';
 
 interface DirectMessage {
   id: number;
@@ -49,7 +50,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // "Yeni Mesajlar" ayracının üstünde duracağı mesajın id'si (history'den)
@@ -117,9 +118,12 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
     };
   }, [targetUser.id, currentUser.id]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
+  // Sohbet en son mesajdan açılır, alttayken yeni mesajda altta kalır
+  const lastMessage = messages[messages.length - 1];
+  const { onScroll: handleChatScroll, scrollToBottom } = useStickToBottom(chatScrollRef, {
+    contentKey: `${isLoading}:${messages.length}:${lastMessage?.id}:${isTyping}`,
+    resetKey: targetUser.id,
+  });
 
   const fetchHistory = async () => {
     setIsLoading(true);
@@ -143,10 +147,6 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingMessageId) {
@@ -158,6 +158,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
     }
 
     if (!newMessage.trim()) return;
+    scrollToBottom();
 
     await signalrService.sendDirectMessage(targetUser.id, newMessage.trim(), replyingToMessage?.id);
     setNewMessage('');
@@ -242,7 +243,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+      <div ref={chatScrollRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
         {isLoading ? (
           <div className="flex items-center justify-center h-full text-white/30">Yükleniyor...</div>
         ) : messages.length === 0 ? (
@@ -339,7 +340,6 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             </motion.div>
           )}
         </AnimatePresence>
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}

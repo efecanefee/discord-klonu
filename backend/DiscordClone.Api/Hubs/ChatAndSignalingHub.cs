@@ -50,12 +50,14 @@ namespace DiscordClone.Api.Hubs
         private readonly AppDbContext _db;
         private readonly IRoomAuthorizationService _roomAuth;
         private readonly IPushNotificationService _push;
+        private readonly IWeeklyStatsService _weeklyStats;
 
-        public ChatAndSignalingHub(AppDbContext db, IRoomAuthorizationService roomAuth, IPushNotificationService push)
+        public ChatAndSignalingHub(AppDbContext db, IRoomAuthorizationService roomAuth, IPushNotificationService push, IWeeklyStatsService weeklyStats)
         {
             _db = db;
             _roomAuth = roomAuth;
             _push = push;
+            _weeklyStats = weeklyStats;
         }
 
         private static readonly Regex MentionRegex = new(@"@([\p{L}\p{N}_.-]+)", RegexOptions.Compiled);
@@ -155,8 +157,9 @@ namespace DiscordClone.Api.Hubs
             // Bağlantı koptuğunda bulunduğu tüm ses kanallarından çıkar
             foreach (var kv in _voiceUsers)
             {
-                if (kv.Value.TryRemove(Context.ConnectionId, out _))
+                if (kv.Value.TryRemove(Context.ConnectionId, out var voiceUser))
                 {
+                    await RecordVoiceTimeAsync(voiceUser);
                     await Clients.Group(kv.Key).SendAsync("VoiceUserLeft", kv.Key, Context.ConnectionId);
                 }
             }
@@ -357,6 +360,8 @@ namespace DiscordClone.Api.Hubs
             if (msg.Id > 0)
                 await Clients.Group(roomId).SendAsync("MessageIdAssigned", timestamp, msg.Id);
 
+            await CountMessageAsync(userId);
+
             await PushMentionsAsync(roomId, userId, username, message);
         }
 
@@ -416,6 +421,8 @@ namespace DiscordClone.Api.Hubs
 
             if (msg.Id > 0)
                 await Clients.Group(roomId).SendAsync("MessageIdAssigned", timestamp, msg.Id);
+
+            await CountMessageAsync(userId);
         }
 
         // ============ SOUNDBOARD ============
@@ -434,6 +441,14 @@ namespace DiscordClone.Api.Hubs
 
             var username = Context.User?.Identity?.Name ?? "";
             await Clients.Group(roomId).SendAsync("SoundPlayed", username, soundUrl, soundName);
+
+            // "En çok çalınanlar" için sayaç; başarısız olsa da ses çalmaya devam eder
+            try
+            {
+                await _db.UserSounds.Where(s => s.Url == soundUrl)
+                    .ExecuteUpdateAsync(u => u.SetProperty(s => s.PlayCount, s => s.PlayCount + 1));
+            }
+            catch { }
         }
 
         // ============ YOUTUBE SENKRON OYNATMA ============
@@ -653,6 +668,55 @@ namespace DiscordClone.Api.Hubs
             public string Username { get; set; } = string.Empty;
             public string AvatarId { get; set; } = "default";
             public string UserId { get; set; } = string.Empty;
+
+            // Haftalık ses süresi: henüz kaydedilmemiş sürenin başlangıcı (istemciye gönderilmez)
+            [System.Text.Json.Serialization.JsonIgnore]
+            public DateTime CountedFrom { get; set; } = DateTime.UtcNow;
+
+            // Sayılmamış süreyi alır ve sayacı şimdiye çeker; periyodik kayıt ile çıkış aynı anı iki kez saymaz.
+            public (DateTime From, DateTime To) TakeUncounted()
+            {
+                lock (this)
+                {
+                    var now = DateTime.UtcNow;
+                    var from = CountedFrom;
+                    CountedFrom = now;
+                    return (from, now);
+                }
+            }
+        }
+
+        // Ses kanalındaki herkesin o ana kadarki süresini toplar (VoiceTimeFlushService kullanır)
+        public static List<(string UserId, DateTime From, DateTime To)> TakeActiveVoiceTime()
+        {
+            var result = new List<(string, DateTime, DateTime)>();
+            foreach (var channel in _voiceUsers.Values)
+                foreach (var u in channel.Values)
+                {
+                    if (string.IsNullOrEmpty(u.UserId)) continue;
+                    var (from, to) = u.TakeUncounted();
+                    result.Add((u.UserId, from, to));
+                }
+            return result;
+        }
+
+        // Haftalık rozet sayaçları: yazılamazsa sohbet akışı etkilenmesin
+        private async Task CountMessageAsync(string? userId)
+        {
+            try { await _weeklyStats.CountMessageAsync(userId); } catch { }
+        }
+
+        private async Task CountReactionAsync(string? userId, int delta)
+        {
+            try { await _weeklyStats.CountReactionAsync(userId, delta); } catch { }
+        }
+
+        private async Task RecordVoiceTimeAsync(VoiceUserDto user)
+        {
+            if (string.IsNullOrEmpty(user.UserId)) return;
+            var (from, to) = user.TakeUncounted();
+            try { await _weeklyStats.AddVoiceTimeAsync(user.UserId, from, to); }
+            catch { /* istatistik yazılamazsa ses akışı etkilenmesin */ }
         }
 
         public async Task JoinVoice(string voiceKey)
@@ -666,12 +730,17 @@ namespace DiscordClone.Api.Hubs
             // Aynı kullanıcının eski bağlantısını bu ses kanalından düşür
             foreach (var kvp in users.Where(x => x.Value.UserId == userId && x.Key != Context.ConnectionId).ToList())
             {
-                if (users.TryRemove(kvp.Key, out _))
+                if (users.TryRemove(kvp.Key, out var stale))
+                {
+                    await RecordVoiceTimeAsync(stale);
                     await Clients.Group(voiceKey).SendAsync("VoiceUserLeft", voiceKey, kvp.Key);
+                }
             }
 
             await Groups.AddToGroupAsync(Context.ConnectionId, voiceKey);
             var me = new VoiceUserDto { ConnectionId = Context.ConnectionId, Username = username, AvatarId = avatarId, UserId = userId };
+            if (users.TryGetValue(Context.ConnectionId, out var previous))
+                await RecordVoiceTimeAsync(previous); // aynı bağlantı yeniden katıldı: eski sayaç kaybolmasın
             users[Context.ConnectionId] = me;
 
             // Caller'a mevcut katılımcı listesini gönder (kendisi hariç) → onlara offer açar
@@ -685,8 +754,8 @@ namespace DiscordClone.Api.Hubs
         public async Task LeaveVoice(string voiceKey)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, voiceKey);
-            if (_voiceUsers.TryGetValue(voiceKey, out var users))
-                users.TryRemove(Context.ConnectionId, out _);
+            if (_voiceUsers.TryGetValue(voiceKey, out var users) && users.TryRemove(Context.ConnectionId, out var me))
+                await RecordVoiceTimeAsync(me);
             await Clients.Group(voiceKey).SendAsync("VoiceUserLeft", voiceKey, Context.ConnectionId);
         }
 
@@ -712,6 +781,7 @@ namespace DiscordClone.Api.Hubs
 
             _db.DirectMessages.Add(directMessage);
             await _db.SaveChangesAsync();
+            await CountMessageAsync(senderId);
 
             var dmData = new {
                 id = directMessage.Id,
@@ -755,6 +825,7 @@ namespace DiscordClone.Api.Hubs
 
             _db.DirectMessages.Add(directMessage);
             await _db.SaveChangesAsync();
+            await CountMessageAsync(senderId);
 
             var dmData = new {
                 id = directMessage.Id,
@@ -830,6 +901,9 @@ namespace DiscordClone.Api.Hubs
             {
                 _db.MessageReactions.Remove(existing);
                 await _db.SaveChangesAsync();
+                // Aynı hafta içinde geri alınan tepki sayılmaz (aç-kapa ile rozet kasılmasın)
+                if (WeekClock.WeekStartUtc(DateTimeOffset.FromUnixTimeMilliseconds(existing.CreatedAt).UtcDateTime) == WeekClock.CurrentWeekStartUtc())
+                    await CountReactionAsync(userId, -1);
             }
             else
             {
@@ -841,7 +915,12 @@ namespace DiscordClone.Api.Hubs
                     Emoji = emoji
                 });
                 // Unique index yarışında (çift tık) sessizce yut — set zaten doğru
-                try { await _db.SaveChangesAsync(); } catch (DbUpdateException) { }
+                try
+                {
+                    await _db.SaveChangesAsync();
+                    await CountReactionAsync(userId, 1);
+                }
+                catch (DbUpdateException) { }
             }
 
             // Mesajın güncel tam reaction seti (idempotent — client state basit kalır)

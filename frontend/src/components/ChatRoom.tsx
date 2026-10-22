@@ -9,6 +9,7 @@ import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2, Pin } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
+import { useStickToBottom } from '../hooks/useStickToBottom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
@@ -257,7 +258,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // Pagination
     const [displayCount, setDisplayCount] = useState(50);
     const chatScrollRef = useRef<HTMLDivElement>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // Gelen "yazıyor" sinyalleri: kullanıcı başına 3sn'lik silme zamanlayıcısı
@@ -717,18 +717,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         if (!document.hidden) setLastRead(roomId);
     }, [messages, roomId]);
 
-    // Scroll bottom
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
-    // Scroll to load more (pagination)
-    const handleChatScroll = useCallback(() => {
-        if (!chatScrollRef.current) return;
-        if (chatScrollRef.current.scrollTop < 60) {
-            setDisplayCount(prev => prev + 30);
-        }
-    }, []);
 
     // Yazıyor bildirimi — isTyping true iken tekrar gönderilmez (~2sn throttle)
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -773,6 +761,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         e.preventDefault();
         if (!messageInput.trim()) return;
         const text = messageInput.trim();
+        // Kendi mesajını gönderen yukarıdaysa da en alta iner
+        scrollToBottom();
 
         // Anında ekrana yaz (optimistic)
         const tempId = ++messageIdCounter.current;
@@ -930,11 +920,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const hasRemoteVideo = Array.from(remoteStreams.values()).some(s => s.getVideoTracks().length > 0);
     const isMediaActive = isCameraOn || isScreenSharing || hasRemoteVideo;
 
-    // Medya moduna girip çıkınca sohbet paneli farklı ağaçta yeniden mount olur
-    // ve kaydırma en üste (en eskiye) düşer — en altta (en yenide) başlat.
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-    }, [isMediaActive]);
 
     // Mesaj filtresi (search)
     const filteredMessages = searchQuery.trim()
@@ -943,6 +928,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
     // Pagination — sadece son N mesajı göster
     const visibleMessages = filteredMessages.slice(-displayCount);
+
+    // Sohbet en son mesajdan açılır ve alttayken altta kalır; üste yaklaşınca eski mesajlar
+    // yüklenir. Medya moduna girip çıkınca sohbet paneli farklı ağaçta yeniden mount olur,
+    // o yüzden isMediaActive de sıfırlama anahtarında.
+    const loadOlderMessages = useCallback(() => setDisplayCount(prev => prev + 30), []);
+    const lastVisible = visibleMessages[visibleMessages.length - 1];
+    const { onScroll: handleChatScroll, scrollToBottom } = useStickToBottom(chatScrollRef, {
+        contentKey: `${visibleMessages.length}:${lastVisible?.id}:${lastVisible?.pending}:${displayCount}:${typingUsers.size}`,
+        resetKey: `${roomId}:${isMediaActive}:${searchQuery.trim() !== ''}`,
+        onReachTop: loadOlderMessages,
+    });
 
     const containerVariants: Variants = {
         hidden: { opacity: 0, y: 10 },
@@ -1527,7 +1523,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
-                                    <div ref={messagesEndRef} className="h-1" />
+                                    <div className="h-1" />
                                 </div>
                             </div>
                             <div className="p-3 border-t border-border-main sticky bottom-0 z-20 bg-bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] relative">
@@ -1733,7 +1729,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 </motion.div>
                                             )}
                                         </AnimatePresence>
-                                        <div ref={messagesEndRef} className="h-2" />
+                                        <div className="h-2" />
                                     </div>
                                 </div>
                             </motion.div>
@@ -1895,7 +1891,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
                                 {isAnaSalon && (
                                     <>
-                                        <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard" className={`p-3 transition-colors cursor-pointer ${showSoundboard ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                        <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard & Ses Mağazası" data-open={showSoundboard} className="sb-trigger p-3 transition-colors cursor-pointer">
                                             <Music2 size={20} />
                                         </button>
                                         <button type="button" onClick={() => { setShowYoutubeInput(p => !p); setShowSoundboard(false); setShowEmojiPicker(false); }} title="YouTube'dan müzik aç" className={`p-3 transition-colors cursor-pointer ${showYoutubeInput ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
@@ -1922,7 +1918,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
                             )}
                             {isAnaSalon && (
-                                <div className="absolute bottom-full mb-2 left-0 z-50">
+                                <div className="absolute bottom-full mb-2 left-0 right-0 sm:right-auto z-50">
                                     <SoundboardPanel isOpen={showSoundboard} onClose={() => setShowSoundboard(false)} roomId={roomId} apiBaseUrl={API_BASE_URL} />
                                 </div>
                             )}
