@@ -40,6 +40,9 @@ builder.Services.AddResend(options =>
 });
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IRoomAuthorizationService, RoomAuthorizationService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IWeeklyStatsService, WeeklyStatsService>();
+builder.Services.AddHostedService<VoiceTimeFlushService>();
 
 // Web Push (uygulama kapalıyken bildirim). Anahtar çifti bir kez üretilir:
 //   npx web-push generate-vapid-keys
@@ -384,6 +387,45 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS banner_color text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS accent_color text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio text;"); } catch { }
+
+        // 15. Haftalık rozetler: kullanıcı başına haftalık sayaçlar (oda mesajları 7 günde silindiği için ayrı tutulur)
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS user_weekly_stats (
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    week_start timestamptz NOT NULL,
+                    voice_seconds bigint NOT NULL DEFAULT 0,
+                    messages bigint NOT NULL DEFAULT 0,
+                    reactions bigint NOT NULL DEFAULT 0,
+                    night_messages bigint NOT NULL DEFAULT 0,
+                    CONSTRAINT ""PK_user_weekly_stats"" PRIMARY KEY (user_id, week_start)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_user_weekly_stats_week_start"" ON user_weekly_stats (week_start);"); } catch { }
+        // İlk kurulumda bu haftanın mesaj/tepki sayılarını mevcut kayıtlardan doldur (tablo boşsa bir kez)
+        try {
+            var weekStart = DiscordClone.Api.Services.WeekClock.CurrentWeekStartUtc();
+            var weekStartMs = new DateTimeOffset(weekStart).ToUnixTimeMilliseconds();
+            await db.Database.ExecuteSqlInterpolatedAsync($@"
+                INSERT INTO user_weekly_stats (user_id, week_start, messages, night_messages, reactions)
+                SELECT uid, {weekStart}, SUM(msg), SUM(night), SUM(react) FROM (
+                    SELECT user_id AS uid, 1 AS msg,
+                           CASE WHEN EXTRACT(HOUR FROM (to_timestamp(timestamp / 1000.0) AT TIME ZONE 'Europe/Istanbul')) < 5 THEN 1 ELSE 0 END AS night,
+                           0 AS react
+                    FROM messages WHERE user_id IS NOT NULL AND NOT is_deleted AND timestamp >= {weekStartMs}
+                    UNION ALL
+                    SELECT sender_id, 1,
+                           CASE WHEN EXTRACT(HOUR FROM (created_at AT TIME ZONE 'Europe/Istanbul')) < 5 THEN 1 ELSE 0 END,
+                           0
+                    FROM direct_messages WHERE NOT is_deleted AND created_at >= {weekStart}
+                    UNION ALL
+                    SELECT user_id, 0, 0, 1 FROM message_reactions WHERE created_at >= {weekStartMs}
+                ) t
+                WHERE uid IN (SELECT id FROM users)
+                  AND NOT EXISTS (SELECT 1 FROM user_weekly_stats)
+                GROUP BY uid;");
+        } catch { }
 
     }
     catch (Exception ex)

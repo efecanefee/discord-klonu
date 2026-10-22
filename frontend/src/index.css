@@ -822,6 +822,24 @@ html.reduce-motion .voice-join-ring { display: none; }
   .voice-join-ring { display: none; }
 }
 
+/* ===== Haftalık rozetler: kazanılmış çipte ara sıra geçen ışık ===== */
+@keyframes badge-shine {
+  0%, 70% { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+.badge-shine {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: badge-shine 4.5s var(--ease-out-expo) infinite;
+  pointer-events: none;
+}
+html.reduce-motion .badge-shine { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .badge-shine { display: none; }
+}
+
 /* ===== Mobil ===== */
 @media (max-width: 767px) {
   /* Body kaydirmiyor; kaydirma ana kapsayicida. Arka plan onunla birlikte

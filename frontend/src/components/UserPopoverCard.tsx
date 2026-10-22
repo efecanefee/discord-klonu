@@ -6,6 +6,7 @@ import { useUserProfile, bannerBackground } from '../utils/userProfile';
 import { parseGameStatus } from '../utils/activity';
 import { renderAvatar } from '../constants/avatars';
 import AvatarLightbox from './AvatarLightbox';
+import WeeklyBadges from './WeeklyBadges';
 
 export interface PopoverUser {
   userId?: string;
@@ -108,6 +109,8 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
             )}
           </div>
         )}
+
+        <WeeklyBadges userId={user.userId} />
 
         {profile?.bio && (
           <div className="mt-2.5">
