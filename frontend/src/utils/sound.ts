@@ -61,3 +61,6 @@ export const playConnectionLostSound = () => playTones([[880, 0], [660, 0.2], [4
 
 // Baglanti geri geldi — cikan iki ton
 export const playConnectionRestoredSound = () => playTones([[523, 0], [784, 0.15]], 0.18, 0.3);
+
+// Sesli sohbetten kendin ayrildin — yumusak, inen iki ton
+export const playSelfLeaveSound = () => playTones([[660, 0], [440, 0.12]], 0.2, 0.3);

@@ -3,7 +3,7 @@ import signalrService, { type VoiceUser } from '../services/signalrService';
 import { useSettings } from '../contexts/SettingsContext';
 import { getRtcConfig } from '../config/webrtc';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
-import { playConnectionLostSound } from '../utils/sound';
+import { playConnectionLostSound, playSelfLeaveSound } from '../utils/sound';
 
 // Kopan bir peer icin ust uste en fazla kac ICE restart denenir
 const MAX_ICE_RESTARTS = 3;
@@ -212,6 +212,7 @@ export function useVoiceChannel() {
         if (!key) return;
         signalrService.leaveVoice(key);
         teardown();
+        playSelfLeaveSound();
         activeKeyRef.current = null;
         selfRef.current = null;
         setActiveVoiceKey(null);
@@ -383,7 +384,7 @@ export function useVoiceChannel() {
     }, [connectionIssues]);
 
     // Bileşen unmount olursa ses kanalından çık
-    useEffect(() => () => { if (activeKeyRef.current) { signalrService.leaveVoice(activeKeyRef.current); teardown(); } }, [teardown]);
+    useEffect(() => () => { if (activeKeyRef.current) { signalrService.leaveVoice(activeKeyRef.current); teardown(); playSelfLeaveSound(); } }, [teardown]);
 
     return { activeVoiceKey, participants, remoteStreams, speakingConnIds, connectionIssues, isMuted, toggleMute, joinVoice, leaveVoice };
 }
