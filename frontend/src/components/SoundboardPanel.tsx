@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Upload, Trash2, Volume2, VolumeX, Loader2, Star, Store, LayoutGrid,
-  Search, Plus, Check, Play, Square, Globe, Lock, Flame, Sparkles, TrendingUp,
+  Search, Plus, Check, Play, Square, Globe, Lock, Flame, Sparkles, TrendingUp, FileAudio,
 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import signalrService from '../services/signalrService';
@@ -41,6 +41,8 @@ type StoreSort = 'new' | 'popular' | 'played';
 
 const MAX_OWN = 10;
 const MAX_SAVED = 30;
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+const AUDIO_EXT = /\.(mp3|ogg)$/i;
 
 const SORTS: { id: StoreSort; label: string; icon: React.ReactNode }[] = [
   { id: 'new', label: 'Yeni', icon: <Sparkles size={12} /> },
@@ -73,6 +75,12 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
   const [error, setError] = useState('');
   const [cooldown, setCooldown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Bilgisayardan seçilen, henüz yüklenmemiş ses (ad + paylaşım seçimi bekliyor)
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingName, setPendingName] = useState('');
+  const [pendingPublic, setPendingPublic] = useState(true);
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const { settings, updateSettings } = useSettings();
   const soundboardVolume = settings.soundboardVolume;
 
@@ -170,21 +178,46 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
     audio.play().catch(() => setPreviewId(null));
   };
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  // Önizleme için yerel URL; dosya değişince/iptalde serbest bırak
+  useEffect(() => {
+    if (!pendingFile) { setPendingUrl(null); return; }
+    const url = URL.createObjectURL(pendingFile);
+    setPendingUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
+
+  const pickFile = (file: File | undefined) => {
     if (!file) return;
-    if (!/\.(mp3|ogg)$/i.test(file.name)) {
+    if (!AUDIO_EXT.test(file.name)) {
       setError('Sadece MP3 veya OGG yükleyebilirsin.');
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_FILE_BYTES) {
       setError('Ses dosyası 2MB\'ı geçemez.');
       return;
     }
-    const defaultName = file.name.replace(/\.(mp3|ogg)$/i, '').slice(0, 32);
-    const name = (window.prompt('Ses adı:', defaultName) || '').trim().slice(0, 32);
-    if (!name) return;
+    if (ownCount >= MAX_OWN) {
+      setError(`En fazla ${MAX_OWN} ses yükleyebilirsin. Yer açmak için birini sil.`);
+      return;
+    }
+    stopPreview();
+    setError('');
+    setPendingFile(file);
+    setPendingName(file.name.replace(AUDIO_EXT, '').replace(/[_-]+/g, ' ').trim().slice(0, 32));
+    setPendingPublic(true);
+  };
+
+  const cancelPending = () => {
+    if (previewId === -1) stopPreview();
+    setPendingFile(null);
+    setPendingName('');
+  };
+
+  const handleUpload = async () => {
+    const file = pendingFile;
+    const name = pendingName.trim().slice(0, 32);
+    if (!file || !name || isUploading) return;
+    if (previewId === -1) stopPreview();
 
     setIsUploading(true);
     setError('');
@@ -202,11 +235,14 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
       const addRes = await fetch(`${apiBaseUrl}/api/sounds`, {
         method: 'POST',
         headers: authHeaders(true),
-        body: JSON.stringify({ name, url: upData.url, isPublic: true }),
+        body: JSON.stringify({ name, url: upData.url, isPublic: pendingPublic }),
       });
       if (!addRes.ok) throw new Error(await addRes.text());
       const added: Sound = await addRes.json();
-      setSounds(prev => [...prev, added]);
+      setSounds(prev => [...prev.filter(s => s.isFavorite), ...prev.filter(s => !s.isFavorite), added]);
+      setPendingFile(null);
+      setPendingName('');
+      setTab('board');
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : 'Ses yüklenemedi.');
     } finally {
@@ -300,8 +336,17 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.97 }}
           transition={{ duration: 0.15 }}
-          className="sb-panel w-full sm:w-[360px] max-h-[min(460px,70vh)] flex flex-col rounded-2xl overflow-hidden"
+          className={`sb-panel relative w-full sm:w-[360px] max-h-[min(520px,75vh)] flex flex-col rounded-2xl overflow-hidden ${isDragging ? 'ring-2 ring-[var(--sb-to)]' : ''}`}
+          onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setIsDragging(true); } }}
+          onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false); }}
+          onDrop={e => { e.preventDefault(); setIsDragging(false); pickFile(e.dataTransfer.files?.[0]); }}
         >
+          {isDragging && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[rgba(10,11,17,0.85)] text-sm font-semibold">
+              <Upload size={22} className="text-[var(--sb-to)]" />
+              <span className="sb-gradient-text">MP3'ü bırak, soundboard'una ekleyelim</span>
+            </div>
+          )}
           {/* Başlık */}
           <div className="relative px-3 pt-3 pb-2 shrink-0">
             <div className="pointer-events-none absolute inset-0 opacity-25 sb-gradient [mask-image:linear-gradient(to_bottom,black,transparent)]" />
@@ -334,6 +379,61 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
           <div className="px-3 pb-3 overflow-y-auto custom-scrollbar flex-1 min-h-0">
             {error && (
               <div className="mb-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">{error}</div>
+            )}
+
+            {/* Bilgisayardan ses yükleme: önce dosya seç, sonra ad ver ve paylaşımı seç */}
+            {pendingFile ? (
+              <div className="mb-3 p-2.5 rounded-xl sb-pad">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    onClick={() => pendingUrl && togglePreview({ id: -1, url: pendingUrl })}
+                    title={previewId === -1 ? 'Durdur' : 'Dinle (sadece sen duyarsın)'}
+                    aria-label={previewId === -1 ? 'Önizlemeyi durdur' : 'Önizle'}
+                    className="w-8 h-8 shrink-0 rounded-lg sb-gradient text-white flex items-center justify-center active:scale-90 transition-transform"
+                  >
+                    {previewId === -1 ? <Square size={11} fill="currentColor" /> : <Play size={12} fill="currentColor" className="ml-0.5" />}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] text-text-muted truncate flex items-center gap-1"><FileAudio size={11} className="shrink-0" /> {pendingFile.name}</div>
+                    <div className="text-[10px] text-text-muted">{(pendingFile.size / 1024).toFixed(0)} KB</div>
+                  </div>
+                  <button onClick={cancelPending} disabled={isUploading} className="p-1 text-text-muted hover:text-text-main rounded-full disabled:opacity-40" aria-label="İptal">
+                    <X size={14} />
+                  </button>
+                </div>
+                <input
+                  value={pendingName}
+                  onChange={e => setPendingName(e.target.value.slice(0, 32))}
+                  onKeyDown={e => { if (e.key === 'Enter') handleUpload(); }}
+                  placeholder="Ses adı"
+                  maxLength={32}
+                  autoFocus
+                  className="w-full px-3 py-2 mb-2 rounded-lg bg-bg-base border border-border-main text-xs text-text-main placeholder:text-text-muted focus:outline-none focus:border-[var(--sb-from)] transition-colors"
+                />
+                <label className="flex items-center gap-2 mb-2.5 text-[11px] text-text-main cursor-pointer select-none">
+                  <input type="checkbox" checked={pendingPublic} onChange={e => setPendingPublic(e.target.checked)} className="accent-[var(--sb-from)]" />
+                  <Globe size={12} className="text-text-muted" /> Ses Mağazası'nda herkesle paylaş
+                </label>
+                <button
+                  onClick={handleUpload}
+                  disabled={isUploading || !pendingName.trim()}
+                  className="w-full py-2 rounded-lg sb-gradient text-white text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-50"
+                >
+                  {isUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                  {isUploading ? 'Yükleniyor...' : 'Yükle ve soundboard\'uma ekle'}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={ownCount >= MAX_OWN || isLoading}
+                title="MP3 veya OGG, en çok 2MB. Dosyayı panelin üzerine sürükleyip bırakabilirsin."
+                className="mb-3 w-full py-2.5 rounded-xl border border-dashed border-[rgba(var(--sb-rgb),0.6)] bg-[rgba(var(--sb-rgb),0.06)] text-xs font-semibold text-text-main hover:border-[var(--sb-to)] hover:bg-[rgba(var(--sb-to-rgb),0.1)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Upload size={14} className="text-[var(--sb-from)]" />
+                {ownCount >= MAX_OWN ? `Yükleme sınırı doldu (${MAX_OWN}/${MAX_OWN})` : 'Bilgisayarından MP3 yükle'}
+                {ownCount < MAX_OWN && <span className="text-[10px] font-medium text-text-muted">{ownCount}/{MAX_OWN}</span>}
+              </button>
             )}
 
             {tab === 'board' ? (
@@ -403,16 +503,6 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
                         </div>
                       </div>
                     ))}
-                    {ownCount < MAX_OWN && (
-                      <button
-                        onClick={() => !isUploading && fileInputRef.current?.click()}
-                        disabled={isUploading}
-                        className="px-2 py-2.5 rounded-xl border border-dashed border-[rgba(var(--sb-rgb),0.45)] text-text-muted text-xs font-medium hover:text-[var(--sb-to)] hover:border-[var(--sb-to)] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      >
-                        {isUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-                        {isUploading ? 'Yükleniyor...' : 'Ses Yükle'}
-                      </button>
-                    )}
                     <button
                       onClick={() => setTab('store')}
                       className="px-2 py-2.5 rounded-xl border border-dashed border-[rgba(var(--sb-rgb),0.45)] text-text-muted text-xs font-medium hover:text-[var(--sb-to)] hover:border-[var(--sb-to)] transition-all flex items-center justify-center gap-1.5"
@@ -424,7 +514,7 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
 
                 {!isLoading && sounds.length === 0 && (
                   <p className="mt-2 text-[11px] text-text-muted text-center">
-                    Henüz sesin yok. MP3/OGG yükle (en çok 2MB, {MAX_OWN} ses) ya da mağazadan başkalarının seslerini ekle. Bastığında odadaki herkes duyar.
+                    Henüz sesin yok. Yukarıdan bilgisayarından MP3 yükle ya da mağazadan başkalarının seslerini ekle. Bastığında odadaki herkes duyar.
                   </p>
                 )}
                 {!isLoading && sounds.length > 0 && (
@@ -521,7 +611,7 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
             )}
           </div>
 
-          <input type="file" ref={fileInputRef} accept=".mp3,.ogg,audio/mpeg,audio/ogg" className="hidden" onChange={handleFileSelected} />
+          <input type="file" ref={fileInputRef} accept=".mp3,.ogg,audio/mpeg,audio/ogg" className="hidden" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; pickFile(f); }} />
         </motion.div>
       )}
     </AnimatePresence>
