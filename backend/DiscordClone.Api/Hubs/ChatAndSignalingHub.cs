@@ -434,6 +434,14 @@ namespace DiscordClone.Api.Hubs
 
             var username = Context.User?.Identity?.Name ?? "";
             await Clients.Group(roomId).SendAsync("SoundPlayed", username, soundUrl, soundName);
+
+            // "En çok çalınanlar" için sayaç; başarısız olsa da ses çalmaya devam eder
+            try
+            {
+                await _db.UserSounds.Where(s => s.Url == soundUrl)
+                    .ExecuteUpdateAsync(u => u.SetProperty(s => s.PlayCount, s => s.PlayCount + 1));
+            }
+            catch { }
         }
 
         // ============ YOUTUBE SENKRON OYNATMA ============

@@ -1895,7 +1895,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
                                 {isAnaSalon && (
                                     <>
-                                        <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard" className={`p-3 transition-colors cursor-pointer ${showSoundboard ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                        <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard & Ses Mağazası" data-open={showSoundboard} className="sb-trigger p-3 transition-colors cursor-pointer">
                                             <Music2 size={20} />
                                         </button>
                                         <button type="button" onClick={() => { setShowYoutubeInput(p => !p); setShowSoundboard(false); setShowEmojiPicker(false); }} title="YouTube'dan müzik aç" className={`p-3 transition-colors cursor-pointer ${showYoutubeInput ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
@@ -1922,7 +1922,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
                             )}
                             {isAnaSalon && (
-                                <div className="absolute bottom-full mb-2 left-0 z-50">
+                                <div className="absolute bottom-full mb-2 left-0 right-0 sm:right-auto z-50">
                                     <SoundboardPanel isOpen={showSoundboard} onClose={() => setShowSoundboard(false)} roomId={roomId} apiBaseUrl={API_BASE_URL} />
                                 </div>
                             )}
