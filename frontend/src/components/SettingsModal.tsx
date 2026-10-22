@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalMotion, overlayMotion } from '../utils/motion';
 import { X, Mic, Bell, Monitor, CheckCircle2, Info } from 'lucide-react';
+import WebPushToggle from './WebPushToggle';
 import { useSettings, THEMES, ACCENTS } from '../contexts/SettingsContext';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 import KeybindInput from './KeybindInput';
@@ -479,6 +480,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                     </button>
                   )}
                 </div>
+
+                <WebPushToggle />
               </div>
             )}
 

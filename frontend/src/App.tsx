@@ -13,6 +13,7 @@ import { useSettings } from './contexts/SettingsContext';
 import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
 import { notify } from './utils/browserNotifications';
+import { resyncWebPush, disableWebPush } from './utils/webPush';
 import { onUpdateReady, applyUpdate } from './utils/swUpdate';
 import ConnectionStatusBanner from './components/ConnectionStatusBanner';
 import { Lock, Mail, MessageSquare, Plus, User, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
@@ -285,6 +286,7 @@ function App() {
       setMyShowLastSeen(savedShowLastSeen);
       setAuthState('rooms');
       connectSignalR();
+      resyncWebPush();
     }
   }, []);
 
@@ -488,6 +490,7 @@ function App() {
         setMyShowLastSeen(data.showLastSeen !== false);
         setAuthState('rooms');
         connectSignalR();
+        resyncWebPush();
       } else {
         const errText = await res.text();
         setErrorMsg(errText || 'Giriş başarısız, e-posta veya şifre hatalı.');
@@ -612,7 +615,9 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Paylaşılan cihazda eski hesaba push gelmesin (token silinmeden önce)
+    await disableWebPush().catch(() => { });
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('firstName');

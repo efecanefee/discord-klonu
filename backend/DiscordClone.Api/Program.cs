@@ -41,6 +41,23 @@ builder.Services.AddResend(options =>
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IRoomAuthorizationService, RoomAuthorizationService>();
 
+// Web Push (uygulama kapalıyken bildirim). Anahtar çifti bir kez üretilir:
+//   npx web-push generate-vapid-keys
+// ve Render'a Vapid__PublicKey, Vapid__PrivateKey (isteğe bağlı Vapid__Subject) olarak girilir.
+// Anahtarlar yoksa uygulama çalışmaya devam eder, yalnızca push kapalı olur.
+var vapidPublic = FirstConfigured(builder.Configuration, "Vapid:PublicKey", "VAPID_PUBLIC_KEY");
+var vapidPrivate = FirstConfigured(builder.Configuration, "Vapid:PrivateKey", "VAPID_PRIVATE_KEY");
+var vapidSubject = FirstConfigured(builder.Configuration, "Vapid:Subject", "VAPID_SUBJECT") ?? "mailto:admin@example.com";
+WebPush.VapidDetails? vapidDetails = null;
+if (!string.IsNullOrEmpty(vapidPublic) && !string.IsNullOrEmpty(vapidPrivate))
+    vapidDetails = new WebPush.VapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+else
+    Console.WriteLine("[Startup] UYARI: Vapid__PublicKey / Vapid__PrivateKey tanimli degil, push bildirimleri kapali.");
+builder.Services.AddSingleton<IPushNotificationService>(sp => new PushNotificationService(
+    sp.GetRequiredService<IServiceScopeFactory>(),
+    sp.GetRequiredService<ILogger<PushNotificationService>>(),
+    vapidDetails));
+
 // JWT Kimlik Doğrulama Konfigürasyonu
 // Anahtar ortam degiskeninden gelir (Jwt__Key). Koddaki sabit bir anahtar herkesin
 // token uretebilmesi demek; production'da anahtar yoksa uygulama hic acilmaz.
@@ -345,6 +362,23 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at bigint;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_messages_room_id_is_pinned"" ON messages (room_id) WHERE is_pinned;"); } catch { }
+
+        // 14. Web Push abonelikleri
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS push_subscriptions (
+                    id bigserial NOT NULL,
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    endpoint text NOT NULL,
+                    p256dh text NOT NULL,
+                    auth text NOT NULL,
+                    created_at timestamptz NOT NULL DEFAULT now(),
+                    CONSTRAINT ""PK_push_subscriptions"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_push_subscriptions_endpoint"" ON push_subscriptions (endpoint);"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_push_subscriptions_user_id"" ON push_subscriptions (user_id);"); } catch { }
 
         // 13. Profil kişiselleştirme (banner, vurgu rengi, hakkımda)
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS banner_color text;"); } catch { }

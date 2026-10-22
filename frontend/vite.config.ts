@@ -17,6 +17,8 @@ export default defineConfig({
         skipWaiting: false,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // Web Push dinleyicileri (public/push-sw.js) üretilen SW'ye eklenir
+        importScripts: ['push-sw.js'],
       },
       manifest: {
         name: 'SandalyeciMetin',

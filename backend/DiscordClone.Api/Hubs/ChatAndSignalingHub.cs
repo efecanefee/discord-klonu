@@ -6,6 +6,7 @@ using DiscordClone.Api.Models;
 using DiscordClone.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace DiscordClone.Api.Hubs
 {
@@ -48,12 +49,19 @@ namespace DiscordClone.Api.Hubs
 
         private readonly AppDbContext _db;
         private readonly IRoomAuthorizationService _roomAuth;
+        private readonly IPushNotificationService _push;
 
-        public ChatAndSignalingHub(AppDbContext db, IRoomAuthorizationService roomAuth)
+        public ChatAndSignalingHub(AppDbContext db, IRoomAuthorizationService roomAuth, IPushNotificationService push)
         {
             _db = db;
             _roomAuth = roomAuth;
+            _push = push;
         }
+
+        private static readonly Regex MentionRegex = new(@"@([\p{L}\p{N}_.-]+)", RegexOptions.Compiled);
+
+        private static string Preview(string text, int max = 140) =>
+            text.Length <= max ? text : text[..(max - 1)] + "…";
 
         public override async Task OnConnectedAsync()
         {
@@ -348,6 +356,38 @@ namespace DiscordClone.Api.Hubs
             // Gerçek DB ID'sini bildir
             if (msg.Id > 0)
                 await Clients.Group(roomId).SendAsync("MessageIdAssigned", timestamp, msg.Id);
+
+            await PushMentionsAsync(roomId, userId, username, message);
+        }
+
+        // @bahsedilen kullanıcılara push bildirimi. Gizli odalarda yalnızca üyelere gider.
+        private async Task PushMentionsAsync(string roomKey, string? senderId, string senderName, string message)
+        {
+            if (!_push.IsEnabled || !message.Contains('@')) return;
+            var names = MentionRegex.Matches(message).Select(m => m.Groups[1].Value.ToLower()).Distinct().Take(20).ToList();
+            if (names.Count == 0) return;
+
+            var mentioned = await _db.Users
+                .Where(u => names.Contains(u.Username.ToLower()) && u.Id != senderId)
+                .Select(u => u.Id)
+                .ToListAsync();
+            if (mentioned.Count == 0) return;
+
+            var room = await ResolveRoomByMessageKeyAsync(roomKey);
+            if (room != null && room.IsPrivate)
+            {
+                mentioned = await _db.RoomMembers
+                    .Where(m => m.RoomId == room.Id && mentioned.Contains(m.UserId))
+                    .Select(m => m.UserId)
+                    .ToListAsync();
+            }
+
+            var roomName = room?.Name ?? roomKey;
+            _push.SendToUsers(mentioned, new PushPayload(
+                $"{senderName} senden bahsetti · {roomName}",
+                Preview(message),
+                Tag: $"mention-{roomKey}",
+                Url: "/"));
         }
 
         // Dosya/resim mesajı gönder
@@ -689,6 +729,9 @@ namespace DiscordClone.Api.Hubs
 
         // Alıcıya ve gönderene mesajı gönder (Eğer online iseler)
             await Clients.Users(new[] { senderId, receiverId }).SendAsync("ReceiveDirectMessage", dmData);
+
+            _push.SendToUsers(new[] { receiverId }, new PushPayload(
+                sender?.Username ?? "Yeni mesaj", Preview(content), Tag: $"dm-{senderId}", Url: "/"));
         }
 
         // Özel mesajda dosya/görsel gönder
@@ -730,6 +773,9 @@ namespace DiscordClone.Api.Hubs
             };
 
             await Clients.Users(new[] { senderId, receiverId }).SendAsync("ReceiveDirectMessage", dmData);
+
+            _push.SendToUsers(new[] { receiverId }, new PushPayload(
+                sender?.Username ?? "Yeni mesaj", $"📎 {fileName}", Tag: $"dm-{senderId}", Url: "/"));
         }
 
         public async Task EditDirectMessage(long messageId, string newContent)
