@@ -1035,10 +1035,10 @@ function App() {
     {voicePill}
     {swUpdateToast}
     <ConnectionStatusBanner />
-    <div className={`relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto pt-6 ${authState === 'rooms' ? 'pb-28' : 'pb-6'} md:pb-6 px-4 md:px-6 font-sans bg-bg-base`}>
+    <div className={`relative h-dvh md:h-auto min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto pt-[max(1.5rem,env(safe-area-inset-top))] md:pt-6 ${authState === 'rooms' ? 'pb-[calc(7.5rem+env(safe-area-inset-bottom))]' : 'pb-[max(1.5rem,env(safe-area-inset-bottom))]'} md:pb-6 px-4 md:px-6 font-sans bg-bg-base`}>
 
       {/* Arka plan: lav lambasi + suzulen isik kureleri (index.css) */}
-      <div className="app-background">
+      <div className={`app-background ${authState !== 'rooms' ? 'app-background--auth' : ''}`}>
         <div className="lava" aria-hidden>
           <span className="lava-blob" />
           <span className="lava-blob" />
@@ -1354,10 +1354,7 @@ function App() {
       )}
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 flex flex-col max-h-screen md:max-h-[calc(100vh-40px)] glass-panel glass-panel-hero ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
-        style={{
-          padding: authState === 'rooms' ? '36px 32px 24px 32px' : '28px 28px 16px 28px',
-        }}>
+        className={`relative z-10 w-full max-w-[400px] min-w-0 flex flex-col md:max-h-[calc(100vh-40px)] glass-panel glass-panel-hero ${authState === 'rooms' ? 'px-5 pt-7 pb-5 md:px-8 md:pt-9 md:pb-6 md:w-auto md:max-w-none md:flex-1' : 'px-5 pt-6 pb-4 md:px-7 md:pt-7'}`}>
 
         <motion.div variants={itemVariants} className={`text-center ${authState === 'rooms' ? 'mb-7' : 'mb-4'}`}>
           <div className={`relative group inline-block cursor-pointer ${authState === 'rooms' ? 'mb-5' : 'mb-2'}`} onClick={() => setIsMainLogoFlipped(!isMainLogoFlipped)}>
@@ -1839,7 +1836,7 @@ function App() {
                         translateX ile kayar. Unmount/popLayout yok — cikan
                         sayfa akistan kopmadigi icin yerlesim hic bozulmaz,
                         transform animasyonu da tamamen compositor'da. */}
-                    <div ref={roomPagerRef} className="relative flex-1 min-h-0 overflow-hidden">
+                    <div ref={roomPagerRef} className="relative flex-1 min-h-[40dvh] md:min-h-0 overflow-hidden">
                       <motion.div
                         className="flex h-full"
                         initial={false}
