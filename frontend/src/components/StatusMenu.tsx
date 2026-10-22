@@ -2,7 +2,8 @@ import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { popoverMotion } from '../utils/motion';
-import { Circle, Moon, MinusCircle, UserX, MessageSquare, Check, X } from 'lucide-react';
+import { Circle, Moon, MinusCircle, UserX, MessageSquare, Check, X, Gamepad2 } from 'lucide-react';
+import { GAME_PRESETS, gameStatusMessage, parseGameStatus } from '../utils/activity';
 
 interface StatusMenuProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ const MENU_WIDTH = 288; // w-72
 export default function StatusMenu({ isOpen, onClose, currentStatus, currentMessage, onUpdateStatus, buttonRef }: StatusMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [isEditingMessage, setIsEditingMessage] = useState(false);
+  const [isPickingGame, setIsPickingGame] = useState(false);
+  const [gameInput, setGameInput] = useState('');
   const [tempMessage, setTempMessage] = useState(currentMessage);
   // Tetikleyici buton sayfanın herhangi bir yerinde olabilir (bu uygulamada
   // profil çipi kenar çubuğunun ÜSTÜNDE); sabit "bottom-[80px]" varsayımı
@@ -58,6 +61,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
       ) {
         onClose();
         setIsEditingMessage(false);
+        setIsPickingGame(false);
       }
     };
     if (isOpen) {
@@ -78,6 +82,16 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
   const handleStatusSelect = (statusId: string) => {
     onUpdateStatus(statusId, currentMessage);
     onClose();
+  };
+
+  const currentGame = parseGameStatus(currentMessage);
+
+  const handleSetGame = (game: string) => {
+    const name = game.trim();
+    if (!name) return;
+    onUpdateStatus(currentStatus, gameStatusMessage(name));
+    setIsPickingGame(false);
+    setGameInput('');
   };
 
   const handleSaveMessage = () => {
@@ -131,6 +145,54 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
               <span className="text-sm text-white/80 group-hover:text-white truncate flex-1">
                 {currentMessage || "Özel durum belirle"}
               </span>
+            </button>
+          )}
+        </div>
+
+        {/* Oyunda — özel durum mesajını "🎮 X oynuyor" olarak ayarlar */}
+        <div className="mb-2 px-2">
+          {isPickingGame ? (
+            <div className="flex flex-col gap-2 p-2 rounded-lg bg-white/[0.03] border border-white/5">
+              <div className="flex flex-wrap gap-1.5">
+                {GAME_PRESETS.map(g => (
+                  <button key={g} onClick={() => handleSetGame(g)}
+                    className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 hover:bg-primary-main/25 text-white/80 hover:text-white border border-white/10 transition-colors">
+                    {g}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  autoFocus
+                  value={gameInput}
+                  maxLength={40}
+                  onChange={(e) => setGameInput(e.target.value)}
+                  placeholder="Başka bir oyun yaz..."
+                  className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-primary-main"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSetGame(gameInput);
+                    if (e.key === 'Escape') setIsPickingGame(false);
+                  }}
+                />
+                <button onClick={() => setIsPickingGame(false)} className="p-1.5 text-white/50 hover:text-white bg-white/5 rounded-md" aria-label="Vazgeç"><X size={14}/></button>
+                <button onClick={() => handleSetGame(gameInput)} className="p-1.5 text-white bg-primary-main hover:bg-primary-hover rounded-md" aria-label="Kaydet"><Check size={14}/></button>
+              </div>
+            </div>
+          ) : currentGame ? (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-primary-main/15 border border-primary-main/25">
+              <Gamepad2 size={16} className="text-primary-main shrink-0" />
+              <span className="text-sm text-white truncate flex-1">Oyunda · <span className="font-semibold">{currentGame}</span></span>
+              <button onClick={() => onUpdateStatus(currentStatus, '')} title="Oyundan çık"
+                className="p-1 text-white/50 hover:text-white hover:bg-white/10 rounded-md"><X size={14}/></button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsPickingGame(true)}
+              className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors text-left group"
+            >
+              <Gamepad2 size={16} className="text-white/40 group-hover:text-primary-main" />
+              <span className="text-sm text-white/80 group-hover:text-white">Oyunda olarak göster</span>
             </button>
           )}
         </div>
