@@ -15,7 +15,7 @@ import { playNotificationSound } from './utils/sound';
 import { notify } from './utils/browserNotifications';
 import { onUpdateReady, applyUpdate } from './utils/swUpdate';
 import ConnectionStatusBanner from './components/ConnectionStatusBanner';
-import { Lock, Mail, MessageSquare, Plus, User, Menu, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { spring, modalMotion, overlayMotion, staggerParent, staggerItem } from './utils/motion';
 import signalrService from './services/signalrService';
@@ -23,6 +23,7 @@ import RoomCard from './components/RoomCard';
 import ClockPanel from './components/ClockPanel';
 import ActivityFeed from './components/ActivityFeed';
 import VoiceConnectedPill from './components/VoiceConnectedPill';
+import MobileBottomNav from './components/MobileBottomNav';
 
 // Baslik harf harf yalnizca ilk goruntulemede animasyonlanir. memo: App'in her
 // render'inda 15 motion.span'in yeniden olusturulmasini engeller.
@@ -968,6 +969,7 @@ function App() {
       roomName={activeRoom.name}
       onReturn={() => setInRoom(true)}
       onDisconnect={handleDisconnectRoom}
+      aboveMobileNav={!inDMRoom}
     />
   );
 
@@ -1027,7 +1029,7 @@ function App() {
     {voicePill}
     {swUpdateToast}
     <ConnectionStatusBanner />
-    <div className="relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
+    <div className={`relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto pt-6 ${authState === 'rooms' ? 'pb-28' : 'pb-6'} md:pb-6 px-4 md:px-6 font-sans bg-bg-base`}>
 
       {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
       <div className="app-background">
@@ -1273,20 +1275,23 @@ function App() {
       {/* Mobil tarih & saat şeridi + aktivite akışı — masaüstünde sağ kolonda */}
       {authState === 'rooms' && (
         <div className="md:hidden w-full max-w-[400px] mx-4 space-y-3">
-          <div className="flex items-stretch gap-3">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              aria-label="Menüyü aç"
-              className="shrink-0 flex items-center justify-center px-4 rounded-3xl bg-bg-surface/60 border border-white/10 hover:bg-bg-surface text-white cursor-pointer"
-            >
-              <Menu size={24} />
-            </button>
-            <div className="flex-1 min-w-0">
-              <ClockPanel compact />
-            </div>
-          </div>
+          <ClockPanel compact />
           <ActivityFeed rooms={rooms} />
         </div>
+      )}
+      {/* Mobil alt menü — menü butonunun yerini alır */}
+      {authState === 'rooms' && (
+        <MobileBottomNav
+          activeTab={isSidebarOpen ? 'messages' : 'rooms'}
+          unreadCount={Object.values(unreadCounts).reduce((a, b) => a + b, 0)}
+          avatarId={avatarId}
+          statusColor={myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}
+          onRooms={() => { setIsSidebarOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          onMessages={() => { setIsDMOpen(true); setIsSidebarOpen(true); }}
+          onCreateRoom={() => { setIsSidebarOpen(false); setIsCreateRoomModalOpen(true); }}
+          onProfile={() => { setIsSidebarOpen(false); setIsProfileModalOpen(true); }}
+          onSettings={() => { setIsSidebarOpen(false); setIsSettingsModalOpen(true); }}
+        />
       )}
 
       {/* Sol panel — Bazı Özellikler (yalnızca giriş/kayıt ekranlarında, masaüstü) */}
