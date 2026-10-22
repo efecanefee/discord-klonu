@@ -1,23 +1,61 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalMotion, overlayMotion } from '../utils/motion';
-import { X, Save, User, UserCircle, Upload, Loader2 } from 'lucide-react';
+import { X, Save, User, UserCircle, Upload, Loader2, Palette, RotateCcw } from 'lucide-react';
+import { fetchUserProfile, invalidateUserProfile, bannerBackground, PROFILE_SWATCHES, MAX_BIO_LENGTH } from '../utils/userProfile';
 import { AVATARS, renderAvatar, isCustomAvatar } from '../constants/avatars';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
+export interface ProfileSaveData {
+  username: string;
+  firstName: string;
+  lastName: string;
+  avatarId: string;
+  bannerColor: string; // "" = varsayılan
+  accentColor: string;
+  bio: string;
+}
+
+// Renk seçici: hazır tonlar + serbest renk + sıfırla
+const ColorRow: React.FC<{ label: string; value: string; onChange: (c: string) => void }> = ({ label, value, onChange }) => (
+  <div className="space-y-1.5">
+    <span className="text-[11px] text-text-muted font-semibold">{label}</span>
+    <div className="flex flex-wrap items-center gap-1.5">
+      {PROFILE_SWATCHES.map(c => (
+        <button key={c} type="button" onClick={() => onChange(c)} title={c} aria-label={`${label}: ${c}`}
+          className={`w-6 h-6 rounded-full transition-transform hover:scale-110 ${value.toLowerCase() === c ? 'ring-2 ring-white ring-offset-2 ring-offset-bg-surface scale-110' : ''}`}
+          style={{ background: c }} />
+      ))}
+      <label title="Özel renk" className="relative w-6 h-6 rounded-full cursor-pointer overflow-hidden border border-dashed border-white/30 hover:border-white/60 flex items-center justify-center"
+        style={value && !PROFILE_SWATCHES.includes(value.toLowerCase()) ? { background: value, borderStyle: 'solid' } : undefined}>
+        <Palette size={12} className="text-white/70 pointer-events-none" />
+        <input type="color" value={value || '#7c3aed'} onChange={e => onChange(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" aria-label={`${label}: özel renk`} />
+      </label>
+      {value && (
+        <button type="button" onClick={() => onChange('')} title="Varsayılana dön"
+          className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-text-main hover:bg-white/10 transition-colors">
+          <RotateCcw size={12} />
+        </button>
+      )}
+    </div>
+  </div>
+);
+
 interface ProfileModalProps {
   isOpen: boolean;
+  userId: string;
   onClose: () => void;
   currentUsername: string;
   currentFirstName: string;
   currentLastName: string;
   currentAvatarId: string;
-  onSave: (data: { username: string; firstName: string; lastName: string; avatarId: string }) => Promise<void>;
+  onSave: (data: ProfileSaveData) => Promise<void>;
 }
 
 const ProfileModal: React.FC<ProfileModalProps> = ({
   isOpen,
+  userId,
   onClose,
   currentUsername,
   currentFirstName,
@@ -29,6 +67,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   const [firstName, setFirstName] = useState(currentFirstName);
   const [lastName, setLastName] = useState(currentLastName);
   const [avatarId, setAvatarId] = useState(currentAvatarId);
+  const [bannerColor, setBannerColor] = useState('');
+  const [accentColor, setAccentColor] = useState('');
+  const [bio, setBio] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [error, setError] = useState('');
@@ -56,6 +97,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       setError('');
     }
   }, [isOpen, currentUsername, currentFirstName, currentLastName, currentAvatarId]);
+
+  // Banner/vurgu/hakkımda sunucuda tutulur; modal her açıldığında taze okunur
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    let alive = true;
+    invalidateUserProfile(userId);
+    fetchUserProfile(userId).then(p => {
+      if (!alive || !p) return;
+      setBannerColor(p.bannerColor || '');
+      setAccentColor(p.accentColor || '');
+      setBio(p.bio || '');
+    });
+    return () => { alive = false; };
+  }, [isOpen, userId]);
 
   const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -105,7 +160,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
     setIsLoading(true);
     setError('');
     try {
-      await onSave({ username, firstName, lastName, avatarId });
+      await onSave({ username, firstName, lastName, avatarId, bannerColor, accentColor, bio: bio.trim() });
+      invalidateUserProfile(userId);
       onClose();
     } catch (err: any) {
       setError(err.message || 'Bir hata oluştu.');
@@ -180,6 +236,27 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     placeholder="Kullanıcı adınız"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-baseline justify-between">
+                  <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">Hakkımda</label>
+                  <span className={`text-[10px] tabular-nums ${bio.length > MAX_BIO_LENGTH - 20 ? 'text-amber-400' : 'text-text-muted'}`}>{bio.length}/{MAX_BIO_LENGTH}</span>
+                </div>
+                <textarea
+                  value={bio}
+                  maxLength={MAX_BIO_LENGTH}
+                  rows={2}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="w-full resize-none bg-bg-base border border-[#334155] rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
+                  placeholder="Kendinden kısaca bahset..."
+                />
+              </div>
+
+              <div className="space-y-3 p-3 rounded-2xl bg-bg-base/60 border border-[#334155]">
+                <label className="text-xs text-text-muted uppercase tracking-wider font-semibold flex items-center gap-1.5"><Palette size={13} /> Profil Renkleri</label>
+                <ColorRow label="Banner" value={bannerColor} onChange={setBannerColor} />
+                <ColorRow label="Vurgu" value={accentColor} onChange={setAccentColor} />
               </div>
             </div>
 
@@ -256,18 +333,22 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
 
-            {/* Aktif Kullanıcı Listesi Önizlemesi */}
-            <div className="w-full bg-bg-base/50 border border-[#334155] rounded-xl p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border-2 border-primary-main overflow-hidden shrink-0 flex items-center justify-center text-xl bg-bg-base">
-                 {renderAvatar(avatarId)}
-              </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-sm font-semibold text-text-main truncate w-full">
-                  {debouncedUsername || 'kullanici_adi'}
-                </span>
-                <span className="text-[10px] text-text-muted truncate w-full">
-                  Sohbet Odasında
-                </span>
+            {/* Profil Kartı Önizlemesi */}
+            <div className="w-full rounded-2xl overflow-hidden border border-[#334155] bg-[#09090b]">
+              <div className="h-16 transition-[background] duration-500" style={{ background: bannerBackground(bannerColor) }} />
+              <div className="px-4 pb-4 -mt-7">
+                <div className="w-14 h-14 rounded-full border-4 border-[#09090b] overflow-hidden flex items-center justify-center text-2xl bg-bg-base transition-shadow duration-300"
+                  style={{ boxShadow: `0 0 0 2px ${accentColor || 'var(--accent)'}` }}>
+                  {renderAvatar(avatarId)}
+                </div>
+                <div className="mt-2 text-sm font-bold text-text-main truncate">{debouncedUsername || 'kullanici_adi'}</div>
+                {(debouncedFirstName || debouncedLastName) && (
+                  <div className="text-[11px] text-text-muted truncate">{`${debouncedFirstName} ${debouncedLastName}`.trim()}</div>
+                )}
+                {bio.trim() && (
+                  <p className="mt-2 text-[12px] leading-snug text-text-main/80 whitespace-pre-wrap break-words line-clamp-3">{bio}</p>
+                )}
+                <div className="mt-3 h-1 rounded-full" style={{ background: accentColor || 'var(--accent)' }} />
               </div>
             </div>
 

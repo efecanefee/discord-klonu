@@ -4,12 +4,17 @@ import signalrService, { type PinnedMessage } from '../services/signalrService';
 // Bir odanın (ya da kanalın) sabitlenmiş mesajları. Liste, odaya giriş
 // tamamlanınca (RoomHistory) ve her sabitleme değişiminde sunucudan yeniden
 // okunur; sunucu yalnızca o odaya katılmış bağlantıya liste döndürür.
+const NO_PINS: PinnedMessage[] = [];
+
 export function usePinnedMessages(roomKey: string) {
-    const [pins, setPins] = useState<PinnedMessage[]>([]);
+    // Liste hangi odaya ait olduğuyla birlikte tutulur: kanal değişince eskisi görünmez
+    const [loaded, setLoaded] = useState<{ key: string; pins: PinnedMessage[] }>({ key: roomKey, pins: [] });
+    const pins = loaded.key === roomKey ? loaded.pins : NO_PINS;
 
     const refresh = useCallback(async () => {
         try {
-            setPins(await signalrService.getPinnedMessages(roomKey));
+            const list = await signalrService.getPinnedMessages(roomKey);
+            setLoaded({ key: roomKey, pins: list });
         } catch {
             // Bağlantı yoksa sessizce geç; yeniden girişte RoomHistory tekrar tetikler
         }
@@ -19,10 +24,9 @@ export function usePinnedMessages(roomKey: string) {
         let alive = true;
         const reload = () => { if (alive) refresh(); };
         const onDeleted = (messageId: number) => {
-            if (alive) setPins(prev => prev.filter(p => p.id !== messageId));
+            if (alive) setLoaded(prev => ({ ...prev, pins: prev.pins.filter(p => p.id !== messageId) }));
         };
 
-        setPins([]);
         reload();
         signalrService.onRoomHistory(reload);
         signalrService.onMessagePinChanged(reload);

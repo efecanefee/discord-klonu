@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import signalrService from '../services/signalrService';
 
 const POLL_MS = 4000;
+const EMPTY = new Map<string, number>();
 
 // Kişi başı WebRTC gidiş-dönüş süresi (ms). Seçili ICE aday çiftinin
 // currentRoundTripTime değerinden okunur; ses doğrudan kişiler arasında
@@ -10,7 +11,7 @@ export function usePeerPings(getPeers: () => Map<string, RTCPeerConnection>, ena
     const [pings, setPings] = useState<Map<string, number>>(new Map());
 
     useEffect(() => {
-        if (!enabled) { setPings(new Map()); return; }
+        if (!enabled) return;
         let alive = true;
 
         const poll = async () => {
@@ -35,7 +36,7 @@ export function usePeerPings(getPeers: () => Map<string, RTCPeerConnection>, ena
         return () => { alive = false; clearInterval(id); };
     }, [getPeers, enabled]);
 
-    return pings;
+    return enabled ? pings : EMPTY;
 }
 
 // Sunucuya (SignalR hub) gidiş-dönüş süresi; odada tek başınayken de bir değer gösterir.
@@ -43,7 +44,7 @@ export function useServerPing(enabled: boolean) {
     const [ping, setPing] = useState<number | null>(null);
 
     useEffect(() => {
-        if (!enabled) { setPing(null); return; }
+        if (!enabled) return;
         let alive = true;
         const poll = async () => {
             const ms = await signalrService.measureLatency();
@@ -54,7 +55,7 @@ export function useServerPing(enabled: boolean) {
         return () => { alive = false; clearInterval(id); };
     }, [enabled]);
 
-    return ping;
+    return enabled ? ping : null;
 }
 
 // Discord'daki gibi: yeşil < 100 ms, sarı < 250 ms, üstü kırmızı

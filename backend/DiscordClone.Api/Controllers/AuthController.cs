@@ -113,7 +113,10 @@ namespace DiscordClone.Api.Controllers
                     // bayat "offline" degerini istemciye tasima.
                     customStatus = user.CustomStatus == "offline" ? "online" : user.CustomStatus,
                     customStatusMessage = user.CustomStatusMessage,
-                    showLastSeen = user.ShowLastSeen
+                    showLastSeen = user.ShowLastSeen,
+                    bannerColor = user.BannerColor,
+                    accentColor = user.AccentColor,
+                    bio = user.Bio
                 });
             }
             catch (Exception ex)
@@ -219,6 +222,24 @@ namespace DiscordClone.Api.Controllers
                 return BadRequest("Geçersiz avatar.");
             }
 
+            // Profil kişiselleştirme: null gelirse dokunma (eski istemciler), boş gelirse sıfırla
+            if (request.BannerColor != null)
+            {
+                if (request.BannerColor != "" && !ProfileColors.IsValid(request.BannerColor)) return BadRequest("Geçersiz banner rengi.");
+                user.BannerColor = request.BannerColor == "" ? null : request.BannerColor;
+            }
+            if (request.AccentColor != null)
+            {
+                if (request.AccentColor != "" && !ProfileColors.IsValid(request.AccentColor)) return BadRequest("Geçersiz vurgu rengi.");
+                user.AccentColor = request.AccentColor == "" ? null : request.AccentColor;
+            }
+            if (request.Bio != null)
+            {
+                var bio = request.Bio.Trim();
+                if (bio.Length > ProfileColors.MaxBioLength) return BadRequest($"Hakkımda en fazla {ProfileColors.MaxBioLength} karakter olabilir.");
+                user.Bio = bio == "" ? null : bio;
+            }
+
             user.Username = request.Username;
             user.FirstName = request.FirstName;
             user.LastName = request.LastName;
@@ -258,7 +279,10 @@ namespace DiscordClone.Api.Controllers
                 username = user.Username,
                 firstName = user.FirstName,
                 lastName = user.LastName,
-                avatarId = user.AvatarId
+                avatarId = user.AvatarId,
+                bannerColor = user.BannerColor,
+                accentColor = user.AccentColor,
+                bio = user.Bio
             });
         }
     }
@@ -281,5 +305,17 @@ namespace DiscordClone.Api.Controllers
         public string FirstName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string AvatarId { get; set; } = "default";
+        public string? BannerColor { get; set; }
+        public string? AccentColor { get; set; }
+        public string? Bio { get; set; }
+    }
+
+    public static class ProfileColors
+    {
+        public const int MaxBioLength = 190;
+
+        // Yalnızca "#RRGGBB" — CSS'e olduğu gibi basıldığı için başka biçim kabul edilmez
+        public static bool IsValid(string color) =>
+            color.Length == 7 && color[0] == '#' && color.Skip(1).All(Uri.IsHexDigit);
     }
 }

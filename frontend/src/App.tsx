@@ -3,7 +3,7 @@ import ChatRoom from './components/ChatRoom';
 import TextChatRoom from './components/TextChatRoom';
 import DMChatRoom from './components/DMChatRoom';
 import MiniDock from './components/MiniDock';
-import ProfileModal from './components/ProfileModal';
+import ProfileModal, { type ProfileSaveData } from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
 import MyServersPanel from './components/MyServersPanel';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
@@ -825,7 +825,7 @@ function App() {
     });
   };
 
-  const handleProfileSave = async (data: { username: string; firstName: string; lastName: string; avatarId: string }) => {
+  const handleProfileSave = async (data: ProfileSaveData) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`${API_BASE_URL}/api/auth/profile`, {
       method: 'PUT',
@@ -980,6 +980,7 @@ function App() {
         {/* Oda içinden erişilebilen modallar */}
         <ProfileModal
           isOpen={isProfileModalOpen}
+          userId={userId}
           onClose={() => setIsProfileModalOpen(false)}
           currentUsername={username}
           currentFirstName={firstName}
@@ -1199,6 +1200,7 @@ function App() {
 
       <ProfileModal 
         isOpen={isProfileModalOpen}
+        userId={userId}
         onClose={() => setIsProfileModalOpen(false)}
         currentUsername={username}
         currentFirstName={firstName}

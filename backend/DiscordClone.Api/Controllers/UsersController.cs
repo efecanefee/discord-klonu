@@ -48,6 +48,32 @@ namespace DiscordClone.Api.Controllers
             return Ok(users);
         }
 
+        // Profil kartı için herkese açık profil bilgisi
+        [HttpGet("{id}/profile")]
+        public async Task<IActionResult> GetProfile(string id)
+        {
+            var profile = await _db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == id && u.IsVerified)
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Username,
+                    u.FirstName,
+                    u.LastName,
+                    u.AvatarId,
+                    CustomStatus = u.CustomStatus == "invisible" ? "offline" : u.CustomStatus,
+                    u.CustomStatusMessage,
+                    u.BannerColor,
+                    u.AccentColor,
+                    u.Bio,
+                    u.CreatedAt
+                })
+                .FirstOrDefaultAsync();
+
+            return profile == null ? NotFound() : Ok(profile);
+        }
+
         [HttpGet("online")]
         public async Task<IActionResult> GetOnlineUsers()
         {
