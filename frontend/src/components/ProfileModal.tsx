@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { modalMotion, overlayMotion } from '../utils/motion';
 import { X, Save, User, UserCircle, Upload, Loader2, Palette, RotateCcw } from 'lucide-react';
+import WeeklyBadges from './WeeklyBadges';
 import { fetchUserProfile, invalidateUserProfile, bannerBackground, PROFILE_SWATCHES, MAX_BIO_LENGTH } from '../utils/userProfile';
 import { AVATARS, renderAvatar, isCustomAvatar } from '../constants/avatars';
 
@@ -348,6 +349,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                 {bio.trim() && (
                   <p className="mt-2 text-[12px] leading-snug text-text-main/80 whitespace-pre-wrap break-words line-clamp-3">{bio}</p>
                 )}
+                <WeeklyBadges userId={userId} />
                 <div className="mt-3 h-1 rounded-full" style={{ background: accentColor || 'var(--accent)' }} />
               </div>
             </div>
