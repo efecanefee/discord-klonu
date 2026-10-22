@@ -156,6 +156,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddHostedService<MessageCleanupService>();
 builder.Services.AddHostedService<KeepAliveService>();
+builder.Services.AddHostedService<FeedReminderService>();
 
 builder.Services.AddCors(options =>
 {
@@ -384,6 +385,52 @@ using (var scope = app.Services.CreateScope())
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS banner_color text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS accent_color text;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio text;"); } catch { }
+
+        // 15. Ana ekran not akışı (not + tarihli evet/hayır oylaması + tepkiler)
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS feed_posts (
+                    id bigserial NOT NULL,
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    username text NOT NULL DEFAULT '',
+                    kind text NOT NULL DEFAULT 'note',
+                    text text NOT NULL,
+                    event_at bigint,
+                    created_at bigint NOT NULL DEFAULT 0,
+                    CONSTRAINT ""PK_feed_posts"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_feed_posts_created_at"" ON feed_posts (created_at DESC);"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE feed_posts ADD COLUMN IF NOT EXISTS reminded boolean NOT NULL DEFAULT false;"); } catch { }
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS feed_poll_votes (
+                    id bigserial NOT NULL,
+                    post_id bigint NOT NULL REFERENCES feed_posts(id) ON DELETE CASCADE,
+                    user_id text NOT NULL,
+                    username text NOT NULL DEFAULT '',
+                    choice text NOT NULL,
+                    created_at bigint NOT NULL DEFAULT 0,
+                    CONSTRAINT ""PK_feed_poll_votes"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_feed_poll_votes_post_id_user_id"" ON feed_poll_votes (post_id, user_id);"); } catch { }
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS feed_reactions (
+                    id bigserial NOT NULL,
+                    post_id bigint NOT NULL REFERENCES feed_posts(id) ON DELETE CASCADE,
+                    user_id text NOT NULL,
+                    username text NOT NULL DEFAULT '',
+                    emoji text NOT NULL,
+                    created_at bigint NOT NULL DEFAULT 0,
+                    CONSTRAINT ""PK_feed_reactions"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_feed_reactions_post_id_user_id_emoji"" ON feed_reactions (post_id, user_id, emoji);"); } catch { }
 
     }
     catch (Exception ex)
