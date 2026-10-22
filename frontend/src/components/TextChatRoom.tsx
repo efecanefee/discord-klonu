@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
 import { usePinnedMessages } from '../hooks/usePinnedMessages';
 import PinnedMessagesButton from './PinnedMessagesButton';
+import PingBadge, { SignalBars } from './PingBadge';
+import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check, Pin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -302,6 +304,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
     const { playJoinSound, playLeaveSound, playSendSound, playReceiveSound } = useAudioNotifications();
     const voice = useVoiceChannel();
+    const inVoice = !!voice.activeVoiceKey;
+    const peerPings = usePeerPings(voice.getPeers, inVoice);
+    const serverPing = useServerPing(inVoice);
     const { settings } = useSettings();
 
     // SignalR event'leri
@@ -1110,6 +1115,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                                     {failed && (
                                                                         <span title="Bu kisiyle ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80 shrink-0">bağlanılamadı</span>
                                                                     )}
+                                                                    {!failed && peerPings.has(p.connectionId) && (
+                                                                        <span className="ml-auto shrink-0" title={`Gecikme: ${peerPings.get(p.connectionId)} ms`}>
+                                                                            <SignalBars ms={peerPings.get(p.connectionId)} />
+                                                                        </span>
+                                                                    )}
                                                                 </motion.div>
                                                             );
                                                         })}
@@ -1130,6 +1140,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" style={{ boxShadow: '0 0 6px rgba(16,185,129,0.8)' }} />
                                     <span className="text-[12px] text-text-muted truncate">Sesli sohbet · {voice.participants.length}</span>
                                 </div>
+                                <PingBadge compact serverPing={serverPing} peerPings={peerPings}
+                                    names={new Map(voice.participants.map(p => [p.connectionId, p.username]))} />
                                 <button onClick={voice.toggleMute} title={voice.isMuted ? 'Mikrofonu aç' : 'Mikrofonu kapat'}
                                     className={`p-1.5 rounded-lg transition-colors ${voice.isMuted ? 'text-red-400 bg-red-500/10' : 'text-text-muted hover:text-text-main hover:bg-bg-surface'}`}>
                                     {voice.isMuted ? <MicOff size={16} /> : <Mic size={16} />}

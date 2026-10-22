@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import signalrService from '../services/signalrService';
 import { usePinnedMessages } from '../hooks/usePinnedMessages';
 import PinnedMessagesButton from './PinnedMessagesButton';
+import PingBadge, { SignalBars } from './PingBadge';
+import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2, Pin } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
@@ -291,8 +293,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         selectedMicId, selectedOutputId,
         switchMicrophone, setSelectedOutputId,
         speakingUsers, connectionIssues,
-        getMicLevel,
+        getMicLevel, getPeers,
     } = useWebRTC();
+
+    // Ping: kişilere (WebRTC) ve sunucuya gidiş-dönüş süresi
+    const peerPings = usePeerPings(getPeers, isReady);
+    const serverPing = useServerPing(isReady);
 
     const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playSendSound, playReceiveSound } = useAudioNotifications();
 
@@ -1253,6 +1259,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                         {isCameraOn && <video ref={localVideoRef} autoPlay muted className="w-9 h-9 rounded-xl object-cover border border-border-main" />}
 
+                        <span className="hidden sm:inline-flex">
+                            <PingBadge serverPing={serverPing} peerPings={peerPings}
+                                names={new Map(usersInRoom.map(u => [u.connectionId, u.username]))} />
+                        </span>
+
                         {/* Oda ayarları — sadece kurucu */}
                         {myRole === 'owner' && (
                             <button onClick={() => setShowRoomSettings(true)} title="Oda ayarları"
@@ -1805,7 +1816,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                 </span>
                                                                 {connectionIssues.has(u.connectionId)
                                                                     ? <span title="Ses baglantisi kurulamadi — karsi taraf seni duyamiyor olabilir" className="text-[11px] text-amber-400/80">⚠ bağlanılamadı</span>
-                                                                    : <span className="text-[11px] text-text-muted">{u.connectionId === signalrService.connectionId ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}</span>}
+                                                                    : <span className="text-[11px] text-text-muted flex items-center gap-1.5">
+                                                                        {u.connectionId === signalrService.connectionId ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}
+                                                                        {peerPings.has(u.connectionId) && (
+                                                                            <span className="flex items-center gap-1" title="Bu kişiyle aranızdaki gecikme">
+                                                                                <SignalBars ms={peerPings.get(u.connectionId)} />
+                                                                                <span className="font-mono tabular-nums text-[10px]">{peerPings.get(u.connectionId)} ms</span>
+                                                                            </span>
+                                                                        )}
+                                                                    </span>}
                                                             </div>
                                                         </div>
                                                     </div>

@@ -461,6 +461,18 @@ class SignalRService {
         }
     }
 
+    // Sunucuya gidiş-dönüş süresi (ms); bağlı değilse null
+    public async measureLatency(): Promise<number | null> {
+        if (this.connection.state !== signalR.HubConnectionState.Connected) return null;
+        const start = performance.now();
+        try {
+            await this.connection.invoke('Ping');
+            return Math.round(performance.now() - start);
+        } catch {
+            return null;
+        }
+    }
+
     // Mesaj sabitleme
     public onMessagePinChanged(callback: (messageId: number, isPinned: boolean, pinnedBy: string | null) => void) {
         this.connection?.on('MessagePinChanged', callback);

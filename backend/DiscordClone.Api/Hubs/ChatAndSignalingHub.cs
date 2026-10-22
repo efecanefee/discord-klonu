@@ -810,6 +810,9 @@ namespace DiscordClone.Api.Hubs
             await Clients.Group(roomId).SendAsync("ReactionUpdated", messageId, set);
         }
 
+        // İstemcinin gecikme ölçümü için boş gidiş-dönüş
+        public Task Ping() => Task.CompletedTask;
+
         // Mesaj anahtarı (oda adı ya da kanal message_key) → ait olduğu oda; bulunamazsa null.
         private async Task<Room?> ResolveRoomByMessageKeyAsync(string messageKey)
         {

@@ -664,7 +664,11 @@ export function useWebRTC() {
         }
     }, []);
 
+    // Ping ölçümü için mevcut peer bağlantıları (ref — kimliği sabit)
+    const getPeers = useCallback(() => peerConnections.current, []);
+
     return {
+        getPeers,
         localStream,
         localVideoStream,
         screenStream,
