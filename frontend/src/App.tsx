@@ -1279,7 +1279,7 @@ function App() {
 
       {/* Mobil tarih & saat şeridi + aktivite akışı — masaüstünde sağ kolonda */}
       {authState === 'rooms' && (
-        <div className="md:hidden w-full max-w-[400px] mx-4 space-y-3">
+        <div className="md:hidden w-full max-w-[400px] space-y-3">
           <ClockPanel compact />
           <ActivityFeed rooms={rooms} />
         </div>
