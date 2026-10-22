@@ -25,6 +25,7 @@ import ClockPanel from './components/ClockPanel';
 import ActivityFeed from './components/ActivityFeed';
 import VoiceConnectedPill from './components/VoiceConnectedPill';
 import MobileBottomNav from './components/MobileBottomNav';
+import FloatingOrbs from './components/FloatingOrbs';
 
 // Baslik harf harf yalnizca ilk goruntulemede animasyonlanir. memo: App'in her
 // render'inda 15 motion.span'in yeniden olusturulmasini engeller.
@@ -1036,7 +1037,7 @@ function App() {
     <ConnectionStatusBanner />
     <div className={`relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto pt-6 ${authState === 'rooms' ? 'pb-28' : 'pb-6'} md:pb-6 px-4 md:px-6 font-sans bg-bg-base`}>
 
-      {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
+      {/* Arka plan: lav lambasi + suzulen isik kureleri (index.css) */}
       <div className="app-background">
         <div className="lava" aria-hidden>
           <span className="lava-blob" />
@@ -1045,6 +1046,7 @@ function App() {
           <span className="lava-blob" />
           <span className="lava-blob" />
         </div>
+        <FloatingOrbs />
       </div>
 
 
@@ -1406,7 +1408,7 @@ function App() {
               </div>
             </div>
 
-            <div className="absolute -inset-1.5 rounded-3xl border border-violet-500/0 group-hover:border-violet-500/30 transition-all duration-500 group-hover:scale-105 pointer-events-none" />
+            <div className="absolute -inset-1.5 rounded-3xl border border-primary-main/0 group-hover:border-primary-main/30 transition-all duration-500 group-hover:scale-105 pointer-events-none" />
           </div>
           <AnimatedTitle />
           <p className="text-[14px]" style={{ color: 'rgba(255,255,255,0.35)' }}>

@@ -30,7 +30,7 @@ const ColorRow: React.FC<{ label: string; value: string; onChange: (c: string) =
       <label title="Özel renk" className="relative w-6 h-6 rounded-full cursor-pointer overflow-hidden border border-dashed border-white/30 hover:border-white/60 flex items-center justify-center"
         style={value && !PROFILE_SWATCHES.includes(value.toLowerCase()) ? { background: value, borderStyle: 'solid' } : undefined}>
         <Palette size={12} className="text-white/70 pointer-events-none" />
-        <input type="color" value={value || '#7c3aed'} onChange={e => onChange(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" aria-label={`${label}: özel renk`} />
+        <input type="color" value={value || '#2563eb'} onChange={e => onChange(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" aria-label={`${label}: özel renk`} />
       </label>
       {value && (
         <button type="button" onClick={() => onChange('')} title="Varsayılana dön"
