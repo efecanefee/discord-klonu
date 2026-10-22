@@ -15,9 +15,9 @@ import { playNotificationSound } from './utils/sound';
 import { notify } from './utils/browserNotifications';
 import { onUpdateReady, applyUpdate } from './utils/swUpdate';
 import ConnectionStatusBanner from './components/ConnectionStatusBanner';
-import { Lock, Mail, MessageSquare, Plus, User, Menu, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, Menu, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Variants } from 'framer-motion';
+import { spring, modalMotion, overlayMotion, staggerParent, staggerItem } from './utils/motion';
 import signalrService from './services/signalrService';
 import RoomCard from './components/RoomCard';
 import ClockPanel from './components/ClockPanel';
@@ -28,14 +28,15 @@ import VoiceConnectedPill from './components/VoiceConnectedPill';
 // render'inda 15 motion.span'in yeniden olusturulmasini engeller.
 const AnimatedTitle = memo(function AnimatedTitle() {
   return (
-    <h1 className="text-[22px] sm:text-[24px] md:text-[28px] font-[700] text-white mb-2 tracking-tight flex justify-center text-shine"
-      style={{ textShadow: '0 0 40px #00B4D860' }}>
+    <h1 className="font-display text-[24px] sm:text-[26px] md:text-[30px] font-[800] text-white mb-2 tracking-tight flex justify-center text-shine"
+      style={{ textShadow: '0 0 40px rgba(var(--accent-rgb),0.35)' }}>
       {'SandalyeciMetin'.split('').map((char, index) => (
         <motion.span
           key={index}
-          initial={{ opacity: 0, y: -14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 + index * 0.03, duration: 0.3, ease: 'easeOut' }}
+          initial={{ opacity: 0, y: 18, rotateX: -70, filter: 'blur(6px)' }}
+          animate={{ opacity: 1, y: 0, rotateX: 0, filter: 'blur(0px)' }}
+          transition={{ ...spring.bouncy, delay: 0.15 + index * 0.035 }}
+          style={{ display: 'inline-block', transformOrigin: '50% 100%' }}
         >
           {char === ' ' ? ' ' : char}
         </motion.span>
@@ -1013,14 +1014,9 @@ function App() {
     );
   }
 
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { duration: 0.35, staggerChildren: 0.05, delayChildren: 0.05 } },
-  };
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: settings.reducedMotion ? 0 : 12 },
-    visible: { opacity: 1, y: 0, transition: { duration: settings.reducedMotion ? 0 : 0.3, ease: [0.25, 0.46, 0.45, 0.94] } },
-  };
+  // Hareket azaltma MotionConfig'te (MotionRoot) — burada ayrica dallanmaya gerek yok.
+  const containerVariants = staggerParent;
+  const itemVariants = staggerItem;
 
   // Odalar artık dinamik olarak API'den çekiliyor (useState rooms)
 
@@ -1033,7 +1029,15 @@ function App() {
     <div className="relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
 
       {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
-      <div className="app-background" />
+      <div className="app-background">
+        <div className="lava" aria-hidden>
+          <span className="lava-blob" />
+          <span className="lava-blob" />
+          <span className="lava-blob" />
+          <span className="lava-blob" />
+          <span className="lava-blob" />
+        </div>
+      </div>
 
 
 
@@ -1052,7 +1056,7 @@ function App() {
 
           {/* Sidebar */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15, duration: 0.3 }}
-            className={`fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 md:gap-4 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+            className={`stagger-col fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 md:gap-4 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
           >
             {/* Close Button (Mobile) */}
             <div className="flex md:hidden justify-end mb-[-10px]">
@@ -1061,7 +1065,7 @@ function App() {
               </button>
             </div>
           
-          <div className="flex items-center gap-1 bg-bg-surface/80 border border-white/10 p-1.5 rounded-full w-full shrink-0 relative md:bg-[rgba(20,20,26,0.55)] md:border md:border-white/10 md:rounded-[28px] md:p-4 md:backdrop-blur-[18px] md:shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+          <div className="flex items-center gap-1 bg-bg-surface/80 border border-white/10 p-1.5 rounded-full w-full shrink-0 relative md:glass-panel md:p-4">
             <button 
               ref={profileButtonRef}
               onClick={(e) => {
@@ -1122,7 +1126,7 @@ function App() {
               boyutu CSS ile aninda degisir, icerik yalnizca opacity/transform
               ile girer (compositor isi, olcum-yerlesim animasyonu yok). */}
           <div
-            className={`flex flex-col min-h-0 bg-bg-surface/60 border border-white/10 rounded-3xl p-4 overflow-hidden md:bg-[rgba(20,20,26,0.55)] md:border md:border-white/10 md:rounded-[28px] md:backdrop-blur-[18px] md:shadow-[0_8px_32px_rgba(0,0,0,0.3)] md:flex-1 ${isDMOpen ? 'flex-1' : ''}`}
+            className={`flex flex-col min-h-0 bg-bg-surface/60 border border-white/10 rounded-3xl p-4 overflow-hidden md:glass-panel md:flex-1 ${isDMOpen ? 'flex-1' : ''}`}
           >
             <button
               onClick={() => setIsDMOpen(!isDMOpen)}
@@ -1220,18 +1224,13 @@ function App() {
       <AnimatePresence>
         {deleteConfirmRoom && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+            {...overlayMotion}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4"
             onClick={(e) => { if (e.target === e.currentTarget && !isDeletingRoom) setDeleteConfirmRoom(null); }}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-sm bg-[#09090b] border border-[#334155] rounded-3xl overflow-hidden shadow-2xl p-6"
+              {...modalMotion}
+              className="relative w-full max-w-sm bg-bg-surface border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col items-center text-center gap-4">
@@ -1300,23 +1299,23 @@ function App() {
             Bazı Özellikler
           </span>
           {[
-            { icon: '🎙️', title: 'Sesli Sohbet', desc: 'WebRTC ile kristal netliğinde ses' },
-            { icon: '🎬', title: 'İzleme Partisi', desc: 'YouTube videolarını birlikte, senkron izle' },
-            { icon: '⚡', title: 'Gerçek Zamanlı', desc: 'Mesajlar, tepkiler ve daha fazlası anında' },
-            { icon: '🏠', title: 'Topluluk Sunucuları', desc: 'Kendi sunucunu kur, davet linkiyle paylaş' },
-            { icon: '🖥️', title: 'Ekran Paylaşımı', desc: 'Görüntülü görüşme ve ekran paylaşımı' },
+            { icon: Mic, title: 'Sesli Sohbet', desc: 'WebRTC ile kristal netliğinde ses' },
+            { icon: Clapperboard, title: 'İzleme Partisi', desc: 'YouTube videolarını birlikte, senkron izle' },
+            { icon: Zap, title: 'Gerçek Zamanlı', desc: 'Mesajlar, tepkiler ve daha fazlası anında' },
+            { icon: Server, title: 'Topluluk Sunucuları', desc: 'Kendi sunucunu kur, davet linkiyle paylaş' },
+            { icon: MonitorUp, title: 'Ekran Paylaşımı', desc: 'Görüntülü görüşme ve ekran paylaşımı' },
           ].map((f, i) => (
             <motion.div
               key={f.title}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 + i * 0.08, duration: 0.4, ease: 'easeOut' }}
-              className="flex items-center gap-3 p-3 rounded-2xl"
-              style={{ background: 'rgba(20,20,26,0.55)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(18px)' }}
+              initial={{ opacity: 0, x: -24, filter: 'blur(6px)' }}
+              animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              transition={{ ...spring.smooth, delay: 0.3 + i * 0.07 }}
+              whileHover={{ x: 6 }}
+              className="group glass-panel rounded-2xl! flex items-center gap-3 p-3"
             >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[18px] shrink-0"
-                style={{ background: 'rgba(var(--accent-rgb),0.12)', border: '1px solid rgba(var(--accent-rgb),0.25)' }}>
-                {f.icon}
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6"
+                style={{ background: 'linear-gradient(135deg, rgba(var(--accent-rgb),0.22), rgba(var(--accent-light-rgb),0.10))', border: '1px solid rgba(var(--accent-rgb),0.3)' }}>
+                <f.icon size={18} className="text-white" aria-hidden />
               </div>
               <div className="min-w-0">
                 <div className="text-[13px] font-semibold text-white leading-tight">{f.title}</div>
@@ -1341,7 +1340,7 @@ function App() {
       )}
 
       <motion.div variants={containerVariants} initial="hidden" animate="visible"
-        className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 flex flex-col max-h-screen md:max-h-[calc(100vh-40px)] bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_32px_80px_rgba(0,0,0,0.45)] backdrop-blur-[18px] ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
+        className={`relative z-10 w-full max-w-[400px] mx-4 md:mx-0 flex flex-col max-h-screen md:max-h-[calc(100vh-40px)] glass-panel glass-panel-hero ${authState === 'rooms' ? 'md:w-auto md:max-w-none md:flex-1' : ''}`}
         style={{
           padding: authState === 'rooms' ? '36px 32px 24px 32px' : '28px 28px 16px 28px',
         }}>
@@ -1432,7 +1431,7 @@ function App() {
                    onBlur={() => setFocused(null)}
                    placeholder="E-posta Adresi"
                    autoComplete="email"
-                   className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                   className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none sm-input"
                    style={{
                      background: focused === 'email' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                      border: focused === 'email' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1442,7 +1441,7 @@ function App() {
                <button
                  type="submit"
                  disabled={isLoading}
-                 className="btn-fx relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
+                 className="btn-fx btn-primary relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
                  style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                  {isLoading ? 'Gönderiliyor...' : 'Şifre Sıfırlama Linki Gönder'}
                </button>
@@ -1466,7 +1465,7 @@ function App() {
                    onBlur={() => setFocused(null)}
                    placeholder="Yeni Şifre"
                    autoComplete="new-password"
-                   className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                   className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none sm-input"
                    style={{
                      background: focused === 'password' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                      border: focused === 'password' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1476,7 +1475,7 @@ function App() {
                <button
                  type="submit"
                  disabled={isLoading}
-                 className="btn-fx relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
+                 className="btn-fx btn-primary relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
                  style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                  {isLoading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
                </button>
@@ -1501,7 +1500,7 @@ function App() {
                       onBlur={() => setFocused(null)}
                       placeholder="kullanici_adin"
                       autoComplete="username"
-                      className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                      className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none sm-input"
                       style={{
                         background: focused === 'username' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                         border: focused === 'username' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1528,7 +1527,7 @@ function App() {
                     onBlur={() => setFocused(null)}
                     placeholder="ornek@eposta.com"
                     autoComplete="email"
-                    className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                    className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none sm-input"
                     style={{
                       background: focused === 'email' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                       border: focused === 'email' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1554,7 +1553,7 @@ function App() {
                     onBlur={() => setFocused(null)}
                     placeholder="••••••••"
                     autoComplete={authState === 'register' ? 'new-password' : 'current-password'}
-                    className="w-full pl-12 pr-12 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                    className="w-full pl-12 pr-12 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none sm-input"
                     style={{
                       background: focused === 'password' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                       border: focused === 'password' ? '1px solid rgba(var(--accent-rgb),0.5)' : '1px solid rgba(255,255,255,0.08)',
@@ -1608,7 +1607,7 @@ function App() {
                         onBlur={() => setFocused(null)}
                         placeholder="••••••••"
                         autoComplete="new-password"
-                        className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none transition-all duration-300"
+                        className="w-full pl-12 pr-5 py-2.5 rounded-2xl text-white placeholder:text-white/20 text-[15px] outline-none sm-input"
                         style={{
                           background: focused === 'passwordConfirm' ? 'rgba(var(--accent-rgb),0.08)' : 'rgba(255,255,255,0.04)',
                           border: passwordConfirm && password !== passwordConfirm
@@ -1628,7 +1627,7 @@ function App() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="btn-fx relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
+                className="btn-fx btn-primary relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                 <span className="relative flex items-center justify-center gap-2">
                   <Sparkles size={16} />
@@ -1688,7 +1687,7 @@ function App() {
                 </span>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.8)' }} />
+                    <div className="live-dot w-1.5 h-1.5 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.8)' }} />
                     <span 
                       className="text-[11px] group relative cursor-help" 
                       style={{ color: 'rgba(255,255,255,0.3)' }}
@@ -1801,7 +1800,7 @@ function App() {
                 return (
                   <>
                     {/* Segment kontrol — arkada kayan mor hap (layoutId) */}
-                    <div className="flex p-1 mb-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] shrink-0">
+                    <div className="segmented flex p-1 mb-4 rounded-2xl shrink-0">
                       {tabs.map((t) => (
                         <button
                           key={t.key}
@@ -1813,8 +1812,8 @@ function App() {
                             <motion.div
                               layoutId="roomTabPill"
                               className="absolute inset-0 rounded-xl"
-                              style={{ background: 'rgba(var(--accent-rgb),0.9)', boxShadow: '0 4px 16px rgba(var(--accent-rgb),0.35)' }}
-                              transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 34 }}
+                              style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-light))', boxShadow: '0 6px 20px -4px rgba(var(--accent-rgb),0.55), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+                              transition={reduce ? { duration: 0 } : spring.snappy}
                             />
                           )}
                           <span className="relative z-10">{t.label}</span>
@@ -1831,7 +1830,7 @@ function App() {
                         className="flex h-full"
                         initial={false}
                         animate={{ x: roomPage === 0 ? '0%' : '-100%' }}
-                        transition={reduce ? { duration: 0 } : { type: 'tween', duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+                        transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 260, damping: 32, mass: 0.9 }}
                       >
                         <div
                           className="w-full h-full shrink-0 flex flex-col"
@@ -1906,10 +1905,10 @@ function App() {
       )}
 
       {authState === 'rooms' && (
-        <div className="hidden md:flex md:flex-col gap-4 md:shrink-0 w-[280px]">
+        <div className="stagger-col hidden md:flex md:flex-col gap-4 md:shrink-0 w-[280px]">
           {/* Sunucularim: varsayilan kapali — baslik her zaman gorunur, liste
               tiklandiginda acilir ve ancak o zaman yuklenir. */}
-          <div className={`bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-[18px] overflow-hidden flex flex-col p-0 relative ${isServersOpen ? 'flex-1 min-h-0' : 'shrink-0'}`}>
+          <div className={`glass-panel overflow-hidden flex flex-col p-0 relative ${isServersOpen ? 'flex-1 min-h-0' : 'shrink-0'}`}>
             <MyServersPanel
               open={isServersOpen}
               onToggle={() => setIsServersOpen(o => !o)}
@@ -1929,7 +1928,7 @@ function App() {
 
           {/* Sağ Alt Bölme — Sosyal İkonlar */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, type: 'spring', stiffness: 260, damping: 28 }}
-            className="shrink-0 flex items-center justify-center gap-3 p-4 bg-[rgba(20,20,26,0.55)] border border-white/10 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-[18px]">
+            className="shrink-0 flex items-center justify-center gap-3 p-4 glass-panel">
             <a href="https://github.com/efecanefee" target="_blank" rel="noopener noreferrer"
                className="p-3 rounded-2xl bg-bg-surface/80 border border-white/10 text-white/70 hover:text-white hover:bg-bg-surface hover:border-primary-main/50 hover:shadow-[0_0_15px_rgba(var(--accent-rgb),0.6)] transition-all duration-300">
               <Github size={20} />

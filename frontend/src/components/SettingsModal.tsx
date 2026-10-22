@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { modalMotion, overlayMotion } from '../utils/motion';
 import { X, Mic, Bell, Monitor, CheckCircle2, Info } from 'lucide-react';
 import { useSettings, THEMES, ACCENTS } from '../contexts/SettingsContext';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
@@ -120,26 +121,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {isOpen && (
+      <motion.div key="SettingsModal" className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         {/* Backdrop */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/80"
+        <motion.div
+          {...overlayMotion}
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           onClick={onClose}
         />
 
         {/* Modal */}
         <motion.div
-          initial={{ opacity: 0, scale: settings.reducedMotion ? 1 : 0.95, y: settings.reducedMotion ? 0 : 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: settings.reducedMotion ? 1 : 0.95, y: settings.reducedMotion ? 0 : 20 }}
-          transition={{ duration: settings.reducedMotion ? 0 : 0.3 }}
+          {...modalMotion}
           className={`relative w-full max-w-2xl bg-bg-surface border border-border-main rounded-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-[600px] ${settings.reducedMotion ? 'shadow-none' : 'shadow-2xl'}`}
         >
           {/* Sidebar — masaüstünde dikey kolon, mobilde yatay kaydırılabilir sekme şeridi */}
@@ -607,7 +602,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
             <X size={20} />
           </button>
         </motion.div>
-      </div>
+      </motion.div>
+      )}
     </AnimatePresence>
   );
 };

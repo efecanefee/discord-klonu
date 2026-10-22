@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { popoverMotion } from '../utils/motion';
 import { Circle, Moon, MinusCircle, UserX, MessageSquare, Check, X } from 'lucide-react';
 
 interface StatusMenuProps {
@@ -88,10 +89,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
     <AnimatePresence>
       <motion.div
         ref={menuRef}
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        transition={{ duration: 0.15 }}
+        {...popoverMotion}
         style={{
           position: 'fixed',
           top: pos?.top ?? 0,

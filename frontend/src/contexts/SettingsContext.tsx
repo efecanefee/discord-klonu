@@ -77,7 +77,9 @@ const defaultSettings: Settings = {
   
   theme: 'dark',
   accent: 'violet',
-  reducedMotion: true,
+  // SM2.0: animasyonlar varsayilan acik. Sistem "hareketi azalt" tercihi
+  // MotionRoot ve CSS media query'leri uzerinden yine dikkate alinir.
+  reducedMotion: false,
   glassEffect: true,   // Varsayılan açık — mevcut görünüm korunsun.
 };
 
@@ -97,6 +99,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         // Kaldirilan temalari ('light', 'system') secmis olanlar gecersiz bir
         // degerle kalmasin: hicbir theme-* sinifi eslesmezdi.
         if (!THEMES.some(t => t.id === merged.theme)) merged.theme = defaultSettings.theme;
+        // Eski surumde reducedMotion varsayilan acikti; cogu kullanici bunu hic
+        // secmedi. Yeni hareket dilini gorebilmeleri icin bir kerelik sifirla.
+        if (!localStorage.getItem('sm_motion_v2')) {
+          merged.reducedMotion = false;
+          localStorage.setItem('sm_motion_v2', '1');
+        }
         return merged;
       } catch (e) {
         console.error('Failed to parse settings from local storage', e);

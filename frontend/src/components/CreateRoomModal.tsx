@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { modalMotion, overlayMotion } from '../utils/motion';
 import { X, Plus, Hash, Volume2, MessageSquare, Loader2, Lock, Globe, Check, Copy, Link2 } from 'lucide-react';
 
 interface CreatedRoomInfo {
@@ -110,24 +111,19 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
     } catch { /* pano erişimi yok */ }
   };
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
+      {isOpen && (
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+        key="CreateRoomModal"
+        {...overlayMotion}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
         onClick={(e) => {
           if (e.target === e.currentTarget && !isLoading) onClose();
         }}
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 20 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          {...modalMotion}
           className="relative w-full max-w-md bg-bg-surface border border-[#334155] rounded-3xl overflow-hidden shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
@@ -379,6 +375,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-px bg-gradient-to-r from-transparent via-primary-main/30 to-transparent" />
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 };

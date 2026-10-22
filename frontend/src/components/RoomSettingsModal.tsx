@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { modalMotion } from '../utils/motion';
 import { X, Ban, Loader2, Check } from 'lucide-react';
 import { renderAvatar } from '../constants/avatars';
 import { roomApi, type RoomBanDto } from '../services/roomApi';
@@ -59,10 +60,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96 }}
-        transition={{ duration: 0.18 }}
+        {...modalMotion}
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
         style={{ background: '#0f0f12', border: '1px solid #27272a' }}
