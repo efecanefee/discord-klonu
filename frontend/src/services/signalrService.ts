@@ -1,5 +1,13 @@
 import * as signalR from '@microsoft/signalr';
 
+// Hub baglanti durumu — UI'daki "baglanti koptu" uyarisi bunu dinler.
+export type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected';
+
+// Yeniden baglanma araliklari (ms). Son deger sonsuza kadar tekrarlanir:
+// varsayilan politika 4 denemeden (~42 sn) sonra pes ediyordu ve kullanici
+// odada gorunmeye devam ederken baglanti kalici olarak kapali kaliyordu.
+const RECONNECT_DELAYS = [0, 1000, 2000, 5000];
+
 export interface VoiceUser {
     connectionId: string;
     username: string;
@@ -11,29 +19,133 @@ class SignalRService {
     private connection: signalR.HubConnection;
     private connectionPromise: Promise<void> | null = null;
     private backendUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5098'}/hub/chat`;
+    // Yeniden baglaninca otomatik geri girilecek oda ve ses kanali. Sunucu kopan
+    // baglantiyi odadan ve ses kanalindan cikarir; yeni baglantinin yeni bir
+    // connectionId'si olur, yani tekrar JoinRoom/JoinVoice cagrilmazsa kullanici
+    // odada gorunur ama kimseyi duymaz ve kimse onu duymaz.
+    private currentRoom: { roomId: string; username: string } | null = null;
+    private currentVoiceKey: string | null = null;
+    private status: ConnectionStatus = 'disconnected';
+    private statusListeners = new Set<(status: ConnectionStatus) => void>();
+    // Yeniden baglanma tamamlaninca, odaya geri girmeden HEMEN ONCE cagrilir.
+    // WebRTC hook'lari eski peer baglantilarini burada kapatir; ardindan gelen
+    // UserJoined/VoiceUserJoined ile karsi taraf yeni baglantiya offer acar.
+    private reconnectedListeners = new Set<(newConnectionId: string) => void>();
+    private restartTimer: ReturnType<typeof setTimeout> | null = null;
+    private intentionalStop = false;
 
     constructor() {
         this.connection = new signalR.HubConnectionBuilder()
             .withUrl(this.backendUrl, {
                 accessTokenFactory: () => localStorage.getItem('token') || '',
             })
-            .withAutomaticReconnect()
+            .withAutomaticReconnect({
+                nextRetryDelayInMilliseconds: ctx =>
+                    RECONNECT_DELAYS[Math.min(ctx.previousRetryCount, RECONNECT_DELAYS.length - 1)],
+            })
             .configureLogging(signalR.LogLevel.Warning)
             .build();
+
+        // Arka plandaki sekmede tarayici zamanlayicilari yavaslatir (Chrome'da
+        // dakikada bire kadar). Varsayilan 30 sn'lik zaman asimi bu yuzden oyun
+        // oynarken baglantiyi dusuruyordu; sunucudaki ClientTimeoutInterval ile esit.
+        this.connection.serverTimeoutInMilliseconds = 120_000;
+        this.connection.keepAliveIntervalInMilliseconds = 15_000;
+
+        this.connection.onreconnecting(err => {
+            console.warn('[SignalR] Baglanti koptu, yeniden baglaniliyor...', err);
+            this.setStatus('reconnecting');
+        });
+        this.connection.onreconnected(newId => {
+            console.log('[SignalR] Yeniden baglandi:', newId);
+            this.handleReconnected(newId ?? this.connection.connectionId ?? '');
+        });
+        this.connection.onclose(err => {
+            this.setStatus('disconnected');
+            if (this.intentionalStop) return;
+            console.warn('[SignalR] Baglanti kapandi, tekrar denenecek.', err);
+            this.scheduleRestart();
+        });
+
+        // Ag geri gelince beklemeden dene
+        window.addEventListener('online', () => {
+            if (this.connection.state === signalR.HubConnectionState.Disconnected && !this.intentionalStop) {
+                this.scheduleRestart(0);
+            }
+        });
     }
 
     public get connectionId(): string | null {
         return this.connection.connectionId;
     }
 
+    public get connectionStatus(): ConnectionStatus {
+        return this.status;
+    }
+
+    /** Kullanici bir odada ya da ses kanalinda mi (kopma uyarisi sesi icin) */
+    public get isInCall(): boolean {
+        return this.currentRoom !== null || this.currentVoiceKey !== null;
+    }
+
+    public onConnectionStatus(cb: (status: ConnectionStatus) => void) { this.statusListeners.add(cb); }
+    public offConnectionStatus(cb: (status: ConnectionStatus) => void) { this.statusListeners.delete(cb); }
+    public onReconnected(cb: (newConnectionId: string) => void) { this.reconnectedListeners.add(cb); }
+    public offReconnected(cb: (newConnectionId: string) => void) { this.reconnectedListeners.delete(cb); }
+
+    private setStatus(next: ConnectionStatus) {
+        if (this.status === next) return;
+        this.status = next;
+        this.statusListeners.forEach(cb => { try { cb(next); } catch (e) { console.error(e); } });
+    }
+
+    private async handleReconnected(newId: string) {
+        this.reconnectedListeners.forEach(cb => { try { cb(newId); } catch (e) { console.error(e); } });
+        const room = this.currentRoom;
+        if (room) {
+            try { await this.connection.invoke('JoinRoom', room.roomId, room.username); }
+            catch (e) { console.error('[SignalR] Odaya geri girilemedi:', e); }
+        }
+        const voiceKey = this.currentVoiceKey;
+        if (voiceKey) {
+            try { await this.connection.invoke('JoinVoice', voiceKey); }
+            catch (e) { console.error('[SignalR] Ses kanalina geri girilemedi:', e); }
+        }
+        this.setStatus('connected');
+    }
+
+    // Otomatik yeniden baglanma da basarisiz olursa (or. backend yeniden
+    // baslarken) baglantiyi sifirdan kurmayi denemeye devam et.
+    private scheduleRestart(delay = 5000) {
+        if (this.restartTimer) return;
+        this.restartTimer = setTimeout(async () => {
+            this.restartTimer = null;
+            if (this.connection.state !== signalR.HubConnectionState.Disconnected || this.intentionalStop) return;
+            this.setStatus('reconnecting');
+            try {
+                await this.connection.start();
+                await this.handleReconnected(this.connection.connectionId ?? '');
+            } catch {
+                this.setStatus('disconnected');
+                this.scheduleRestart();
+            }
+        }, delay);
+    }
+
     public async startConnection(roomId?: string, username?: string): Promise<void> {
+        this.intentionalStop = false;
+        if (roomId && username) this.currentRoom = { roomId, username };
         if (this.connection.state === signalR.HubConnectionState.Disconnected) {
             console.log(`🔌 SignalR bağlantısı deneniyor... Hedef: ${this.backendUrl}`);
             this.connectionPromise = this.connection.start().then(() => {
                 console.log('✅ SignalR Bağlantısı BAŞARILI!');
+                this.setStatus('connected');
             }).catch(err => {
                 console.error('❌ SignalR Bağlantı Hatası! Lütfen Backend portunun doğru olduğundan (5098) ve CORS ayarlarından emin olun. Hata: ', err);
                 this.connectionPromise = null;
+                this.setStatus('disconnected');
+                // Ilk baglanti da basarisiz olabilir (backend uyaniyor) — denemeye devam
+                this.scheduleRestart();
                 throw err;
             });
         }
@@ -59,6 +171,7 @@ class SignalRService {
 
     /** Odadan ayrıl — SignalR bağlantısını kapatmadan sadece LeaveRoom çağırır */
     public async leaveRoom(roomId: string, username: string): Promise<void> {
+        if (this.currentRoom?.roomId === roomId) this.currentRoom = null;
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             try {
                 await this.connection.invoke('LeaveRoom', roomId, username);
@@ -506,17 +619,22 @@ class SignalRService {
 
     // ===== Ses kanalları =====
     public async joinVoice(voiceKey: string) {
+        this.currentVoiceKey = voiceKey;
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             await this.connection.invoke('JoinVoice', voiceKey);
         }
     }
     public async leaveVoice(voiceKey: string) {
+        if (this.currentVoiceKey === voiceKey) this.currentVoiceKey = null;
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             try { await this.connection.invoke('LeaveVoice', voiceKey); } catch { /* bağlantı kapanıyor olabilir */ }
         }
     }
 
     public async stopConnection(roomId: string, username: string) {
+        this.intentionalStop = true;
+        this.currentRoom = null;
+        this.currentVoiceKey = null;
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             try {
                 await this.connection.invoke('LeaveRoom', roomId, username);

@@ -14,7 +14,14 @@ builder.WebHost.UseUrls("http://0.0.0.0:" + (Environment.GetEnvironmentVariable(
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers(); // REST API Controller'larını ekliyoruz (AuthController için)
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    // Arka plandaki sekmelerde tarayici zamanlayicilari yavaslatir; 30 sn'lik
+    // varsayilan zaman asimi oyun oynarken ses baglantisini dusuruyordu.
+    // Istemcideki serverTimeoutInMilliseconds ile ayni tutulmali.
+    options.ClientTimeoutInterval = TimeSpan.FromMinutes(2);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+});
 builder.Services.AddHttpClient(); // Dosya yüklemede Supabase Storage'a istek için
 
 // Email & Resend — anahtar repoda tutulmaz, ortam degiskeninden gelir (Resend__ApiKey)

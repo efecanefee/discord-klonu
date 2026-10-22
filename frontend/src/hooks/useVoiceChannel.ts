@@ -3,6 +3,10 @@ import signalrService, { type VoiceUser } from '../services/signalrService';
 import { useSettings } from '../contexts/SettingsContext';
 import { getRtcConfig } from '../config/webrtc';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
+import { playConnectionLostSound } from '../utils/sound';
+
+// Kopan bir peer icin ust uste en fazla kac ICE restart denenir
+const MAX_ICE_RESTARTS = 3;
 
 export type VoiceParticipant = VoiceUser;
 
@@ -100,30 +104,52 @@ export function useVoiceChannel() {
             if (e.track.kind === 'audio') attachAnalyser(connId, e.track);
         };
 
-        let iceRestarted = false;
+        let iceRestarts = 0;
+        let disconnectTimer: number | null = null;
+        let issueTimer: number | null = null;
+        const markIssue = () => setConnectionIssues(prev => prev.has(connId) ? prev : new Set(prev).add(connId));
+        // Glare onleme: iki taraf ayni anda restart ederse cakisir. Deterministik
+        // tie-break: yalnizca connectionId'si buyuk olan taraf yeniden offer acar,
+        // digeri yanit vermekle yetinir. Tek deneme yetmiyordu; 3 kez denenir.
+        const tryIceRestart = async (): Promise<boolean> => {
+            const myId = signalrService.connectionId ?? '';
+            if (pc.signalingState === 'closed' || iceRestarts >= MAX_ICE_RESTARTS || myId <= connId) return false;
+            iceRestarts++;
+            console.warn(`[Voice ICE] ${connId} kopuk, ICE restart deneniyor (${iceRestarts}/${MAX_ICE_RESTARTS}).`);
+            try {
+                const offer = await pc.createOffer({ iceRestart: true });
+                await pc.setLocalDescription(offer);
+                signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
+                return true;
+            } catch (e) {
+                console.error('[Voice] ICE restart hatasi:', e);
+                return false;
+            }
+        };
         pc.oniceconnectionstatechange = async () => {
             const state = pc.iceConnectionState;
             console.log(`[Voice ICE] ${connId} -> ${state}`);
+            if (disconnectTimer && state !== 'disconnected') { clearTimeout(disconnectTimer); disconnectTimer = null; }
 
-            if (state === 'failed') {
-                // Glare onleme: yalnizca connectionId'si buyuk olan taraf restart eder.
-                const myId = signalrService.connectionId ?? '';
-                if (!iceRestarted && myId > connId) {
-                    iceRestarted = true;
-                    console.warn(`[Voice ICE] ${connId} basarisiz, ICE restart deneniyor.`);
-                    try {
-                        const offer = await pc.createOffer({ iceRestart: true });
-                        await pc.setLocalDescription(offer);
-                        signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
-                    } catch (err) {
-                        console.error('[Voice] ICE restart hatasi:', err);
-                        setConnectionIssues(prev => new Set(prev).add(connId));
-                    }
-                } else {
-                    setConnectionIssues(prev => new Set(prev).add(connId));
-                }
+            if (state === 'disconnected') {
+                // Kisa ag dalgalanmasinda kendiliginden duzelir; 5 sn surerse
+                // 'failed'i beklemeden (bu 30 sn'yi bulabilir) yeniden dene.
+                disconnectTimer = window.setTimeout(() => {
+                    disconnectTimer = null;
+                    if (pc.iceConnectionState === 'disconnected') tryIceRestart();
+                }, 5000);
+            } else if (state === 'failed') {
+                if (await tryIceRestart()) return;
+                // Restart'i karsi taraf yapiyor olabilir; biraz bekle, duzelmediyse uyar.
+                if (issueTimer) clearTimeout(issueTimer);
+                issueTimer = window.setTimeout(() => {
+                    issueTimer = null;
+                    const s = pc.iceConnectionState;
+                    if (pc.signalingState !== 'closed' && s !== 'connected' && s !== 'completed') markIssue();
+                }, 8000);
             } else if (state === 'connected' || state === 'completed') {
-                iceRestarted = false;
+                iceRestarts = 0;
+                if (issueTimer) { clearTimeout(issueTimer); issueTimer = null; }
                 setConnectionIssues(prev => {
                     if (!prev.has(connId)) return prev;
                     const next = new Set(prev);
@@ -212,10 +238,11 @@ export function useVoiceChannel() {
         const onParticipants = (vk: string, users: VoiceUser[]) => {
             if (vk !== activeKeyRef.current) return;
             // Ben yeni gelenim → mevcutlar bana offer açacak; sadece UI listesini kur
-            setParticipants([self, ...users.filter(u => u.connectionId !== self.connectionId)]);
+            const me = selfRef.current ?? self;
+            setParticipants([me, ...users.filter(u => u.connectionId !== me.connectionId)]);
         };
         const onJoined = async (vk: string, user: VoiceUser) => {
-            if (vk !== activeKeyRef.current || user.connectionId === self.connectionId) return;
+            if (vk !== activeKeyRef.current || user.connectionId === (selfRef.current ?? self).connectionId) return;
             setParticipants(prev => prev.some(p => p.connectionId === user.connectionId) ? prev : [...prev, user]);
             // Ben mevcut üyeyim → yeni gelene offer aç
             const pc = createPeerConnection(user.connectionId);
@@ -326,6 +353,34 @@ export function useVoiceChannel() {
         const track = localStreamRef.current?.getAudioTracks()[0];
         if (track) { track.enabled = !track.enabled; setIsMuted(!track.enabled); }
     }, []);
+
+    // Hub yeniden baglandi: connectionId'miz degisti, sunucu bizi ses kanalindan
+    // cikardi. Mikrofonu acik tutup eski peer'lari kapat; signalrService ardindan
+    // JoinVoice'u tekrar cagirir ve digerleri yeni baglantiya offer acar.
+    useEffect(() => {
+        const onReconnected = (newId: string) => {
+            if (!activeKeyRef.current || !selfRef.current) return;
+            pcs.current.forEach(pc => pc.close());
+            pcs.current.clear();
+            iceQueues.current.clear();
+            analysers.current.forEach(a => { clearInterval(a.interval); a.ctx.close().catch(() => { }); });
+            analysers.current.clear();
+            setRemoteStreams(new Map());
+            setSpeakingConnIds(new Set());
+            setConnectionIssues(new Set());
+            selfRef.current = { ...selfRef.current, connectionId: newId };
+            setParticipants([selfRef.current]);
+        };
+        signalrService.onReconnected(onReconnected);
+        return () => signalrService.offReconnected(onReconnected);
+    }, []);
+
+    // Bir peer ile baglanti kalici olarak koptugunda sesli uyar
+    const prevIssueCountRef = useRef(0);
+    useEffect(() => {
+        if (connectionIssues.size > prevIssueCountRef.current) playConnectionLostSound();
+        prevIssueCountRef.current = connectionIssues.size;
+    }, [connectionIssues]);
 
     // Bileşen unmount olursa ses kanalından çık
     useEffect(() => () => { if (activeKeyRef.current) { signalrService.leaveVoice(activeKeyRef.current); teardown(); } }, [teardown]);

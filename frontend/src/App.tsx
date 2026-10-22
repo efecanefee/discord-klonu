@@ -14,6 +14,7 @@ import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
 import { notify } from './utils/browserNotifications';
 import { onUpdateReady, applyUpdate } from './utils/swUpdate';
+import ConnectionStatusBanner from './components/ConnectionStatusBanner';
 import { Lock, Mail, MessageSquare, Plus, User, Menu, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
@@ -974,6 +975,7 @@ function App() {
       <>
         {roomTree}
         {swUpdateToast}
+        <ConnectionStatusBanner />
         {/* Oda içinden erişilebilen modallar */}
         <ProfileModal
           isOpen={isProfileModalOpen}
@@ -1006,6 +1008,7 @@ function App() {
         <DMChatRoom currentUser={{ id: userId, username }} targetUser={activeDMUser} API_BASE_URL={API_BASE_URL} onLeave={() => { setInDMRoom(false); setActiveDMUser(null); }} />
         {voicePill}
         {swUpdateToast}
+        <ConnectionStatusBanner />
       </>
     );
   }
@@ -1026,6 +1029,7 @@ function App() {
     {roomTree}
     {voicePill}
     {swUpdateToast}
+    <ConnectionStatusBanner />
     <div className="relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
 
       {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
