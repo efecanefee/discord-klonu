@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
+import { usePinnedMessages } from '../hooks/usePinnedMessages';
+import PinnedMessagesButton from './PinnedMessagesButton';
+import PingBadge, { SignalBars } from './PingBadge';
+import SpeakingBars from './SpeakingBars';
+import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check } from 'lucide-react';
+import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check, Pin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { messageMotion } from '../utils/motion';
+import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
@@ -300,6 +305,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
     const { playJoinSound, playLeaveSound, playSendSound, playReceiveSound } = useAudioNotifications();
     const voice = useVoiceChannel();
+    const inVoice = !!voice.activeVoiceKey;
+    const peerPings = usePeerPings(voice.getPeers, inVoice);
+    const serverPing = useServerPing(inVoice);
     const { settings } = useSettings();
 
     // SignalR event'leri
@@ -749,6 +757,21 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
     };
 
+    // Mesaj sabitleme — sistem odalarında herkes, topluluk odalarında kurucu/moderatör
+    // (kanallarda rol oda üyeliğinden okunur; backend aynı kuralı uygular)
+    const { pins, pinnedIds, togglePin } = usePinnedMessages(activeChannelKey);
+    const memberRole = myRole || allMembers.find(m => m.userId === myUserId)?.role;
+    const canPin = roomInfo?.createdBy === 'system' || roleRank(memberRole) >= 1;
+    const jumpToMessage = (serverId: number) => {
+        const target = messages.find(m => m.serverId === serverId);
+        const el = target && document.getElementById(`text-msg-${target.id}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.remove('msg-flash');
+        void el.offsetWidth; // animasyonu yeniden başlat
+        el.classList.add('msg-flash');
+    };
+
     const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
     // Düz metin parçasında @mention'ları vurgular (bilinen üye adlarıyla sınırlı)
@@ -917,6 +940,10 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             </span>
                         </button>
 
+                        {/* Sabitlenmiş mesajlar */}
+                        <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username}
+                            onUnpin={togglePin} onJump={jumpToMessage} />
+
                         {/* Arama */}
                         <div className="relative flex items-center">
                             <AnimatePresence>
@@ -1079,15 +1106,21 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                             const speaking = voice.speakingConnIds.has(p.connectionId);
                                                             const failed = voice.connectionIssues.has(p.connectionId);
                                                             return (
-                                                                <motion.div key={p.connectionId} layout
-                                                                    initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
+                                                                <motion.div key={p.connectionId} layout {...voiceMemberMotion}
                                                                     className="flex items-center gap-1.5">
-                                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${failed ? 'bg-amber-400' : speaking ? 'bg-emerald-400' : 'bg-text-muted/40'}`} />
+                                                                    {failed
+                                                                        ? <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-400" />
+                                                                        : <SpeakingBars active={speaking} className="shrink-0 scale-75 -mx-0.5" />}
                                                                     <span className={`text-[12px] truncate max-w-[120px] ${failed ? 'text-amber-400/80' : speaking ? 'text-emerald-400' : 'text-text-muted'}`}>
                                                                         {p.username}{p.userId === myUserId ? ' (Sen)' : ''}
                                                                     </span>
                                                                     {failed && (
                                                                         <span title="Bu kisiyle ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80 shrink-0">bağlanılamadı</span>
+                                                                    )}
+                                                                    {!failed && peerPings.has(p.connectionId) && (
+                                                                        <span className="ml-auto shrink-0" title={`Gecikme: ${peerPings.get(p.connectionId)} ms`}>
+                                                                            <SignalBars ms={peerPings.get(p.connectionId)} />
+                                                                        </span>
                                                                     )}
                                                                 </motion.div>
                                                             );
@@ -1109,6 +1142,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" style={{ boxShadow: '0 0 6px rgba(16,185,129,0.8)' }} />
                                     <span className="text-[12px] text-text-muted truncate">Sesli sohbet · {voice.participants.length}</span>
                                 </div>
+                                <PingBadge compact serverPing={serverPing} peerPings={peerPings}
+                                    names={new Map(voice.participants.map(p => [p.connectionId, p.username]))} />
                                 <button onClick={voice.toggleMute} title={voice.isMuted ? 'Mikrofonu aç' : 'Mikrofonu kapat'}
                                     className={`p-1.5 rounded-lg transition-colors ${voice.isMuted ? 'text-red-400 bg-red-500/10' : 'text-text-muted hover:text-text-main hover:bg-bg-surface'}`}>
                                     {voice.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
@@ -1165,8 +1200,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                         {renderAvatar(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                     </div>
                                                     <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                                                        <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
+                                                        <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium flex items-center gap-1">
                                                             {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}
+                                                            {msg.serverId != null && pinnedIds.has(msg.serverId) && (
+                                                                <Pin size={11} className="text-primary-main anim-pop" aria-label="Sabitlenmiş" />
+                                                            )}
                                                         </span>
 
                                                         {msg.replyToId && (() => {
@@ -1220,6 +1258,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                                 {!msg.pending && (
                                                                     <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer" title="Yanıtla">
                                                                         <Reply size={12} className="text-text-main" />
+                                                                    </button>
+                                                                )}
+                                                                {canPin && msg.serverId && !msg.pending && (
+                                                                    <button onClick={() => togglePin(msg.serverId!)} className={`w-6 h-6 rounded-full border flex items-center justify-center cursor-pointer ${pinnedIds.has(msg.serverId) ? 'bg-primary-main border-primary-main' : 'bg-bg-surface border-border-main hover:bg-border-main'}`} title={pinnedIds.has(msg.serverId) ? 'Sabitlemeyi kaldır' : 'Sabitle'}>
+                                                                        <Pin size={11} className={pinnedIds.has(msg.serverId) ? 'text-white' : 'text-text-main'} />
                                                                     </button>
                                                                 )}
                                                                 {msg.serverId && !msg.pending && (

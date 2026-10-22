@@ -16,6 +16,7 @@ namespace DiscordClone.Api.Data
         public DbSet<Channel> Channels { get; set; }
         public DbSet<UserSound> UserSounds { get; set; }
         public DbSet<MessageReaction> MessageReactions { get; set; }
+        public DbSet<PushSubscriptionEntry> PushSubscriptions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,6 +47,12 @@ namespace DiscordClone.Api.Data
                 .Property(m => m.AvatarId).HasColumnName("avatar_id");
             modelBuilder.Entity<ChatMessage>()
                 .Property(m => m.ReplyToId).HasColumnName("reply_to_id");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.IsPinned).HasColumnName("is_pinned");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.PinnedBy).HasColumnName("pinned_by");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.PinnedAt).HasColumnName("pinned_at");
 
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(m => m.User)
@@ -90,6 +97,12 @@ namespace DiscordClone.Api.Data
                 .Property(u => u.CustomStatusMessage).HasColumnName("custom_status_message");
             modelBuilder.Entity<User>()
                 .Property(u => u.ShowLastSeen).HasColumnName("show_last_seen");
+            modelBuilder.Entity<User>()
+                .Property(u => u.BannerColor).HasColumnName("banner_color");
+            modelBuilder.Entity<User>()
+                .Property(u => u.AccentColor).HasColumnName("accent_color");
+            modelBuilder.Entity<User>()
+                .Property(u => u.Bio).HasColumnName("bio");
 
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email).IsUnique();
@@ -212,6 +225,23 @@ namespace DiscordClone.Api.Data
                 .Property(s => s.CreatedAt).HasColumnName("created_at");
 
             // Mesaj tepkileri (emoji reaction)
+            modelBuilder.Entity<PushSubscriptionEntry>()
+                .ToTable("push_subscriptions");
+            modelBuilder.Entity<PushSubscriptionEntry>()
+                .Property(p => p.Id).HasColumnName("id");
+            modelBuilder.Entity<PushSubscriptionEntry>()
+                .Property(p => p.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<PushSubscriptionEntry>()
+                .Property(p => p.Endpoint).HasColumnName("endpoint");
+            modelBuilder.Entity<PushSubscriptionEntry>()
+                .Property(p => p.P256dh).HasColumnName("p256dh");
+            modelBuilder.Entity<PushSubscriptionEntry>()
+                .Property(p => p.Auth).HasColumnName("auth");
+            modelBuilder.Entity<PushSubscriptionEntry>()
+                .Property(p => p.CreatedAt).HasColumnName("created_at");
+            modelBuilder.Entity<PushSubscriptionEntry>()
+                .HasIndex(p => p.Endpoint).IsUnique();
+
             modelBuilder.Entity<MessageReaction>()
                 .ToTable("message_reactions");
             modelBuilder.Entity<MessageReaction>()

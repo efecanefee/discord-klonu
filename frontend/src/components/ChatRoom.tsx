@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import signalrService from '../services/signalrService';
+import { usePinnedMessages } from '../hooks/usePinnedMessages';
+import PinnedMessagesButton from './PinnedMessagesButton';
+import PingBadge, { SignalBars } from './PingBadge';
+import SpeakingBars from './SpeakingBars';
+import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2 } from 'lucide-react';
+import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2, Pin } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { motion, AnimatePresence } from 'framer-motion';
-import { messageMotion } from '../utils/motion';
+import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
 import SoundboardPanel from './SoundboardPanel';
@@ -289,8 +294,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         selectedMicId, selectedOutputId,
         switchMicrophone, setSelectedOutputId,
         speakingUsers, connectionIssues,
-        getMicLevel,
+        getMicLevel, getPeers,
     } = useWebRTC();
+
+    // Ping: kişilere (WebRTC) ve sunucuya gidiş-dönüş süresi
+    const peerPings = usePeerPings(getPeers, isReady);
+    const serverPing = useServerPing(isReady);
 
     const { playJoinSound, playLeaveSound, playMuteSound, playUnmuteSound, playSendSound, playReceiveSound } = useAudioNotifications();
 
@@ -944,6 +953,28 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
     };
 
+    // Mesaj sabitleme — sistem odalarında (rol yok) herkes, topluluk odalarında kurucu/moderatör
+    const { pins, pinnedIds, togglePin } = usePinnedMessages(roomId);
+    const canPin = canManageRoom || !myRole;
+    const jumpToMessage = (serverId: number) => {
+        const target = messages.find(m => m.serverId === serverId);
+        if (!target) return;
+        const el = document.getElementById(`room-msg-${target.id}`) || document.getElementById(`compact-msg-${target.id}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.remove('msg-flash');
+        void el.offsetWidth; // animasyonu yeniden başlat
+        el.classList.add('msg-flash');
+    };
+    const pinButton = (msg: Message, size: number) => canPin && msg.serverId && !msg.pending ? (
+        <button onClick={() => togglePin(msg.serverId!)} className={`w-6 h-6 rounded-full border flex items-center justify-center cursor-pointer ${pinnedIds.has(msg.serverId) ? 'bg-primary-main border-primary-main' : 'bg-bg-surface border-border-main hover:bg-border-main'}`} title={pinnedIds.has(msg.serverId) ? 'Sabitlemeyi kaldır' : 'Sabitle'}>
+            <Pin size={size} className={pinnedIds.has(msg.serverId) ? 'text-white' : 'text-text-main'} />
+        </button>
+    ) : null;
+    const pinMark = (msg: Message, size: number) => msg.serverId != null && pinnedIds.has(msg.serverId)
+        ? <Pin size={size} className="inline-block ml-1 -mt-0.5 text-primary-main anim-pop" aria-label="Sabitlenmiş" />
+        : null;
+
     const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
     // Düz metin parçasında @mention'ları vurgular (odadaki adlarla sınırlı)
@@ -1229,6 +1260,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                         {isCameraOn && <video ref={localVideoRef} autoPlay muted className="w-9 h-9 rounded-xl object-cover border border-border-main" />}
 
+                        <span className="hidden sm:inline-flex">
+                            <PingBadge serverPing={serverPing} peerPings={peerPings}
+                                names={new Map(usersInRoom.map(u => [u.connectionId, u.username]))} />
+                        </span>
+
                         {/* Oda ayarları — sadece kurucu */}
                         {myRole === 'owner' && (
                             <button onClick={() => setShowRoomSettings(true)} title="Oda ayarları"
@@ -1342,16 +1378,20 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 </h3>
                             </div>
                             <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
+                                <AnimatePresence initial={false}>
                                 {sortedUsers.map((u) => {
                                     const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
                                     const badge = roleBadgeEmoji(u.role);
                                     return (
-                                        <div key={u.connectionId} className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/30' : 'hover:bg-bg-surface'}`}>
-                                            <div className={`w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-sm flex-shrink-0 ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
-                                                {renderAvatar(u.avatarId || 'default')}
+                                        <motion.div layout {...voiceMemberMotion} key={u.connectionId} className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/30' : 'border border-transparent hover:bg-bg-surface'}`}>
+                                            <div className="relative flex-shrink-0">
+                                                <span className="voice-join-ring" />
+                                                <div className={`relative w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-sm ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
+                                                    {renderAvatar(u.avatarId || 'default')}
+                                                </div>
                                             </div>
                                             <div className="flex flex-col min-w-0 flex-1">
-                                                <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}</span>
+                                                <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}<SpeakingBars active={isSpeaking} className="ml-auto shrink-0" /></span>
                                                 {connectionIssues.has(u.connectionId)
                                                     ? <span title="Ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80">bağlanılamadı</span>
                                                     : mutedUsers[u.connectionId] && <MicOff size={10} className="text-red-400 mt-0.5" />}
@@ -1364,9 +1404,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                         className="mt-1 w-full h-1 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main" />
                                                 )}
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     );
                                 })}
+                                </AnimatePresence>
                             </div>
                         </motion.div>
 
@@ -1376,6 +1417,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Sohbet</span>
                                 <div className="flex items-center gap-2">
                                     <span className="bg-bg-surface px-2 py-0.5 rounded-lg border border-border-main text-text-main font-semibold text-[11px]">{messages.filter(m => m.type === 'message').length}</span>
+                                    <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username} onUnpin={togglePin} onJump={jumpToMessage}
+                                        className="relative text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-[13px] [&>svg]:h-[13px]" />
                                     <button onClick={() => setShowSearch(p => !p)} className="text-text-muted hover:text-text-main transition-colors cursor-pointer"><Search size={13} /></button>
                                 </div>
                             </div>
@@ -1409,7 +1452,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             {renderAvatar(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                         </div>
                                                         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                                                            <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
+                                                            <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}{pinMark(msg, 9)}</span>
                                                             
                                                             {msg.replyToId && (() => {
                                                                 const replyMsg = messages.find(m => m.serverId === msg.replyToId || m.id === msg.replyToId);
@@ -1464,6 +1507,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                                 <Reply size={11} className="text-text-main" />
                                                                             </button>
                                                                         )}
+                                                                        {pinButton(msg, 10)}
                                                                     </div>
                                                             </div>
                                                         </div>
@@ -1530,6 +1574,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 className="bg-bg-surface border border-border-main rounded-xl px-3 py-1.5 text-sm text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
                                         )}
                                     </AnimatePresence>
+                                    <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username} onUnpin={togglePin} onJump={jumpToMessage}
+                                        className="relative p-1.5 rounded-lg text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-4 [&>svg]:h-4" />
                                     <button onClick={() => { setShowSearch(p => !p); setSearchQuery(''); }}
                                         className="p-1.5 rounded-lg text-text-muted hover:text-text-main transition-colors cursor-pointer">
                                         {showSearch ? <X size={16} /> : <Search size={16} />}
@@ -1574,7 +1620,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             </div>
                                                             <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                                 <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
-                                                                    {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}
+                                                                    {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}{pinMark(msg, 11)}
                                                                 </span>
                                                                 
                                                                 {msg.replyToId && (() => {
@@ -1646,6 +1692,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                                 <Reply size={12} className="text-text-main" />
                                                                             </button>
                                                                         )}
+                                                                        {pinButton(msg, 11)}
                                                                         {msg.serverId && !msg.pending && (
                                                                             <div className="relative">
                                                                                 <button onClick={() => setReactionPickerFor(p => p === msg.id ? null : msg.id)} className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer" title="Tepki ekle">
@@ -1732,7 +1779,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
                                             const badge = roleBadgeEmoji(u.role);
                                             return (
-                                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={u.connectionId}
+                                                <motion.div layout {...voiceMemberMotion} key={u.connectionId}
                                                     className="relative flex flex-col gap-2 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200">
                                                     <div className="flex items-center justify-between cursor-pointer"
                                                         onClick={(e) => { setPopoverAnchor(e.currentTarget.getBoundingClientRect()); setPopoverUserConnId(prev => prev === u.connectionId ? null : u.connectionId); }}>
@@ -1759,6 +1806,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         </>
                                                                     )}
                                                                 </AnimatePresence>
+                                                                <span className="voice-join-ring z-0" />
                                                                 <div className={`relative z-10 w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-150 text-xl ${isSpeaking ? 'border-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]' : 'border-primary-main'}`}>
                                                                     {renderAvatar(u.avatarId || 'default')}
                                                                 </div>
@@ -1767,6 +1815,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             <div>
                                                                 <span className="font-semibold text-[14px] text-text-main truncate max-w-[110px] flex items-center gap-1">
                                                                     {u.username} {badge && <span title={u.role === 'owner' ? 'Kurucu' : 'Moderatör'}>{badge}</span>} {u.connectionId === signalrService.connectionId && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
+                                                                    <SpeakingBars active={isSpeaking} className="ml-0.5" />
                                                                     {(u.connectionId === signalrService.connectionId ? isMuted : mutedUsers[u.connectionId]) && (
                                                                         <span title="Mikrofonu kapalı" className="flex items-center justify-center">
                                                                             <MicOff size={12} className="text-red-500 flex-shrink-0" />
@@ -1775,7 +1824,15 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                 </span>
                                                                 {connectionIssues.has(u.connectionId)
                                                                     ? <span title="Ses baglantisi kurulamadi — karsi taraf seni duyamiyor olabilir" className="text-[11px] text-amber-400/80">⚠ bağlanılamadı</span>
-                                                                    : <span className="text-[11px] text-text-muted">{u.connectionId === signalrService.connectionId ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}</span>}
+                                                                    : <span className="text-[11px] text-text-muted flex items-center gap-1.5">
+                                                                        {u.connectionId === signalrService.connectionId ? STATUS_LABELS[myStatus] : 'Çevrimiçi'}
+                                                                        {peerPings.has(u.connectionId) && (
+                                                                            <span className="flex items-center gap-1" title="Bu kişiyle aranızdaki gecikme">
+                                                                                <SignalBars ms={peerPings.get(u.connectionId)} />
+                                                                                <span className="font-mono tabular-nums text-[10px]">{peerPings.get(u.connectionId)} ms</span>
+                                                                            </span>
+                                                                        )}
+                                                                    </span>}
                                                             </div>
                                                         </div>
                                                     </div>

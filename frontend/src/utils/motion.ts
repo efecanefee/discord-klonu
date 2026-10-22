@@ -58,3 +58,11 @@ export const staggerItem: Variants = {
   hidden: { opacity: 0, y: 16, filter: 'blur(4px)' },
   visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: spring.smooth },
 };
+
+// Ses kanalı katılımcısı: girerken yandan kayıp yayla oturur, çıkarken
+// sola doğru silinerek küçülür. layout ile kalanlar boşluğu akıcı kapatır.
+export const voiceMemberMotion = {
+  initial: { opacity: 0, x: -18, scale: 0.92, filter: 'blur(4px)' },
+  animate: { opacity: 1, x: 0, scale: 1, filter: 'blur(0px)', transition: spring.bouncy },
+  exit: { opacity: 0, x: -24, scale: 0.9, filter: 'blur(4px)', transition: { duration: 0.22, ease: ease.inQuick } },
+};

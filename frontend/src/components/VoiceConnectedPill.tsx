@@ -6,14 +6,16 @@ interface VoiceConnectedPillProps {
   roomName: string;
   onReturn: () => void;
   onDisconnect: () => void;
+  // Lobide mobil alt menü varken onun üstünde dursun
+  aboveMobileNav?: boolean;
 }
 
 // Lobideyken arkaplanda süren sesli sohbet oturumunu gösteren sabit pill.
-const VoiceConnectedPill: React.FC<VoiceConnectedPillProps> = ({ roomName, onReturn, onDisconnect }) => (
+const VoiceConnectedPill: React.FC<VoiceConnectedPillProps> = ({ roomName, onReturn, onDisconnect, aboveMobileNav }) => (
   <motion.div
     initial={{ y: 60, opacity: 0 }}
     animate={{ y: 0, opacity: 1 }}
-    className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-3 pl-4 pr-2 py-2 rounded-full bg-bg-surface/95 backdrop-blur border border-green-500/40 shadow-[0_4px_24px_rgba(0,0,0,0.5)]"
+    className={`fixed ${aboveMobileNav ? 'bottom-24 md:bottom-4' : 'bottom-4'} left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 sm:gap-3 pl-4 pr-2 py-2 rounded-full bg-bg-surface/95 backdrop-blur border border-green-500/40 shadow-[0_4px_24px_rgba(0,0,0,0.5)]`}
   >
     <span className="relative flex w-2.5 h-2.5 shrink-0">
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60" />

@@ -386,5 +386,8 @@ export function useVoiceChannel() {
     // Bileşen unmount olursa ses kanalından çık
     useEffect(() => () => { if (activeKeyRef.current) { signalrService.leaveVoice(activeKeyRef.current); teardown(); playSelfLeaveSound(); } }, [teardown]);
 
-    return { activeVoiceKey, participants, remoteStreams, speakingConnIds, connectionIssues, isMuted, toggleMute, joinVoice, leaveVoice };
+    // Ping ölçümü için mevcut peer bağlantıları (ref — kimliği sabit)
+    const getPeers = useCallback(() => pcs.current, []);
+
+    return { getPeers, activeVoiceKey, participants, remoteStreams, speakingConnIds, connectionIssues, isMuted, toggleMute, joinVoice, leaveVoice };
 }

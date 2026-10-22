@@ -3,7 +3,7 @@ import ChatRoom from './components/ChatRoom';
 import TextChatRoom from './components/TextChatRoom';
 import DMChatRoom from './components/DMChatRoom';
 import MiniDock from './components/MiniDock';
-import ProfileModal from './components/ProfileModal';
+import ProfileModal, { type ProfileSaveData } from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
 import MyServersPanel from './components/MyServersPanel';
 import NewMessageModal, { type UserData as ModalUserData } from './components/NewMessageModal';
@@ -13,9 +13,10 @@ import { useSettings } from './contexts/SettingsContext';
 import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
 import { notify } from './utils/browserNotifications';
+import { resyncWebPush, disableWebPush } from './utils/webPush';
 import { onUpdateReady, applyUpdate } from './utils/swUpdate';
 import ConnectionStatusBanner from './components/ConnectionStatusBanner';
-import { Lock, Mail, MessageSquare, Plus, User, Menu, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { spring, modalMotion, overlayMotion, staggerParent, staggerItem } from './utils/motion';
 import signalrService from './services/signalrService';
@@ -23,6 +24,7 @@ import RoomCard from './components/RoomCard';
 import ClockPanel from './components/ClockPanel';
 import ActivityFeed from './components/ActivityFeed';
 import VoiceConnectedPill from './components/VoiceConnectedPill';
+import MobileBottomNav from './components/MobileBottomNav';
 
 // Baslik harf harf yalnizca ilk goruntulemede animasyonlanir. memo: App'in her
 // render'inda 15 motion.span'in yeniden olusturulmasini engeller.
@@ -284,6 +286,7 @@ function App() {
       setMyShowLastSeen(savedShowLastSeen);
       setAuthState('rooms');
       connectSignalR();
+      resyncWebPush();
     }
   }, []);
 
@@ -487,6 +490,7 @@ function App() {
         setMyShowLastSeen(data.showLastSeen !== false);
         setAuthState('rooms');
         connectSignalR();
+        resyncWebPush();
       } else {
         const errText = await res.text();
         setErrorMsg(errText || 'Giriş başarısız, e-posta veya şifre hatalı.');
@@ -611,7 +615,9 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Paylaşılan cihazda eski hesaba push gelmesin (token silinmeden önce)
+    await disableWebPush().catch(() => { });
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('firstName');
@@ -825,7 +831,7 @@ function App() {
     });
   };
 
-  const handleProfileSave = async (data: { username: string; firstName: string; lastName: string; avatarId: string }) => {
+  const handleProfileSave = async (data: ProfileSaveData) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`${API_BASE_URL}/api/auth/profile`, {
       method: 'PUT',
@@ -968,6 +974,7 @@ function App() {
       roomName={activeRoom.name}
       onReturn={() => setInRoom(true)}
       onDisconnect={handleDisconnectRoom}
+      aboveMobileNav={!inDMRoom}
     />
   );
 
@@ -980,6 +987,7 @@ function App() {
         {/* Oda içinden erişilebilen modallar */}
         <ProfileModal
           isOpen={isProfileModalOpen}
+          userId={userId}
           onClose={() => setIsProfileModalOpen(false)}
           currentUsername={username}
           currentFirstName={firstName}
@@ -1026,7 +1034,7 @@ function App() {
     {voicePill}
     {swUpdateToast}
     <ConnectionStatusBanner />
-    <div className="relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto py-6 px-4 md:px-6 font-sans bg-bg-base">
+    <div className={`relative min-h-screen flex flex-col items-center justify-start md:justify-center overflow-x-hidden overflow-y-auto pt-6 ${authState === 'rooms' ? 'pb-28' : 'pb-6'} md:pb-6 px-4 md:px-6 font-sans bg-bg-base`}>
 
       {/* Statik arka plan: tek seferde boyanir, animasyon yok */}
       <div className="app-background">
@@ -1199,6 +1207,7 @@ function App() {
 
       <ProfileModal 
         isOpen={isProfileModalOpen}
+        userId={userId}
         onClose={() => setIsProfileModalOpen(false)}
         currentUsername={username}
         currentFirstName={firstName}
@@ -1270,21 +1279,24 @@ function App() {
 
       {/* Mobil tarih & saat şeridi + aktivite akışı — masaüstünde sağ kolonda */}
       {authState === 'rooms' && (
-        <div className="md:hidden w-full max-w-[400px] mx-4 space-y-3">
-          <div className="flex items-stretch gap-3">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              aria-label="Menüyü aç"
-              className="shrink-0 flex items-center justify-center px-4 rounded-3xl bg-bg-surface/60 border border-white/10 hover:bg-bg-surface text-white cursor-pointer"
-            >
-              <Menu size={24} />
-            </button>
-            <div className="flex-1 min-w-0">
-              <ClockPanel compact />
-            </div>
-          </div>
+        <div className="md:hidden w-full max-w-[400px] space-y-3">
+          <ClockPanel compact />
           <ActivityFeed rooms={rooms} />
         </div>
+      )}
+      {/* Mobil alt menü — menü butonunun yerini alır */}
+      {authState === 'rooms' && (
+        <MobileBottomNav
+          activeTab={isSidebarOpen ? 'messages' : 'rooms'}
+          unreadCount={Object.values(unreadCounts).reduce((a, b) => a + b, 0)}
+          avatarId={avatarId}
+          statusColor={myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}
+          onRooms={() => { setIsSidebarOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          onMessages={() => { setIsDMOpen(true); setIsSidebarOpen(true); }}
+          onCreateRoom={() => { setIsSidebarOpen(false); setIsCreateRoomModalOpen(true); }}
+          onProfile={() => { setIsSidebarOpen(false); setIsProfileModalOpen(true); }}
+          onSettings={() => { setIsSidebarOpen(false); setIsSettingsModalOpen(true); }}
+        />
       )}
 
       {/* Sol panel — Bazı Özellikler (yalnızca giriş/kayıt ekranlarında, masaüstü) */}
