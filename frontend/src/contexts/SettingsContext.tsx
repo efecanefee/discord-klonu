@@ -43,6 +43,7 @@ export interface Settings {
   noiseSuppression: boolean;   // Tarayıcının kendi filtresi — durağan gürültü için
   noiseGateEnabled: boolean;   // Gürültü kapısı — eşik altındaki sesi tamamen keser
   noiseGateThreshold: number;  // 0-100
+  soundboardVolume: number;    // 0-1, ana ses seviyesiyle carpilir
   
   // Bildirimler
   notificationSoundEnabled: boolean;
@@ -66,6 +67,8 @@ const defaultSettings: Settings = {
   noiseSuppression: true,
   noiseGateEnabled: true,
   noiseGateThreshold: 15,
+  // Yuklenen sesler genelde yuksek kayitli; yarim seviye makul bir baslangic.
+  soundboardVolume: 0.5,
   
   notificationSoundEnabled: true,
   notificationTone: 'default',

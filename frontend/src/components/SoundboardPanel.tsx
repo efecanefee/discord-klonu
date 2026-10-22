@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, Trash2, Volume2, Loader2 } from 'lucide-react';
+import { X, Upload, Trash2, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { useSettings } from '../contexts/SettingsContext';
 import signalrService from '../services/signalrService';
 
 interface Sound {
@@ -25,6 +26,8 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
   const [error, setError] = useState('');
   const [cooldown, setCooldown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { settings, updateSettings } = useSettings();
+  const soundboardVolume = settings.soundboardVolume;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -128,6 +131,24 @@ const SoundboardPanel: React.FC<SoundboardPanelProps> = ({ isOpen, onClose, room
             <button onClick={onClose} className="p-1.5 text-text-muted hover:text-text-main rounded-full hover:bg-surface-subtle transition-colors">
               <X size={15} />
             </button>
+          </div>
+
+          {/* Soundboard ses seviyesi — yalnizca bu cihazda, digerlerini etkilemez */}
+          <div className="mb-3 flex items-center gap-2 px-1" title="Soundboard ses seviyesi (sadece senin için)">
+            <button
+              onClick={() => updateSettings({ soundboardVolume: soundboardVolume === 0 ? 0.5 : 0 })}
+              className="p-1 text-text-muted hover:text-text-main transition-colors shrink-0"
+              aria-label={soundboardVolume === 0 ? 'Soundboard sesini aç' : 'Soundboard sesini kapat'}
+            >
+              {soundboardVolume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+            </button>
+            <input
+              type="range" min="0" max="1" step="0.01" value={soundboardVolume}
+              onChange={e => updateSettings({ soundboardVolume: parseFloat(e.target.value) })}
+              className="flex-1 h-1.5 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main"
+              aria-label="Soundboard ses seviyesi"
+            />
+            <span className="text-[11px] text-text-muted w-8 text-right tabular-nums">{Math.round(soundboardVolume * 100)}%</span>
           </div>
 
           {error && (
