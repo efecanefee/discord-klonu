@@ -3,13 +3,14 @@ import signalrService from '../services/signalrService';
 import { usePinnedMessages } from '../hooks/usePinnedMessages';
 import PinnedMessagesButton from './PinnedMessagesButton';
 import PingBadge, { SignalBars } from './PingBadge';
+import SpeakingBars from './SpeakingBars';
 import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2, Pin } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { motion, AnimatePresence } from 'framer-motion';
-import { messageMotion } from '../utils/motion';
+import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
 import SoundboardPanel from './SoundboardPanel';
@@ -1377,16 +1378,20 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 </h3>
                             </div>
                             <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
+                                <AnimatePresence initial={false}>
                                 {sortedUsers.map((u) => {
                                     const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
                                     const badge = roleBadgeEmoji(u.role);
                                     return (
-                                        <div key={u.connectionId} className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/30' : 'hover:bg-bg-surface'}`}>
-                                            <div className={`w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-sm flex-shrink-0 ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
-                                                {renderAvatar(u.avatarId || 'default')}
+                                        <motion.div layout {...voiceMemberMotion} key={u.connectionId} className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/30' : 'border border-transparent hover:bg-bg-surface'}`}>
+                                            <div className="relative flex-shrink-0">
+                                                <span className="voice-join-ring" />
+                                                <div className={`relative w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-sm ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
+                                                    {renderAvatar(u.avatarId || 'default')}
+                                                </div>
                                             </div>
                                             <div className="flex flex-col min-w-0 flex-1">
-                                                <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}</span>
+                                                <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}<SpeakingBars active={isSpeaking} className="ml-auto shrink-0" /></span>
                                                 {connectionIssues.has(u.connectionId)
                                                     ? <span title="Ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80">bağlanılamadı</span>
                                                     : mutedUsers[u.connectionId] && <MicOff size={10} className="text-red-400 mt-0.5" />}
@@ -1399,9 +1404,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                         className="mt-1 w-full h-1 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main" />
                                                 )}
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     );
                                 })}
+                                </AnimatePresence>
                             </div>
                         </motion.div>
 
@@ -1773,7 +1779,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
                                             const badge = roleBadgeEmoji(u.role);
                                             return (
-                                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} key={u.connectionId}
+                                                <motion.div layout {...voiceMemberMotion} key={u.connectionId}
                                                     className="relative flex flex-col gap-2 p-3 rounded-[16px] border border-transparent hover:border-border-main hover:bg-bg-surface transition-colors duration-200">
                                                     <div className="flex items-center justify-between cursor-pointer"
                                                         onClick={(e) => { setPopoverAnchor(e.currentTarget.getBoundingClientRect()); setPopoverUserConnId(prev => prev === u.connectionId ? null : u.connectionId); }}>
@@ -1800,6 +1806,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         </>
                                                                     )}
                                                                 </AnimatePresence>
+                                                                <span className="voice-join-ring z-0" />
                                                                 <div className={`relative z-10 w-10 h-10 rounded-full bg-bg-surface flex items-center justify-center overflow-hidden border-2 shadow-sm transition-all duration-150 text-xl ${isSpeaking ? 'border-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)]' : 'border-primary-main'}`}>
                                                                     {renderAvatar(u.avatarId || 'default')}
                                                                 </div>
@@ -1808,6 +1815,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             <div>
                                                                 <span className="font-semibold text-[14px] text-text-main truncate max-w-[110px] flex items-center gap-1">
                                                                     {u.username} {badge && <span title={u.role === 'owner' ? 'Kurucu' : 'Moderatör'}>{badge}</span>} {u.connectionId === signalrService.connectionId && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
+                                                                    <SpeakingBars active={isSpeaking} className="ml-0.5" />
                                                                     {(u.connectionId === signalrService.connectionId ? isMuted : mutedUsers[u.connectionId]) && (
                                                                         <span title="Mikrofonu kapalı" className="flex items-center justify-center">
                                                                             <MicOff size={12} className="text-red-500 flex-shrink-0" />

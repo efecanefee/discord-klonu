@@ -3,11 +3,12 @@ import signalrService from '../services/signalrService';
 import { usePinnedMessages } from '../hooks/usePinnedMessages';
 import PinnedMessagesButton from './PinnedMessagesButton';
 import PingBadge, { SignalBars } from './PingBadge';
+import SpeakingBars from './SpeakingBars';
 import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check, Pin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { messageMotion } from '../utils/motion';
+import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
@@ -1105,10 +1106,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                             const speaking = voice.speakingConnIds.has(p.connectionId);
                                                             const failed = voice.connectionIssues.has(p.connectionId);
                                                             return (
-                                                                <motion.div key={p.connectionId} layout
-                                                                    initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
+                                                                <motion.div key={p.connectionId} layout {...voiceMemberMotion}
                                                                     className="flex items-center gap-1.5">
-                                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${failed ? 'bg-amber-400' : speaking ? 'bg-emerald-400' : 'bg-text-muted/40'}`} />
+                                                                    {failed
+                                                                        ? <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-400" />
+                                                                        : <SpeakingBars active={speaking} className="shrink-0 scale-75 -mx-0.5" />}
                                                                     <span className={`text-[12px] truncate max-w-[120px] ${failed ? 'text-amber-400/80' : speaking ? 'text-emerald-400' : 'text-text-muted'}`}>
                                                                         {p.username}{p.userId === myUserId ? ' (Sen)' : ''}
                                                                     </span>

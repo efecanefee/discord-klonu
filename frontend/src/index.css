@@ -720,3 +720,57 @@ html.theme-oled .app-background::after { display: none; }
   border-radius: 1rem;
   animation: msg-flash 1.6s var(--ease-out-expo);
 }
+
+/* ===== Konuşma dalgası =====
+   Ses kanalında konuşan kişinin yanındaki çubuklar. Konuşmuyorken ince
+   noktalar olarak bekler, konuşunca her çubuk kendi ritmiyle zıplar. */
+.speaking-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 12px;
+  color: #34d399;
+}
+.speaking-bars > span {
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0.35;
+  transform-origin: center;
+  transition: height 220ms var(--ease-out-expo), opacity 220ms ease;
+}
+.speaking-bars.is-active > span {
+  opacity: 1;
+  height: 12px;
+  animation: speak-bar 0.9s ease-in-out infinite;
+}
+.speaking-bars.is-active > span:nth-child(2) { animation-duration: 0.7s; animation-delay: -0.2s; }
+.speaking-bars.is-active > span:nth-child(3) { animation-duration: 1.05s; animation-delay: -0.45s; }
+.speaking-bars.is-active > span:nth-child(4) { animation-duration: 0.8s; animation-delay: -0.1s; }
+@keyframes speak-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50%      { transform: scaleY(1); }
+}
+html.reduce-motion .speaking-bars.is-active > span { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .speaking-bars.is-active > span { animation: none; }
+}
+
+/* Ses kanalına giren kişinin avatarında bir kez yayılan karşılama halkası */
+@keyframes voice-join-ring {
+  0%   { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.voice-join-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid rgba(var(--accent-rgb), 0.9);
+  animation: voice-join-ring 900ms var(--ease-out-expo) forwards;
+  pointer-events: none;
+}
+html.reduce-motion .voice-join-ring { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .voice-join-ring { display: none; }
+}
