@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Youtube, Users, SkipForward, ListMusic, Trash2, ChevronDown } from 'lucide-react';
+import { motion, AnimatePresence, useDragControls, useMotionValue } from 'framer-motion';
+import { X, Play, Youtube, Users, SkipForward, ListMusic, Trash2, ChevronDown, GripVertical } from 'lucide-react';
 import signalrService from '../services/signalrService';
 
 // YouTube IFrame API tipleri (minimal)
@@ -40,6 +40,8 @@ interface Session {
 // "Aç": odadakilere izleme partisi DAVETİ gider; sadece "Katıl" diyenler
 // videoyu birlikte, senkron izler. Başlatan kişi anında katılır.
 // Not: YouTube TOS gereği oynatıcı görünür kalmalı (>=200x200).
+const PLAYER_POS_KEY = 'ytPlayerPos';
+
 const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, username }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [joined, setJoined] = useState(false);
@@ -237,14 +239,50 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
 
   const isVideoInvite = session && !joined;
 
+  // ===== Sürüklenebilir pencere =====
+  // Konum (başlangıç köşesine göre kayma) cihazda hatırlanır.
+  const dragConstraintsRef = useRef<HTMLDivElement>(null);
+  const dragControls = useDragControls();
+  const [isDragging, setIsDragging] = useState(false);
+  const [savedPos] = useState(() => {
+    try {
+      const p = JSON.parse(localStorage.getItem(PLAYER_POS_KEY) || 'null') as { x: number; y: number } | null;
+      if (!p) return null;
+      // Ekran küçüldüyse (ör. telefon döndü) pencere dışarıda kalmasın
+      return {
+        x: Math.min(0, Math.max(p.x, -(window.innerWidth - 320))),
+        y: Math.min(80, Math.max(p.y, -(window.innerHeight - 440))),
+      };
+    } catch { return null; }
+  });
+  const dragX = useMotionValue(savedPos?.x ?? 0);
+  const dragY = useMotionValue(savedPos?.y ?? 0);
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    try { localStorage.setItem(PLAYER_POS_KEY, JSON.stringify({ x: dragX.get(), y: dragY.get() })); } catch { /* yoksay */ }
+  };
+
   return (
+    // Ekranın tamamı sürükleme sınırı; tıklamalar alttaki arayüze geçer
+    <div ref={dragConstraintsRef} className="fixed inset-0 z-40 pointer-events-none">
     <AnimatePresence>
       {session && (
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 16 }}
-          className="absolute bottom-24 right-3 z-40 w-[304px] max-w-[calc(100vw-1.5rem)] bg-bg-surface border border-border-main rounded-2xl shadow-2xl overflow-hidden"
+          drag
+          dragControls={dragControls}
+          // Oynatıcıda iframe imleci yutar; yalnızca başlık çubuğundan sürüklenir.
+          // Davet kartında iframe yok, her yerinden tutulabilir.
+          dragListener={!!isVideoInvite}
+          dragMomentum={false}
+          dragElastic={0}
+          dragConstraints={dragConstraintsRef}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={handleDragEnd}
+          style={{ x: dragX, y: dragY }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute bottom-24 right-3 pointer-events-auto w-[304px] max-w-[calc(100vw-1.5rem)] bg-bg-surface border border-border-main rounded-2xl shadow-2xl overflow-hidden"
         >
           {isVideoInvite ? (
             // ===== İzleme partisi daveti =====
@@ -268,19 +306,24 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
           ) : (
             // ===== Oynatıcı (katılınmış izleme partisi) =====
             <>
-              <div className="flex items-center justify-between px-3 py-2 border-b border-border-main">
+              <div
+                onPointerDown={e => dragControls.start(e)}
+                title="Sürükleyerek taşı"
+                className={`flex items-center justify-between px-3 py-2 border-b border-border-main touch-none select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+              >
                 <span className="flex items-center gap-2 text-xs text-text-muted min-w-0">
+                  <GripVertical size={14} className="shrink-0 opacity-60" />
                   <Youtube size={14} className="text-red-500 shrink-0" />
                   <span className="truncate">başlatan: <span className="text-text-main font-medium">{session.startedBy}</span></span>
                 </span>
-                <button onClick={handleStop} title="Herkes için durdur" className="p-1.5 text-text-muted hover:text-red-400 rounded-full hover:bg-surface-subtle transition-colors shrink-0">
+                <button onPointerDown={e => e.stopPropagation()} onClick={handleStop} title="Herkes için durdur" className="p-1.5 text-text-muted hover:text-red-400 rounded-full hover:bg-surface-subtle transition-colors shrink-0">
                   <X size={14} />
                 </button>
               </div>
 
               <div className="relative p-2">
                 {/* YouTube TOS: oynatıcı görünür ve >=200x200 kalmalı */}
-                <div ref={playerHostRef} className="w-[288px] h-[200px] rounded-lg overflow-hidden bg-black" />
+                <div ref={playerHostRef} className={`w-[288px] h-[200px] rounded-lg overflow-hidden bg-black ${isDragging ? 'pointer-events-none' : ''}`} />
                 {needsInteraction && (
                   <button
                     onClick={handleJoinClick}
@@ -334,6 +377,7 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
         </motion.div>
       )}
     </AnimatePresence>
+    </div>
   );
 };
 
