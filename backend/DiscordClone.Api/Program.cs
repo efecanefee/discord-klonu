@@ -344,6 +344,36 @@ using (var scope = app.Services.CreateScope())
         } catch { }
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_user_sounds_user_id"" ON user_sounds (user_id);"); } catch { }
 
+        // 10b. Ses Mağazası: user_sounds ortak kütüphane olur, soundboard_saves kişisel soundboard'a eklenenleri tutar.
+        // (Aynı SQL: Sql/002_sound_store.sql)
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE user_sounds ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT true;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE user_sounds ADD COLUMN IF NOT EXISTS is_deleted boolean NOT NULL DEFAULT false;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_user_sounds_store"" ON user_sounds (created_at DESC) WHERE is_public AND NOT is_deleted;"); } catch { }
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS soundboard_saves (
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    sound_id bigint NOT NULL REFERENCES user_sounds(id) ON DELETE CASCADE,
+                    created_at timestamptz NOT NULL DEFAULT now(),
+                    CONSTRAINT ""PK_soundboard_saves"" PRIMARY KEY (user_id, sound_id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_soundboard_saves_sound_id"" ON soundboard_saves (sound_id);"); } catch { }
+        // Favoriler ve çalma sayısı ("En çok çalınanlar")
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE user_sounds ADD COLUMN IF NOT EXISTS play_count bigint NOT NULL DEFAULT 0;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_user_sounds_url"" ON user_sounds (url);"); } catch { }
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS sound_favorites (
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    sound_id bigint NOT NULL REFERENCES user_sounds(id) ON DELETE CASCADE,
+                    created_at timestamptz NOT NULL DEFAULT now(),
+                    CONSTRAINT ""PK_sound_favorites"" PRIMARY KEY (user_id, sound_id)
+                );
+            ");
+        } catch { }
+
         // 11. Mesaj tepkileri (emoji reaction)
         try {
             await db.Database.ExecuteSqlRawAsync(@"
