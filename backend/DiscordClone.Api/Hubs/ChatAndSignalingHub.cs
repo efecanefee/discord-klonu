@@ -226,6 +226,9 @@ namespace DiscordClone.Api.Hubs
                 await Groups.RemoveFromGroupAsync(existingConnection, roomId);
                 usersInRoom.TryRemove(existingConnection, out _);
                 _userConnections.TryRemove(existingConnection, out _);
+                // Yeniden baglanan kullanicinin eski baglantisi: digerleri ona ait
+                // WebRTC baglantisini kapatsin, yoksa listede hayalet kalir.
+                await Clients.OthersInGroup(roomId).SendAsync("UserLeft", username, existingConnection);
             }
 
             await Groups.AddToGroupAsync(Context.ConnectionId, roomId);

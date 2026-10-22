@@ -3,6 +3,10 @@ import signalrService from '../services/signalrService';
 import { useSettings } from '../contexts/SettingsContext';
 import { getRtcConfig } from '../config/webrtc';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
+import { playConnectionLostSound } from '../utils/sound';
+
+// Kopan bir peer icin ust uste en fazla kac ICE restart denenir
+const MAX_ICE_RESTARTS = 3;
 
 export interface DeviceInfo {
     deviceId: string;
@@ -385,34 +389,52 @@ export function useWebRTC() {
                 }
             };
 
-            let iceRestarted = false;
+            let iceRestarts = 0;
+            let disconnectTimer: number | null = null;
+            let issueTimer: number | null = null;
+            const markIssue = () => setConnectionIssues(prev => prev.has(targetConnectionId) ? prev : new Set(prev).add(targetConnectionId));
+            // Glare onleme: iki taraf ayni anda restart ederse cakisir. Deterministik
+            // tie-break: yalnizca connectionId'si buyuk olan taraf yeniden offer acar,
+            // digeri yanit vermekle yetinir. Tek deneme yetmiyordu; 3 kez denenir.
+            const tryIceRestart = async (): Promise<boolean> => {
+                const myId = signalrService.connectionId ?? '';
+                if (pc.signalingState === 'closed' || iceRestarts >= MAX_ICE_RESTARTS || myId <= targetConnectionId) return false;
+                iceRestarts++;
+                console.warn(`[WebRTC ICE] ${targetConnectionId} kopuk, ICE restart deneniyor (${iceRestarts}/${MAX_ICE_RESTARTS}).`);
+                try {
+                    const offer = await pc.createOffer({ iceRestart: true });
+                    await pc.setLocalDescription(offer);
+                    signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), targetConnectionId);
+                    return true;
+                } catch (e) {
+                    console.error('[WebRTC] ICE restart hatasi:', e);
+                    return false;
+                }
+            };
             pc.oniceconnectionstatechange = async () => {
                 const state = pc.iceConnectionState;
                 console.log(`[WebRTC ICE] ${targetConnectionId} -> ${state}`);
+                if (disconnectTimer && state !== 'disconnected') { clearTimeout(disconnectTimer); disconnectTimer = null; }
 
-                if (state === 'failed') {
-                    // Iki taraf ayni anda restart ederse glare olur. Deterministik
-                    // tie-break: yalnizca connectionId'si buyuk olan taraf yeniden
-                    // offer acar, digeri yanit vermekle yetinir.
-                    const myId = signalrService.connectionId ?? '';
-                    const shouldRestart = myId > targetConnectionId;
-
-                    if (!iceRestarted && shouldRestart) {
-                        iceRestarted = true;
-                        console.warn(`[WebRTC ICE] ${targetConnectionId} basarisiz, ICE restart deneniyor.`);
-                        try {
-                            const offer = await pc.createOffer({ iceRestart: true });
-                            await pc.setLocalDescription(offer);
-                            signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), targetConnectionId);
-                        } catch (e) {
-                            console.error('[WebRTC] ICE restart hatasi:', e);
-                            setConnectionIssues(prev => new Set(prev).add(targetConnectionId));
-                        }
-                    } else {
-                        setConnectionIssues(prev => new Set(prev).add(targetConnectionId));
-                    }
+                if (state === 'disconnected') {
+                    // Kisa ag dalgalanmasinda kendiliginden duzelir; 5 sn surerse
+                    // 'failed'i beklemeden (bu 30 sn'yi bulabilir) yeniden dene.
+                    disconnectTimer = window.setTimeout(() => {
+                        disconnectTimer = null;
+                        if (pc.iceConnectionState === 'disconnected') tryIceRestart();
+                    }, 5000);
+                } else if (state === 'failed') {
+                    if (await tryIceRestart()) return;
+                    // Restart'i karsi taraf yapiyor olabilir; biraz bekle, duzelmediyse uyar.
+                    if (issueTimer) clearTimeout(issueTimer);
+                    issueTimer = window.setTimeout(() => {
+                        issueTimer = null;
+                        const s = pc.iceConnectionState;
+                        if (pc.signalingState !== 'closed' && s !== 'connected' && s !== 'completed') markIssue();
+                    }, 8000);
                 } else if (state === 'connected' || state === 'completed') {
-                    iceRestarted = false;
+                    iceRestarts = 0;
+                    if (issueTimer) { clearTimeout(issueTimer); issueTimer = null; }
                     setConnectionIssues(prev => {
                         if (!prev.has(targetConnectionId)) return prev;
                         const next = new Set(prev);
@@ -519,14 +541,30 @@ export function useWebRTC() {
                 }
             };
 
+            // Hub yeniden baglandi: connectionId'miz degisti ve sunucu digerlerine
+            // eski baglantimiz icin UserLeft gonderdi. Eski peer'lar artik olu;
+            // hepsini kapat. Odaya geri girince digerleri yeni baglantiya offer acar.
+            const handleReconnected = () => {
+                peerConnections.current.forEach(pc => pc.close());
+                peerConnections.current.clear();
+                iceCandidateQueues.current.clear();
+                analyserRefs.current.forEach(a => clearInterval(a.interval));
+                analyserRefs.current.clear();
+                setRemoteStreams(new Map());
+                setSpeakingUsers(new Set());
+                setConnectionIssues(new Set());
+            };
+
             signalrService.onUserJoined(handleUserJoined);
             signalrService.onUserLeft(handleUserLeft);
             signalrService.onReceiveSignal(handleReceiveSignal);
+            signalrService.onReconnected(handleReconnected);
 
             return () => {
                 signalrService.offUserJoined(handleUserJoined);
                 signalrService.offUserLeft(handleUserLeft);
                 signalrService.offReceiveSignal(handleReceiveSignal);
+                signalrService.offReconnected(handleReconnected);
             };
         };
 
@@ -643,6 +681,14 @@ export function useWebRTC() {
 
     // Anlık mikrofon seviyesi (0-100) — oda içi gürültü kapısı kaydırıcısının
     // canlı çubuğu için. Aktif kapının analizörünü okur, ek stream açmaz.
+    // Bir peer ile baglanti kalici olarak koptugunda sesli uyar — aksi halde
+    // kullanici karsi tarafi duymadigini fark etmiyordu.
+    const prevIssueCountRef = useRef(0);
+    useEffect(() => {
+        if (connectionIssues.size > prevIssueCountRef.current) playConnectionLostSound();
+        prevIssueCountRef.current = connectionIssues.size;
+    }, [connectionIssues]);
+
     const getMicLevel = useCallback(() => gateRef.current?.getLevel() ?? 0, []);
 
     const toggleMute = useCallback(() => {

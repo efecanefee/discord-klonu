@@ -278,6 +278,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // SignalR effect'inin dep dizisine girmesinler diye ref üzerinden okunurlar
     const masterVolumeRef = useRef(masterVolume);
     useEffect(() => { masterVolumeRef.current = masterVolume; }, [masterVolume]);
+    // Soundboard kendi seviyesiyle calar; calan ses de ayar degisince aninda kisilir
+    const soundboardVolumeRef = useRef(settings.soundboardVolume);
+    useEffect(() => {
+        soundboardVolumeRef.current = settings.soundboardVolume;
+        if (soundboardAudioRef.current) soundboardAudioRef.current.volume = Math.min(1, masterVolume * settings.soundboardVolume);
+    }, [settings.soundboardVolume, masterVolume]);
     const outputIdRef = useRef(selectedOutputId);
     useEffect(() => { outputIdRef.current = selectedOutputId; }, [selectedOutputId]);
     // Üst üste binmesin diye çalan son soundboard sesi
@@ -493,7 +499,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             try {
                 soundboardAudioRef.current?.pause();
                 const audio = new Audio(soundUrl);
-                audio.volume = masterVolumeRef.current;
+                audio.volume = Math.min(1, masterVolumeRef.current * soundboardVolumeRef.current);
                 applySinkId(audio, outputIdRef.current);
                 soundboardAudioRef.current = audio;
                 audio.play().catch(() => { /* autoplay engellenmiş olabilir */ });

@@ -1,7 +1,8 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Pencil, Shield, ShieldOff, LogOut, Ban } from 'lucide-react';
 import { renderAvatar } from '../constants/avatars';
+import AvatarLightbox from './AvatarLightbox';
 
 export interface PopoverUser {
   userId?: string;
@@ -43,6 +44,7 @@ const rank = (role?: string) => (role === 'owner' ? 2 : role === 'moderator' ? 1
 const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
   user, isSelf, onSendMessage, onEditProfile, viewerRole, onSetModerator, onKick, onBan,
 }) => {
+  const [showAvatar, setShowAvatar] = useState(false);
   const st = statusInfo(user.customStatus);
   const badge = roleBadge(user.role);
 
@@ -66,9 +68,19 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
       {/* Üst banner */}
       <div className="h-12 bg-gradient-to-r from-primary-main/40 to-primary-main/20" />
       <div className="px-4 pb-4 -mt-6">
-        <div className="w-14 h-14 rounded-full bg-[#18181b] border-4 border-[#09090b] flex items-center justify-center text-2xl overflow-hidden">
+        <button
+          onClick={() => setShowAvatar(true)}
+          title="Fotoğrafı büyüt"
+          aria-label="Profil fotoğrafını büyüt"
+          className="w-14 h-14 rounded-full bg-[#18181b] border-4 border-[#09090b] flex items-center justify-center text-2xl overflow-hidden cursor-zoom-in hover:brightness-110 transition-all"
+        >
           {renderAvatar(user.avatarId || 'default')}
-        </div>
+        </button>
+        <AnimatePresence>
+          {showAvatar && (
+            <AvatarLightbox avatarId={user.avatarId || 'default'} username={user.username} onClose={() => setShowAvatar(false)} />
+          )}
+        </AnimatePresence>
         <div className="mt-2">
           <div className="text-white font-bold text-[15px] truncate flex items-center gap-1.5">
             {user.username}
