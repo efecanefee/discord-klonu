@@ -54,7 +54,7 @@
      --accent-hover  hover icin bir koyu ton (primary-hover)
      --accent-rgb    rgba(var(--accent-rgb), 0.4) yazabilmek icin bilesenler
      --accent-light  gradyanlarin acik ucu (ham linear-gradient stringleri)
-   Varsayilan mor :root'ta; palet yalnizca ustune yazar. */
+   Varsayilan mavi :root'ta; palet yalnizca ustune yazar. */
 :root {
   --subtle: rgba(255, 255, 255, 0.05);
   --subtle-strong: rgba(255, 255, 255, 0.10);
@@ -75,19 +75,20 @@
   --dur-base: 240ms;
   --dur-slow: 420ms;
 
-  --accent: #7c3aed;
-  --accent-hover: #6d28d9;
-  --accent-rgb: 124, 58, 237;
-  --accent-light: #8b5cf6;
-  --accent-light-rgb: 139, 92, 246;
-}
-
-html[data-accent="blue"] {
+  /* Varsayilan ana renk: mavi (ilk boyamada da gecerli). */
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --accent-rgb: 37, 99, 235;
   --accent-light: #3b82f6;
   --accent-light-rgb: 59, 130, 246;
+}
+
+html[data-accent="violet"] {
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-rgb: 124, 58, 237;
+  --accent-light: #8b5cf6;
+  --accent-light-rgb: 139, 92, 246;
 }
 html[data-accent="emerald"] {
   --accent: #059669;
@@ -696,6 +697,52 @@ html.no-glass [class*="backdrop-blur"] {
 }
 /* OLED: piksel sonuk kalmali. Animasyonu azalt: damlalar yerinde durur. */
 html.theme-oled .lava { display: none; }
+
+/* ===== Suzulen isik kureleri =====
+   Asagidan yukari cok yavas yukselen, hafif saga sola salinan bulanik
+   parcaciklar. Kucuk ogeler: blur bir kez rasterlanir, sonra yalnizca
+   transform/opacity animasyonlanir. */
+.orbs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.orb {
+  position: absolute;
+  bottom: -60px;
+  border-radius: 50%;
+  opacity: 0;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+  animation-name: orb-rise;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.orb-tone-0 {
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.55), rgba(var(--accent-rgb), 0.9) 45%, rgba(var(--accent-rgb), 0) 72%);
+  box-shadow: 0 0 18px 4px rgba(var(--accent-rgb), 0.35);
+}
+.orb-tone-1 {
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.5), rgba(var(--accent-light-rgb), 0.85) 45%, rgba(var(--accent-light-rgb), 0) 72%);
+  box-shadow: 0 0 16px 3px rgba(var(--accent-light-rgb), 0.3);
+}
+.orb-tone-2 {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 70%);
+}
+@keyframes orb-rise {
+  0%   { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; }
+  12%  { opacity: var(--orb-opacity, 0.6); }
+  50%  { transform: translate3d(var(--orb-drift, 0), -60vh, 0) scale(1); }
+  85%  { opacity: var(--orb-opacity, 0.6); }
+  100% { transform: translate3d(calc(var(--orb-drift, 0) * -0.5), -120vh, 0) scale(0.9); opacity: 0; }
+}
+/* OLED zemini sonuk kalsin; hareketi azalt acikken parcaciklar gizlenir
+   (yerinde donmus parcaciklar tuhaf gorunur). */
+html.theme-oled .orbs,
+html.reduce-motion .orbs { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .orbs { display: none; }
+}
 html.reduce-motion .lava-blob { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .lava-blob { animation: none; }

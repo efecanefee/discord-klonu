@@ -19,8 +19,8 @@ export type Accent =
 // burada tutulan tek sey kullaniciya gosterilecek onizleme rengi.
 // swatch2 varsa ikili tema: nokta çapraz iki renge bölünerek gösterilir.
 export const ACCENTS: { id: Accent; label: string; swatch: string; swatch2?: string }[] = [
-  { id: 'violet', label: 'Mor', swatch: '#7c3aed' },
   { id: 'blue', label: 'Mavi', swatch: '#2563eb' },
+  { id: 'violet', label: 'Mor', swatch: '#7c3aed' },
   { id: 'emerald', label: 'Yeşil', swatch: '#059669' },
   { id: 'amber', label: 'Turuncu', swatch: '#d97706' },
   { id: 'rose', label: 'Kırmızı', swatch: '#e11d48' },
@@ -76,7 +76,8 @@ const defaultSettings: Settings = {
   pushNotificationsEnabled: false,
   
   theme: 'dark',
-  accent: 'violet',
+  // SM2.0: ana renk mavi.
+  accent: 'blue',
   // SM2.0: animasyonlar varsayilan acik. Sistem "hareketi azalt" tercihi
   // MotionRoot ve CSS media query'leri uzerinden yine dikkate alinir.
   reducedMotion: false,
@@ -104,6 +105,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!localStorage.getItem('sm_motion_v2')) {
           merged.reducedMotion = false;
           localStorage.setItem('sm_motion_v2', '1');
+        }
+        // Ana renk mordan maviye gecti. Eski varsayilan mor oldugu icin mor
+        // kayitli olanlar bir kerelik maviye alinir; isteyen ayarlardan geri secer.
+        if (!localStorage.getItem('sm_accent_blue')) {
+          if (merged.accent === 'violet') merged.accent = 'blue';
+          localStorage.setItem('sm_accent_blue', '1');
         }
         return merged;
       } catch (e) {
