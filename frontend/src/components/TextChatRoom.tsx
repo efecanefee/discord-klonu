@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import signalrService from '../services/signalrService';
+import { usePinnedMessages } from '../hooks/usePinnedMessages';
+import PinnedMessagesButton from './PinnedMessagesButton';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check } from 'lucide-react';
+import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check, Pin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { messageMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
@@ -749,6 +751,21 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
     };
 
+    // Mesaj sabitleme — sistem odalarında herkes, topluluk odalarında kurucu/moderatör
+    // (kanallarda rol oda üyeliğinden okunur; backend aynı kuralı uygular)
+    const { pins, pinnedIds, togglePin } = usePinnedMessages(activeChannelKey);
+    const memberRole = myRole || allMembers.find(m => m.userId === myUserId)?.role;
+    const canPin = roomInfo?.createdBy === 'system' || roleRank(memberRole) >= 1;
+    const jumpToMessage = (serverId: number) => {
+        const target = messages.find(m => m.serverId === serverId);
+        const el = target && document.getElementById(`text-msg-${target.id}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.remove('msg-flash');
+        void el.offsetWidth; // animasyonu yeniden başlat
+        el.classList.add('msg-flash');
+    };
+
     const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
     // Düz metin parçasında @mention'ları vurgular (bilinen üye adlarıyla sınırlı)
@@ -916,6 +933,10 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                 {merged.length || 1}
                             </span>
                         </button>
+
+                        {/* Sabitlenmiş mesajlar */}
+                        <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username}
+                            onUnpin={togglePin} onJump={jumpToMessage} />
 
                         {/* Arama */}
                         <div className="relative flex items-center">
@@ -1165,8 +1186,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                         {renderAvatar(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                     </div>
                                                     <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                                                        <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
+                                                        <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium flex items-center gap-1">
                                                             {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}
+                                                            {msg.serverId != null && pinnedIds.has(msg.serverId) && (
+                                                                <Pin size={11} className="text-primary-main anim-pop" aria-label="Sabitlenmiş" />
+                                                            )}
                                                         </span>
 
                                                         {msg.replyToId && (() => {
@@ -1220,6 +1244,11 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                                 {!msg.pending && (
                                                                     <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer" title="Yanıtla">
                                                                         <Reply size={12} className="text-text-main" />
+                                                                    </button>
+                                                                )}
+                                                                {canPin && msg.serverId && !msg.pending && (
+                                                                    <button onClick={() => togglePin(msg.serverId!)} className={`w-6 h-6 rounded-full border flex items-center justify-center cursor-pointer ${pinnedIds.has(msg.serverId) ? 'bg-primary-main border-primary-main' : 'bg-bg-surface border-border-main hover:bg-border-main'}`} title={pinnedIds.has(msg.serverId) ? 'Sabitlemeyi kaldır' : 'Sabitle'}>
+                                                                        <Pin size={11} className={pinnedIds.has(msg.serverId) ? 'text-white' : 'text-text-main'} />
                                                                     </button>
                                                                 )}
                                                                 {msg.serverId && !msg.pending && (

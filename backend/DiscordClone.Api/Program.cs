@@ -340,6 +340,17 @@ using (var scope = app.Services.CreateScope())
         } catch { }
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_message_reactions_message_id_user_id_emoji"" ON message_reactions (message_id, user_id, emoji);"); } catch { }
 
+        // 12. Mesaj sabitleme
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_pinned boolean NOT NULL DEFAULT false;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at bigint;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_messages_room_id_is_pinned"" ON messages (room_id) WHERE is_pinned;"); } catch { }
+
+        // 13. Profil kişiselleştirme (banner, vurgu rengi, hakkımda)
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS banner_color text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS accent_color text;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio text;"); } catch { }
+
     }
     catch (Exception ex)
     {

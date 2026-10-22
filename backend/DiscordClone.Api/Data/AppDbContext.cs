@@ -46,6 +46,12 @@ namespace DiscordClone.Api.Data
                 .Property(m => m.AvatarId).HasColumnName("avatar_id");
             modelBuilder.Entity<ChatMessage>()
                 .Property(m => m.ReplyToId).HasColumnName("reply_to_id");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.IsPinned).HasColumnName("is_pinned");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.PinnedBy).HasColumnName("pinned_by");
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.PinnedAt).HasColumnName("pinned_at");
 
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(m => m.User)
@@ -90,6 +96,12 @@ namespace DiscordClone.Api.Data
                 .Property(u => u.CustomStatusMessage).HasColumnName("custom_status_message");
             modelBuilder.Entity<User>()
                 .Property(u => u.ShowLastSeen).HasColumnName("show_last_seen");
+            modelBuilder.Entity<User>()
+                .Property(u => u.BannerColor).HasColumnName("banner_color");
+            modelBuilder.Entity<User>()
+                .Property(u => u.AccentColor).HasColumnName("accent_color");
+            modelBuilder.Entity<User>()
+                .Property(u => u.Bio).HasColumnName("bio");
 
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email).IsUnique();

@@ -259,7 +259,7 @@ namespace DiscordClone.Api.Hubs
                 .Where(m => m.RoomId == roomId && m.Timestamp >= oneWeekAgo && !m.IsDeleted)
                 .OrderByDescending(m => m.Timestamp)
                 .Take(50)
-                .Select(m => new { m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName, m.ReplyToId })
+                .Select(m => new { m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName, m.ReplyToId, m.IsPinned })
                 .ToListAsync();
 
             history.Reverse(); // In memory reverse to chronological order
@@ -279,7 +279,7 @@ namespace DiscordClone.Api.Hubs
 
             var historyWithReactions = history.Select(m => new
             {
-                m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName, m.ReplyToId,
+                m.Id, m.Username, m.AvatarId, m.Text, m.Timestamp, m.IsEdited, m.FileUrl, m.FileName, m.ReplyToId, m.IsPinned,
                 Reactions = reactionsByMessage.TryGetValue(m.Id, out var rx) ? (object)rx : null
             }).ToList();
 
@@ -808,6 +808,85 @@ namespace DiscordClone.Api.Hubs
                 .ToList();
 
             await Clients.Group(roomId).SendAsync("ReactionUpdated", messageId, set);
+        }
+
+        // Mesaj anahtarı (oda adı ya da kanal message_key) → ait olduğu oda; bulunamazsa null.
+        private async Task<Room?> ResolveRoomByMessageKeyAsync(string messageKey)
+        {
+            var room = await _db.Rooms.FirstOrDefaultAsync(r => r.Name == messageKey);
+            if (room != null) return room;
+            var channel = await _db.Channels.AsNoTracking().FirstOrDefaultAsync(c => c.MessageKey == messageKey);
+            return channel == null ? null : await _db.Rooms.FirstOrDefaultAsync(r => r.Id == channel.RoomId);
+        }
+
+        // Mesajı sabitle / sabitlemeyi kaldır. Sistem odalarında herkes, topluluk
+        // odalarında kurucu ve moderatörler yapabilir. Başarılıysa true döner.
+        public async Task<bool> TogglePin(long messageId)
+        {
+            var userId = Context.UserIdentifier;
+            var username = Context.User?.Identity?.Name;
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(username)) return false;
+
+            var msg = await _db.Messages.FirstOrDefaultAsync(m => m.Id == messageId && !m.IsDeleted);
+            if (msg == null) return false;
+
+            var room = await ResolveRoomByMessageKeyAsync(msg.RoomId);
+            var isSystemRoom = room == null || room.CreatedBy == "system";
+            if (!isSystemRoom && !await _roomAuth.CanManageAsync(room!.Id, userId)) return false;
+
+            if (!msg.IsPinned)
+            {
+                var pinnedCount = await _db.Messages.CountAsync(m => m.RoomId == msg.RoomId && m.IsPinned && !m.IsDeleted);
+                if (pinnedCount >= MaxPinnedPerRoom) return false;
+            }
+
+            msg.IsPinned = !msg.IsPinned;
+            msg.PinnedBy = msg.IsPinned ? username : null;
+            msg.PinnedAt = msg.IsPinned ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() : null;
+            await _db.SaveChangesAsync();
+
+            await Clients.Group(msg.RoomId).SendAsync("MessagePinChanged", messageId, msg.IsPinned, msg.PinnedBy);
+            return true;
+        }
+
+        private const int MaxPinnedPerRoom = 50;
+
+        // Odanın sabitlenmiş mesajları (yeniden eskiye). Sadece o odaya katılmış bağlantı okuyabilir.
+        public async Task<List<PinnedMessageDto>> GetPinnedMessages(string roomId)
+        {
+            if (!_userConnections.TryGetValue(Context.ConnectionId, out var currentRoom) || currentRoom != roomId)
+                return new List<PinnedMessageDto>();
+
+            return await _db.Messages
+                .Where(m => m.RoomId == roomId && m.IsPinned && !m.IsDeleted)
+                .OrderByDescending(m => m.PinnedAt)
+                .Take(MaxPinnedPerRoom)
+                .Select(m => new PinnedMessageDto
+                {
+                    Id = m.Id,
+                    Username = m.Username,
+                    AvatarId = m.AvatarId,
+                    Text = m.Text,
+                    Timestamp = m.Timestamp,
+                    FileUrl = m.FileUrl,
+                    FileName = m.FileName,
+                    PinnedBy = m.PinnedBy,
+                    PinnedAt = m.PinnedAt
+                })
+                .ToListAsync();
+        }
+
+        public class PinnedMessageDto
+        {
+            public long Id { get; set; }
+            public string Username { get; set; } = string.Empty;
+            public string AvatarId { get; set; } = "default";
+            public string Text { get; set; } = string.Empty;
+            public long Timestamp { get; set; }
+            public string? FileUrl { get; set; }
+            public string? FileName { get; set; }
+            public string? PinnedBy { get; set; }
+            public long? PinnedAt { get; set; }
         }
 
         // Oda içi "yazıyor..." — gruptaki diğerlerine kullanıcı adıyla yayınlanır

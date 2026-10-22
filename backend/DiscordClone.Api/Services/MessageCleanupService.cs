@@ -25,7 +25,7 @@ namespace DiscordClone.Api.Services
 
                     var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
                     var deleted = await db.Messages
-                        .Where(m => m.Timestamp < oneWeekAgo)
+                        .Where(m => m.Timestamp < oneWeekAgo && !m.IsPinned)
                         .ExecuteDeleteAsync(stoppingToken);
 
                     if (deleted > 0)

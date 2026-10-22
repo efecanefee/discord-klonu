@@ -24,6 +24,11 @@ namespace DiscordClone.Api.Models
         public string? CustomStatusMessage { get; set; }
         public bool ShowLastSeen { get; set; } = true;
 
+        // Profil kişiselleştirme ("#RRGGBB" veya null = varsayılan)
+        public string? BannerColor { get; set; }
+        public string? AccentColor { get; set; }
+        public string? Bio { get; set; }
+
         // Navigation property
         public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
     }

@@ -21,5 +21,10 @@ namespace DiscordClone.Api.Models
         public string? FileName { get; set; }
 
         public long? ReplyToId { get; set; }
+
+        // Sabitlenmiş mesajlar 7 günlük temizlikten muaf tutulur
+        public bool IsPinned { get; set; } = false;
+        public string? PinnedBy { get; set; }
+        public long? PinnedAt { get; set; }
     }
 }

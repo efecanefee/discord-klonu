@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import signalrService from '../services/signalrService';
+import { usePinnedMessages } from '../hooks/usePinnedMessages';
+import PinnedMessagesButton from './PinnedMessagesButton';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2 } from 'lucide-react';
+import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2, Pin } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -944,6 +946,28 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
     };
 
+    // Mesaj sabitleme — sistem odalarında (rol yok) herkes, topluluk odalarında kurucu/moderatör
+    const { pins, pinnedIds, togglePin } = usePinnedMessages(roomId);
+    const canPin = canManageRoom || !myRole;
+    const jumpToMessage = (serverId: number) => {
+        const target = messages.find(m => m.serverId === serverId);
+        if (!target) return;
+        const el = document.getElementById(`room-msg-${target.id}`) || document.getElementById(`compact-msg-${target.id}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.remove('msg-flash');
+        void el.offsetWidth; // animasyonu yeniden başlat
+        el.classList.add('msg-flash');
+    };
+    const pinButton = (msg: Message, size: number) => canPin && msg.serverId && !msg.pending ? (
+        <button onClick={() => togglePin(msg.serverId!)} className={`w-6 h-6 rounded-full border flex items-center justify-center cursor-pointer ${pinnedIds.has(msg.serverId) ? 'bg-primary-main border-primary-main' : 'bg-bg-surface border-border-main hover:bg-border-main'}`} title={pinnedIds.has(msg.serverId) ? 'Sabitlemeyi kaldır' : 'Sabitle'}>
+            <Pin size={size} className={pinnedIds.has(msg.serverId) ? 'text-white' : 'text-text-main'} />
+        </button>
+    ) : null;
+    const pinMark = (msg: Message, size: number) => msg.serverId != null && pinnedIds.has(msg.serverId)
+        ? <Pin size={size} className="inline-block ml-1 -mt-0.5 text-primary-main anim-pop" aria-label="Sabitlenmiş" />
+        : null;
+
     const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
     // Düz metin parçasında @mention'ları vurgular (odadaki adlarla sınırlı)
@@ -1376,6 +1400,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Sohbet</span>
                                 <div className="flex items-center gap-2">
                                     <span className="bg-bg-surface px-2 py-0.5 rounded-lg border border-border-main text-text-main font-semibold text-[11px]">{messages.filter(m => m.type === 'message').length}</span>
+                                    <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username} onUnpin={togglePin} onJump={jumpToMessage}
+                                        className="relative text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-[13px] [&>svg]:h-[13px]" />
                                     <button onClick={() => setShowSearch(p => !p)} className="text-text-muted hover:text-text-main transition-colors cursor-pointer"><Search size={13} /></button>
                                 </div>
                             </div>
@@ -1409,7 +1435,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             {renderAvatar(msg.avatarId || (isMine ? avatarId : 'default'))}
                                                         </div>
                                                         <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                                                            <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}</span>
+                                                            <span className="text-[10px] text-text-muted mb-0.5 mx-0.5 font-medium">{isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}{pinMark(msg, 9)}</span>
                                                             
                                                             {msg.replyToId && (() => {
                                                                 const replyMsg = messages.find(m => m.serverId === msg.replyToId || m.id === msg.replyToId);
@@ -1464,6 +1490,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                                 <Reply size={11} className="text-text-main" />
                                                                             </button>
                                                                         )}
+                                                                        {pinButton(msg, 10)}
                                                                     </div>
                                                             </div>
                                                         </div>
@@ -1530,6 +1557,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 className="bg-bg-surface border border-border-main rounded-xl px-3 py-1.5 text-sm text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
                                         )}
                                     </AnimatePresence>
+                                    <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username} onUnpin={togglePin} onJump={jumpToMessage}
+                                        className="relative p-1.5 rounded-lg text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-4 [&>svg]:h-4" />
                                     <button onClick={() => { setShowSearch(p => !p); setSearchQuery(''); }}
                                         className="p-1.5 rounded-lg text-text-muted hover:text-text-main transition-colors cursor-pointer">
                                         {showSearch ? <X size={16} /> : <Search size={16} />}
@@ -1574,7 +1603,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             </div>
                                                             <div className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                                                                 <span className="text-[12px] text-text-muted mb-1.5 mx-1 font-medium">
-                                                                    {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}
+                                                                    {isMine ? 'Sen' : msg.username} · {formatTime(msg.timestamp)}{pinMark(msg, 11)}
                                                                 </span>
                                                                 
                                                                 {msg.replyToId && (() => {
@@ -1646,6 +1675,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                                 <Reply size={12} className="text-text-main" />
                                                                             </button>
                                                                         )}
+                                                                        {pinButton(msg, 11)}
                                                                         {msg.serverId && !msg.pending && (
                                                                             <div className="relative">
                                                                                 <button onClick={() => setReactionPickerFor(p => p === msg.id ? null : msg.id)} className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer" title="Tepki ekle">

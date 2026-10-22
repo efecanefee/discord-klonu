@@ -15,6 +15,18 @@ export interface VoiceUser {
     userId: string;
 }
 
+export interface PinnedMessage {
+    id: number;
+    username: string;
+    avatarId: string;
+    text: string;
+    timestamp: number;
+    fileUrl?: string | null;
+    fileName?: string | null;
+    pinnedBy?: string | null;
+    pinnedAt?: number | null;
+}
+
 class SignalRService {
     private connection: signalR.HubConnection;
     private connectionPromise: Promise<void> | null = null;
@@ -447,6 +459,22 @@ class SignalRService {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             await this.connection.invoke('ToggleReaction', roomId, messageId, emoji);
         }
+    }
+
+    // Mesaj sabitleme
+    public onMessagePinChanged(callback: (messageId: number, isPinned: boolean, pinnedBy: string | null) => void) {
+        this.connection?.on('MessagePinChanged', callback);
+    }
+    public offMessagePinChanged(callback: (messageId: number, isPinned: boolean, pinnedBy: string | null) => void) {
+        this.connection?.off('MessagePinChanged', callback);
+    }
+    public async togglePin(messageId: number): Promise<boolean> {
+        if (this.connection.state !== signalR.HubConnectionState.Connected) return false;
+        return this.connection.invoke<boolean>('TogglePin', messageId);
+    }
+    public async getPinnedMessages(roomId: string): Promise<PinnedMessage[]> {
+        if (this.connection.state !== signalR.HubConnectionState.Connected) return [];
+        return this.connection.invoke<PinnedMessage[]>('GetPinnedMessages', roomId);
     }
 
     // Oda içi yazıyor... bildirimi
