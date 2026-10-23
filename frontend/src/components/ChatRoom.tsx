@@ -7,6 +7,8 @@ import SpeakingBars from './SpeakingBars';
 import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2, Pin, Headphones, HeadphoneOff } from 'lucide-react';
+import PastedImagePreview from './PastedImagePreview';
+import { usePastedImage } from '../hooks/usePastedImage';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { useStickToBottom } from '../hooks/useStickToBottom';
@@ -280,6 +282,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // Dosya yükleme
     const [isDragging, setIsDragging] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const pastedImage = usePastedImage();
     const fileInputRef = useRef<HTMLInputElement>(null);
     // Diğer kullanıcıların mute durumu
     const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
@@ -756,6 +759,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
     // Dropdown açıkken ok tuşları/Enter/Tab/Esc input'ta yakalanır
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Escape' && pastedImage.file && mentionQuery === null) { pastedImage.clear(); return; }
         if (mentionQuery === null || mentionCandidates.length === 0) return;
         if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionCandidates.length); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionCandidates.length) % mentionCandidates.length); }
@@ -766,6 +770,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // Optimistic UI — mesaj gönder
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
+        const pasted = pastedImage.take();
+        if (pasted) handleFileUpload(pasted);
         if (!messageInput.trim()) return;
         const text = messageInput.trim();
         // Kendi mesajını gönderen yukarıdaysa da en alta iner
@@ -1542,6 +1548,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
                                 )}
                                 <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
+                                    {!editingMessageId && <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />}
                                     {editingMessageId && (
                                         <div className="flex items-center justify-between bg-bg-surface px-3 py-1.5 rounded-lg border border-primary-main/30 text-xs">
                                             <span className="text-primary-main flex items-center gap-1.5"><Pencil size={12} /> Mesajı düzenliyorsun</span>
@@ -1553,10 +1560,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Paperclip size={20} /></button>
                                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
                                         <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
-                                            onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onBlur={() => setMentionQuery(null)}
+                                            onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onPaste={editingMessageId ? undefined : pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
                                             placeholder={isUploading ? "Yükleniyor..." : "Mesaj yaz..."} disabled={isUploading}
                                             className="flex-1 bg-bg-surface border border-border-main rounded-xl px-3 py-3 text-[14px] text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
-                                        <button type="button" onClick={editingMessageId ? handleSaveEdit : handleSendMessage} disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
+                                        <button type="button" onClick={editingMessageId ? handleSaveEdit : handleSendMessage} disabled={(editingMessageId ? !editText.trim() : !messageInput.trim() && !pastedImage.file) || isUploading}
                                             className="p-3 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-md">
                                             {editingMessageId ? <Pencil size={18} /> : <Send size={18} />}
                                         </button>
@@ -1890,6 +1897,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
                                 </div>
                             )}
+                            {!editingMessageId && <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />}
                             <form onSubmit={editingMessageId ? handleSaveEdit : handleSendMessage}
                                 className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
                                 
@@ -1912,11 +1920,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 )}
                                 
                                 <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
-                                    onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onBlur={() => setMentionQuery(null)}
+                                    onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onPaste={editingMessageId ? undefined : pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
                                     placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
                                     className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
                                 
-                                <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
+                                <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim() && !pastedImage.file) || isUploading}
                                     className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
                                     {editingMessageId ? <Pencil size={18} className="mr-0 sm:mr-2" /> : <Send size={18} className="mr-0 sm:mr-2" />}
                                     <span className="hidden sm:inline">{editingMessageId ? 'Kaydet' : 'Gönder'}</span>
