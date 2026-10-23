@@ -291,6 +291,22 @@ class SignalRService {
         this.connection?.off('RoomMuteStates', callback);
     }
 
+    // Sağırlaştırma durumu değişikliği
+    public onUserDeafenChanged(callback: (username: string, connectionId: string, isDeafened: boolean) => void) {
+        this.connection?.on('UserDeafenChanged', callback);
+    }
+    public offUserDeafenChanged(callback: (username: string, connectionId: string, isDeafened: boolean) => void) {
+        this.connection?.off('UserDeafenChanged', callback);
+    }
+
+    // Odadaki sağırlaştırma durumları (ilk bağlandığında)
+    public onRoomDeafenStates(callback: (deafenStates: Record<string, boolean>) => void) {
+        this.connection?.on('RoomDeafenStates', callback);
+    }
+    public offRoomDeafenStates(callback: (deafenStates: Record<string, boolean>) => void) {
+        this.connection?.off('RoomDeafenStates', callback);
+    }
+
     // Çift Giriş - Force Disconnect
     public onForceDisconnect(callback: (message: string) => void) {
         this.connection?.on('ForceDisconnect', callback);
@@ -581,6 +597,12 @@ class SignalRService {
     public async notifyMuteStatus(roomId: string, isMuted: boolean) {
         if (this.connection.state === signalR.HubConnectionState.Connected) {
             await this.connection.invoke('NotifyMuteStatus', roomId, isMuted);
+        }
+    }
+    public async notifyDeafenStatus(roomId: string, isDeafened: boolean) {
+        if (this.connection.state === signalR.HubConnectionState.Connected) {
+            try { await this.connection.invoke('NotifyDeafenStatus', roomId, isDeafened); }
+            catch (err) { console.error('NotifyDeafenStatus hatası (backend güncel mi?):', err); }
         }
     }
     public async sendSignalToUser(signalData: string, targetConnectionId: string) {

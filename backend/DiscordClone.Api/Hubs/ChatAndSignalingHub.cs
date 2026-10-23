@@ -18,6 +18,8 @@ namespace DiscordClone.Api.Hubs
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, RoomUserDto>> _roomUsers = new();
         // Mute durumu: connectionId -> isMuted
         private static readonly ConcurrentDictionary<string, bool> _muteStatus = new();
+        // Sağırlaştırma durumu: connectionId -> isDeafened
+        private static readonly ConcurrentDictionary<string, bool> _deafenStatus = new();
         // Ses kanalları: voiceKey -> (connectionId -> VoiceUserDto). Metin kanalı presence'ından bağımsız.
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<string, VoiceUserDto>> _voiceUsers = new();
         // Soundboard spam koruması: connectionId -> son ses basma zamanı
@@ -138,6 +140,7 @@ namespace DiscordClone.Api.Hubs
             }
 
             _muteStatus.TryRemove(Context.ConnectionId, out _);
+            _deafenStatus.TryRemove(Context.ConnectionId, out _);
             _lastSoundAt.TryRemove(Context.ConnectionId, out _);
 
             if (_userConnections.TryRemove(Context.ConnectionId, out var roomId))
@@ -264,6 +267,13 @@ namespace DiscordClone.Api.Hubs
             // Mute durumlarını caller'a gönder
             await Clients.Caller.SendAsync("RoomMuteStates", muteStates);
 
+            // Sağırlaştırma durumları (ayrı olay: eski istemciler etkilenmesin)
+            var deafenStates = usersInRoom.Keys.ToDictionary(
+                connId => connId,
+                connId => _deafenStatus.TryGetValue(connId, out var d) && d
+            );
+            await Clients.Caller.SendAsync("RoomDeafenStates", deafenStates);
+
             // Son 50 mesajı gönder (en yeni 50)
             var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
             var history = await _db.Messages
@@ -327,6 +337,7 @@ namespace DiscordClone.Api.Hubs
             }
 
             _muteStatus.TryRemove(Context.ConnectionId, out _);
+            _deafenStatus.TryRemove(Context.ConnectionId, out _);
 
             await Clients.Group(roomId).SendAsync("UserLeft", username, Context.ConnectionId);
         }
@@ -650,6 +661,15 @@ namespace DiscordClone.Api.Hubs
             _muteStatus[Context.ConnectionId] = isMuted;
 
             await Clients.Group(roomId).SendAsync("UserMuteChanged", username, Context.ConnectionId, isMuted);
+        }
+
+        // Sağırlaştırma durumu bildir
+        public async Task NotifyDeafenStatus(string roomId, bool isDeafened)
+        {
+            var username = Context.User?.Identity?.Name ?? "";
+            _deafenStatus[Context.ConnectionId] = isDeafened;
+
+            await Clients.Group(roomId).SendAsync("UserDeafenChanged", username, Context.ConnectionId, isDeafened);
         }
 
         public async Task SendSignal(string signalData, string roomId)
