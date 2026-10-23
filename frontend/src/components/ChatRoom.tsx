@@ -1393,7 +1393,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 })()}`}>
                                     {screenStream && (
                                         <div className="relative rounded-xl overflow-hidden border border-border-main bg-black col-span-full">
-                                            <video autoPlay muted className="w-full h-full object-contain" ref={el => { if (el) el.srcObject = screenStream; }} />
+                                            <video autoPlay muted className="w-full h-full object-contain" ref={el => { if (el && el.srcObject !== screenStream) el.srcObject = screenStream; }} />
                                             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg">{username} (Ekran)</div>
                                             <div className="absolute top-3 right-3 flex items-center gap-1.5">
                                                 <button
