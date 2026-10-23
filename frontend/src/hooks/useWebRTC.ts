@@ -34,6 +34,9 @@ export function useWebRTC() {
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOn, setIsCameraOn] = useState(false);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
+    // Paylaşımda sistem sesi var mı / şu an gönderiliyor mu
+    const [hasScreenAudio, setHasScreenAudio] = useState(false);
+    const [isScreenAudioOn, setIsScreenAudioOn] = useState(true);
     const [isReady, setIsReady] = useState(false);
     const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
     // ICE'i kalici olarak basarisiz olan peer'lar — UI'da uyari gostermek icin.
@@ -176,6 +179,7 @@ export function useWebRTC() {
             screenStreamRef.current = null;
             setScreenStream(null);
             setIsScreenSharing(false);
+            setHasScreenAudio(false);
             stopSending(tracks, 'screen-stopped', 'Screen stop');
         } else {
             try {
@@ -183,9 +187,18 @@ export function useWebRTC() {
                     // 1080p hedefle (tarayıcı kaynağa göre düşürebilir); 30fps üstü
                     // bant genişliğini boşa harcar, metin netliği çözünürlükten gelir.
                     video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } },
-                    // Ekran sesi: yankı/gürültü filtresi müziği ve oyun sesini bozar
-                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-                });
+                    // Ekran sesi: yankı/gürültü filtresi müziği ve oyun sesini bozar.
+                    // restrictOwnAudio: bu sekmenin kendi çaldığı sesi (sesli sohbetteki
+                    // diğer kişiler) yakalama — yoksa izleyenler kendi sesini geri duyuyor.
+                    // suppressLocalAudioPlayback false: paylaşılan sekme paylaşana da çalsın.
+                    audio: {
+                        echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+                        restrictOwnAudio: true,
+                        suppressLocalAudioPlayback: false,
+                    } as MediaTrackConstraints,
+                    // Chrome: "tüm ekran" seçiminde de sistem sesi seçeneği sunulsun
+                    systemAudio: 'include',
+                } as DisplayMediaStreamOptions);
 
                 // Kullanıcı tarayıcıdan durdurursa — tam cleanup yap (peer connections dahil)
                 display.getVideoTracks()[0].onended = () => {
@@ -195,6 +208,7 @@ export function useWebRTC() {
                     screenStreamRef.current = null;
                     setScreenStream(null);
                     setIsScreenSharing(false);
+                    setHasScreenAudio(false);
                     stopSending(tracks, 'screen-stopped', 'Browser-stop');
                 };
 
@@ -206,6 +220,8 @@ export function useWebRTC() {
                 // Ekran sesi yalnızca kullanıcı paylaşım penceresinde "sesi de paylaş"ı
                 // seçtiyse gelir (Chrome: sekme veya tüm ekran). Eskiden hiç gönderilmiyordu.
                 const screenAudioTrack = display.getAudioTracks()[0];
+                setHasScreenAudio(!!screenAudioTrack);
+                setIsScreenAudioOn(true);
                 // Metin/detay odaklı içerik ipucu: encoder keskinliği önceliklendirir
                 try { screenTrack.contentHint = 'detail'; } catch { /* eski tarayıcı */ }
                 peerConnections.current.forEach(async (pc, connId) => {
@@ -228,6 +244,15 @@ export function useWebRTC() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isScreenSharing]);
+
+    // Paylaşım sürerken sistem sesini kapat/aç. Track durdurulmaz, yalnızca
+    // devre dışı bırakılır (sessizlik gider); böylece yeniden anlaşma gerekmez.
+    const toggleScreenAudio = useCallback(() => {
+        const track = screenStreamRef.current?.getAudioTracks()[0];
+        if (!track) return;
+        track.enabled = !track.enabled;
+        setIsScreenAudioOn(track.enabled);
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -676,6 +701,9 @@ export function useWebRTC() {
         isMuted,
         isCameraOn,
         isScreenSharing,
+        hasScreenAudio,
+        isScreenAudioOn,
+        toggleScreenAudio,
         toggleMute,
         setMicEnabled,
         getMicLevel,

@@ -305,6 +305,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         localVideoStream, screenStream,
         isCameraOn, isScreenSharing,
         toggleCamera, toggleScreenShare,
+        hasScreenAudio, isScreenAudioOn, toggleScreenAudio,
         audioInputs, audioOutputs,
         selectedMicId, selectedOutputId,
         switchMicrophone, setSelectedOutputId,
@@ -1283,6 +1284,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             {isScreenSharing ? <Monitor size={18} /> : <MonitorOff size={18} />}
                         </button>
 
+                        {/* Paylaşılan sistem sesini aç/kapat (yalnızca ses paylaşılıyorsa) */}
+                        {isScreenSharing && hasScreenAudio && (
+                            <button onClick={toggleScreenAudio} title={isScreenAudioOn ? 'Sistem sesini kapat' : 'Sistem sesini aç'}
+                                className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer transition-colors ${isScreenAudioOn ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-red-500/10 border-red-500/30 text-red-500'}`}>
+                                {isScreenAudioOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                            </button>
+                        )}
+
                         {/* Mikrofon */}
                         <button onClick={handleToggleMute}
                             className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer transition-colors ${isMuted ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-bg-base border-border-main text-text-main hover:text-primary-main'}`}>
@@ -1364,6 +1373,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                     className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg cursor-pointer">
                                                     <Maximize2 size={14} />
                                                 </button>
+                                                {hasScreenAudio && (
+                                                    <button onClick={toggleScreenAudio}
+                                                        title={isScreenAudioOn ? 'Sistem sesini kapat' : 'Sistem sesini aç'}
+                                                        className={`p-1.5 rounded-lg cursor-pointer text-white ${isScreenAudioOn ? 'bg-black/60 hover:bg-black/80' : 'bg-red-500/90 hover:bg-red-600'}`}>
+                                                        {isScreenAudioOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                                                    </button>
+                                                )}
                                                 <button onClick={toggleScreenShare} className="px-3 py-1.5 bg-red-500/90 hover:bg-red-600 text-white rounded-lg text-xs font-semibold cursor-pointer">Durdur</button>
                                             </div>
                                         </div>

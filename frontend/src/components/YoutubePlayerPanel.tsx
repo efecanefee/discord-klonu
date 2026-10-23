@@ -41,6 +41,13 @@ interface Session {
 // videoyu birlikte, senkron izler. Başlatan kişi anında katılır.
 // Not: YouTube TOS gereği oynatıcı görünür kalmalı (>=200x200).
 const PLAYER_POS_KEY = 'ytPlayerPos';
+const PLAYER_SIZE_KEY = 'ytPlayerWidth';
+// Oynatıcı genişliği sınırları; yükseklik 16:9 ama TOS gereği en az 200px
+const MIN_PLAYER_W = 288;
+const MAX_PLAYER_W = 1280;
+const playerHeightFor = (w: number) => Math.max(200, Math.round(w * 9 / 16));
+const clampPlayerWidth = (w: number) =>
+  Math.round(Math.min(Math.max(w, MIN_PLAYER_W), MAX_PLAYER_W, Math.max(MIN_PLAYER_W, window.innerWidth - 40)));
 
 const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, username }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -257,10 +264,46 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
   });
   const dragX = useMotionValue(savedPos?.x ?? 0);
   const dragY = useMotionValue(savedPos?.y ?? 0);
-  const handleDragEnd = () => {
-    setIsDragging(false);
+  const savePos = () => {
     try { localStorage.setItem(PLAYER_POS_KEY, JSON.stringify({ x: dragX.get(), y: dragY.get() })); } catch { /* yoksay */ }
   };
+  const handleDragEnd = () => {
+    setIsDragging(false);
+    savePos();
+  };
+
+  // ===== Köşeden sürükleyerek boyutlandırma =====
+  // Pencere sağ-alta sabitli; büyürken sol-üst köşe yerinde kalsın diye
+  // genişlik/yükseklik farkı kadar konum da kaydırılır.
+  const [playerW, setPlayerW] = useState(() => {
+    try { return clampPlayerWidth(Number(localStorage.getItem(PLAYER_SIZE_KEY)) || MIN_PLAYER_W); }
+    catch { return MIN_PLAYER_W; }
+  });
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<{ startX: number; startW: number; baseX: number; baseY: number } | null>(null);
+  const handleResizeDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    resizeRef.current = { startX: e.clientX, startW: playerW, baseX: dragX.get(), baseY: dragY.get() };
+    setIsResizing(true);
+  };
+  const handleResizeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = resizeRef.current;
+    if (!r) return;
+    const w = clampPlayerWidth(r.startW + (e.clientX - r.startX));
+    dragX.set(r.baseX + (w - r.startW));
+    dragY.set(r.baseY + (playerHeightFor(w) - playerHeightFor(r.startW)));
+    setPlayerW(w);
+  };
+  const handleResizeUp = () => {
+    if (!resizeRef.current) return;
+    resizeRef.current = null;
+    setIsResizing(false);
+    savePos();
+    try { localStorage.setItem(PLAYER_SIZE_KEY, String(playerW)); } catch { /* yoksay */ }
+  };
+  const playerH = playerHeightFor(playerW);
 
   return (
     // Ekranın tamamı sürükleme sınırı; tıklamalar alttaki arayüze geçer
@@ -278,11 +321,11 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
           dragConstraints={dragConstraintsRef}
           onDragStart={() => setIsDragging(true)}
           onDragEnd={handleDragEnd}
-          style={{ x: dragX, y: dragY }}
+          style={{ x: dragX, y: dragY, ...(isVideoInvite ? {} : { width: playerW + 16 }) }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute bottom-24 right-3 pointer-events-auto w-[304px] max-w-[calc(100vw-1.5rem)] bg-bg-surface border border-border-main rounded-2xl shadow-2xl overflow-hidden"
+          className={`absolute bottom-24 right-3 pointer-events-auto max-w-[calc(100vw-1.5rem)] bg-bg-surface border border-border-main rounded-2xl shadow-2xl overflow-hidden ${isVideoInvite ? 'w-[304px]' : ''}`}
         >
           {isVideoInvite ? (
             // ===== İzleme partisi daveti =====
@@ -323,7 +366,11 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
 
               <div className="relative p-2">
                 {/* YouTube TOS: oynatıcı görünür ve >=200x200 kalmalı */}
-                <div ref={playerHostRef} className={`w-[288px] h-[200px] rounded-lg overflow-hidden bg-black ${isDragging ? 'pointer-events-none' : ''}`} />
+                <div
+                  ref={playerHostRef}
+                  style={{ height: playerH }}
+                  className={`w-full rounded-lg overflow-hidden bg-black [&_iframe]:w-full [&_iframe]:h-full ${isDragging || isResizing ? 'pointer-events-none' : ''}`}
+                />
                 {needsInteraction && (
                   <button
                     onClick={handleJoinClick}
@@ -333,6 +380,19 @@ const YoutubePlayerPanel: React.FC<YoutubePlayerPanelProps> = ({ roomId, usernam
                     <span className="text-sm font-semibold">İzlemek için tıkla</span>
                   </button>
                 )}
+                {/* Sağ-alt köşeden sürükleyerek büyüt/küçült */}
+                <div
+                  onPointerDown={handleResizeDown}
+                  onPointerMove={handleResizeMove}
+                  onPointerUp={handleResizeUp}
+                  onPointerCancel={handleResizeUp}
+                  title="Sürükleyerek boyutlandır"
+                  className="absolute bottom-0 right-0 w-5 h-5 cursor-nwse-resize touch-none flex items-end justify-end p-0.5 text-text-muted hover:text-text-main"
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M9 1L1 9M9 5L5 9" />
+                  </svg>
+                </div>
               </div>
 
               {error && (
