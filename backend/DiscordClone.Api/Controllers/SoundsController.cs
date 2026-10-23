@@ -15,7 +15,7 @@ namespace DiscordClone.Api.Controllers
     [Authorize]
     public class SoundsController : ControllerBase
     {
-        private const int MaxSoundsPerUser = 10;   // kendi yüklediği
+        private const int MaxSoundsPerUser = 20;   // kendi yüklediği
         private const int MaxSavedPerUser = 30;    // mağazadan eklediği
         private const int StorePageSize = 30;
         private readonly AppDbContext _db;
