@@ -17,6 +17,7 @@ import EmojiPicker from './EmojiPicker';
 import GifPicker from './GifPicker';
 import SoundboardPanel from './SoundboardPanel';
 import YoutubePlayerPanel from './YoutubePlayerPanel';
+import { useElementFullscreen } from '../hooks/useElementFullscreen';
 import MessageFileAttachment from './MessageFileAttachment';
 import InlineMessageEditor from './InlineMessageEditor';
 import TypingIndicator from './TypingIndicator';
@@ -129,26 +130,11 @@ const RemoteVideoPlayer: React.FC<{
 }> = ({ stream, label, volume, onVolumeChange }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [isFullscreen, setIsFullscreen] = useState(false);
+    const { isFullscreen, controlsHidden, toggle: toggleFullscreen, poke } = useElementFullscreen(containerRef, videoRef);
 
     useEffect(() => {
         if (videoRef.current) videoRef.current.srcObject = stream;
     }, [stream]);
-
-    // Fullscreen state'i tarayıcı event'inden takip et (Esc ile çıkış dahil)
-    useEffect(() => {
-        const onFsChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
-        document.addEventListener('fullscreenchange', onFsChange);
-        return () => document.removeEventListener('fullscreenchange', onFsChange);
-    }, []);
-
-    const toggleFullscreen = () => {
-        if (document.fullscreenElement === containerRef.current) {
-            document.exitFullscreen().catch(() => { /* yoksay */ });
-        } else {
-            containerRef.current?.requestFullscreen().catch(() => { /* desteklenmiyor */ });
-        }
-    };
 
     const togglePiP = async () => {
         try {
@@ -180,15 +166,34 @@ const RemoteVideoPlayer: React.FC<{
     if (!hasVideo) return null;
 
     return (
-        <div ref={containerRef} className="group/video relative w-full h-full flex justify-center items-center rounded-xl overflow-hidden border border-border-main bg-black">
+        <div ref={containerRef} tabIndex={0}
+            onDoubleClick={toggleFullscreen}
+            onMouseMove={poke}
+            onKeyDown={e => { if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); } }}
+            className={`group/video relative w-full h-full flex justify-center items-center overflow-hidden bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-main ${isFullscreen ? '' : 'rounded-xl border border-border-main'} ${controlsHidden ? 'cursor-none' : ''}`}
+            title={isFullscreen ? undefined : 'Çift tıkla: tam ekran'}>
             {/* Ses AudioPlayer'dan gelir — video muted, çift ses olmaz */}
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain" />
-            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm flex items-center gap-1.5">
-                {label}
-            </div>
 
-            {/* Meet tarzı hover kontrolleri: ses / PiP / tam ekran */}
-            <div className="absolute bottom-2 right-2 flex items-center gap-1.5 opacity-0 group-hover/video:opacity-100 transition-opacity duration-150">
+            {/* Tam ekranda üst şerit: kim paylaşıyor + nasıl çıkılır */}
+            {isFullscreen && (
+                <div className={`absolute top-0 inset-x-0 px-5 py-4 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent text-white transition-opacity duration-300 ${controlsHidden ? 'opacity-0' : 'opacity-100'}`}>
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
+                        {label}
+                    </span>
+                    <span className="text-xs text-white/70">Çıkmak için <kbd className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-[11px]">Esc</kbd></span>
+                </div>
+            )}
+            {!isFullscreen && (
+                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm flex items-center gap-1.5">
+                    {label}
+                </div>
+            )}
+
+            {/* Meet tarzı kontroller: ses / PiP / tam ekran. Dokunmatikte hep görünür */}
+            <div onDoubleClick={e => e.stopPropagation()} className={`absolute flex items-center gap-1.5 transition-opacity duration-200 ${isFullscreen ? 'bottom-6 left-1/2 -translate-x-1/2 px-2 py-2 rounded-2xl bg-black/60 backdrop-blur-md' : 'bottom-2 right-2'} ${
+                controlsHidden ? 'opacity-0 pointer-events-none' : isFullscreen ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 group-focus-within/video:opacity-100 [@media(hover:none)]:opacity-100'}`}>
                 {onVolumeChange && (
                     <div className="flex items-center gap-1.5 px-2 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm">
                         {(volume ?? 1) === 0
@@ -197,18 +202,18 @@ const RemoteVideoPlayer: React.FC<{
                         <input
                             type="range" min="0" max="1" step="0.01" value={volume ?? 1}
                             onChange={e => onVolumeChange(parseFloat(e.target.value))}
-                            className="w-16 accent-white cursor-pointer"
+                            className={`${isFullscreen ? 'w-28' : 'w-16'} accent-white cursor-pointer`}
                             title="Ses seviyesi"
                         />
                     </div>
                 )}
                 <button onClick={togglePiP} title="Küçük pencerede izle (PiP)"
                     className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm cursor-pointer">
-                    <PictureInPicture2 size={14} />
+                    <PictureInPicture2 size={isFullscreen ? 18 : 14} />
                 </button>
-                <button onClick={toggleFullscreen} title={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran'}
+                <button onClick={toggleFullscreen} title={isFullscreen ? 'Tam ekrandan çık (F)' : 'Tam ekran (F)'}
                     className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm cursor-pointer">
-                    {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={14} />}
                 </button>
             </div>
         </div>
