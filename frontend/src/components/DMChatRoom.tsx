@@ -5,6 +5,9 @@ import { renderAvatar } from '../constants/avatars';
 import signalrService from '../services/signalrService';
 import EmojiPicker from './EmojiPicker';
 import MessageFileAttachment from './MessageFileAttachment';
+import InlineMessageEditor from './InlineMessageEditor';
+import TypingIndicator from './TypingIndicator';
+import EditedTag from './EditedTag';
 import { useStickToBottom } from '../hooks/useStickToBottom';
 
 interface DirectMessage {
@@ -48,6 +51,9 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   const [isLoading, setIsLoading] = useState(true);
   const [replyingToMessage, setReplyingToMessage] = useState<DirectMessage | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+  // Giden "yazıyor" sinyali her tuşta değil ~2.5 sn'de bir gönderilir
+  const lastTypingSentRef = useRef(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -149,28 +155,44 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingMessageId) {
-      if (!newMessage.trim()) return;
-      await signalrService.editDirectMessage(editingMessageId, newMessage.trim());
-      setNewMessage('');
-      setEditingMessageId(null);
-      return;
-    }
-
     if (!newMessage.trim()) return;
     scrollToBottom();
 
     await signalrService.sendDirectMessage(targetUser.id, newMessage.trim(), replyingToMessage?.id);
+    lastTypingSentRef.current = 0;
     setNewMessage('');
     setReplyingToMessage(null);
   };
 
   const startEditing = (msg: DirectMessage) => {
     setEditingMessageId(msg.id);
-    setNewMessage(msg.content);
+    setEditText(msg.content);
+  };
+  const cancelEditing = () => {
+    setEditingMessageId(null);
+    setEditText('');
+  };
+  const saveEditing = () => {
+    const next = editText.trim();
+    const original = messages.find(m => m.id === editingMessageId)?.content;
+    if (editingMessageId && next && next !== original) {
+      signalrService.editDirectMessage(editingMessageId, next);
+      setMessages(prev => prev.map(m => m.id === editingMessageId ? { ...m, content: next, isEdited: true } : m));
+    }
+    cancelEditing();
+  };
+
+  // Boş kutuda ↑ = son mesajını düzenle
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'ArrowUp' || newMessage) return;
+    const lastMine = [...messages].reverse().find(m => m.senderId === currentUser.id && !m.isDeleted && !m.fileUrl);
+    if (lastMine) { e.preventDefault(); startEditing(lastMine); }
   };
 
   const handleTypingStart = () => {
+    const now = Date.now();
+    if (now - lastTypingSentRef.current < 2500) return;
+    lastTypingSentRef.current = now;
     signalrService.sendUserTyping(targetUser.id);
   };
 
@@ -299,17 +321,18 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                     </div>
 
                     <div 
-                      className={`rounded-2xl px-5 py-3 cursor-pointer ${isMe ? 'bg-primary-main text-white rounded-br-none shadow-[0_4px_20px_rgba(var(--accent-rgb),0.3)]' : 'bubble-in text-white/90 rounded-bl-none shadow-lg'}`}
+                      className={`rounded-2xl px-5 py-3 cursor-pointer ${editingMessageId === msg.id ? 'msg-editing' : ''} ${isMe ? 'bg-primary-main text-white rounded-br-none shadow-[0_4px_20px_rgba(var(--accent-rgb),0.3)]' : 'bubble-in text-white/90 rounded-bl-none shadow-lg'}`}
                       title="Kopyalamak için tıkla"
-                      onClick={() => { if (!msg.fileUrl) navigator.clipboard.writeText(msg.content); }}
+                      onClick={() => { if (!msg.fileUrl && editingMessageId !== msg.id) navigator.clipboard.writeText(msg.content); }}
                     >
                       {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMe} />}
-                      {(!msg.fileUrl || !msg.content.startsWith('[Dosya:')) && (
-                        <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
+                      {editingMessageId === msg.id ? (
+                        <InlineMessageEditor value={editText} onChange={setEditText} onSave={saveEditing} onCancel={cancelEditing} onDark={isMe} />
+                      ) : (!msg.fileUrl || !msg.content.startsWith('[Dosya:')) && (
+                        <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{msg.content}{msg.isEdited && <EditedTag />}</p>
                       )}
                       <div className={`flex items-center gap-1.5 mt-2 text-[10px] ${isMe ? 'text-white/60 justify-end' : 'text-white/40'}`}>
                         <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                        {msg.isEdited && <span>(Düzenlendi)</span>}
                         {isMe && (
                           msg.isRead ? <CheckCheck size={12} className="text-blue-300" /> : <Check size={12} />
                         )}
@@ -323,39 +346,12 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
           })
         )}
 
-        <AnimatePresence>
-          {isTyping && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-2 text-white/40 text-sm ml-2"
-            >
-              <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-              {targetUser.username} yazıyor...
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <TypingIndicator names={isTyping ? [targetUser.username] : []} />
       </div>
 
       {/* Input Area */}
       <div className="p-4 sm:p-6 bg-[#09090b] border-t border-white/5 sticky bottom-0 z-20 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {editingMessageId && (
-          <div className="flex items-center justify-between mb-2 bg-blue-500/10 rounded-xl px-4 py-2 border border-blue-500/20">
-            <div className="flex items-center gap-2 text-sm text-blue-200">
-              <Pencil size={14} className="text-blue-400" />
-              <span>Mesajı düzenliyorsun</span>
-            </div>
-            <button onClick={() => { setEditingMessageId(null); setNewMessage(''); }} className="text-white/40 hover:text-white transition-colors cursor-pointer">
-              <X size={16} />
-            </button>
-          </div>
-        )}
-        {!editingMessageId && replyingToMessage && (
+        {replyingToMessage && (
           <div className="flex items-center justify-between mb-2 bg-white/5 rounded-xl px-4 py-2 border border-white/10">
             <div className="flex items-center gap-2 text-sm text-white/70">
               <Reply size={14} className="text-primary-main" />
@@ -397,6 +393,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
               setNewMessage(e.target.value);
               handleTypingStart();
             }}
+            onKeyDown={handleInputKeyDown}
             placeholder={isUploading ? 'Dosya yükleniyor...' : `@${targetUser.username} kişisine mesaj gönder...`}
             disabled={isUploading}
             className="w-full bg-transparent py-4 text-[15px] text-white placeholder:text-white/30 outline-none flex-1"

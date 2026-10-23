@@ -17,6 +17,9 @@ import EmojiPicker from './EmojiPicker';
 import SoundboardPanel from './SoundboardPanel';
 import YoutubePlayerPanel from './YoutubePlayerPanel';
 import MessageFileAttachment from './MessageFileAttachment';
+import InlineMessageEditor from './InlineMessageEditor';
+import TypingIndicator from './TypingIndicator';
+import EditedTag from './EditedTag';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
@@ -756,6 +759,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
     // Dropdown açıkken ok tuşları/Enter/Tab/Esc input'ta yakalanır
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        // Boş kutuda ↑ = son mesajını düzenle (Discord kısayolu)
+        if (e.key === 'ArrowUp' && !messageInput && mentionQuery === null) {
+            const lastMine = [...messages].reverse().find(m => m.type === 'message' && m.username === username && m.serverId && !m.pending && !m.fileUrl);
+            if (lastMine) { e.preventDefault(); handleStartEdit(lastMine); }
+            return;
+        }
         if (mentionQuery === null || mentionCandidates.length === 0) return;
         if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionCandidates.length); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionCandidates.length) % mentionCandidates.length); }
@@ -873,15 +882,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         }
     }, []);
     const handleSaveEdit = useCallback(() => {
-        if (editingMessageId && editText.trim()) {
-            signalrService.editMessage(editingMessageId, editText.trim());
+        const next = editText.trim();
+        const original = messages.find(m => m.serverId === editingMessageId)?.text;
+        // Boş ya da değişmemişse sunucuya gitmeden kapat
+        if (editingMessageId && next && next !== original) {
+            signalrService.editMessage(editingMessageId, next);
             setMessages(prev => prev.map(m =>
-                m.serverId === editingMessageId ? { ...m, text: editText.trim(), isEdited: true } : m
+                m.serverId === editingMessageId ? { ...m, text: next, isEdited: true } : m
             ));
         }
         setEditingMessageId(null);
         setEditText('');
-    }, [editingMessageId, editText]);
+    }, [editingMessageId, editText, messages]);
     const handleCancelEdit = useCallback(() => {
         setEditingMessageId(null);
         setEditText('');
@@ -1479,10 +1491,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             })()}
 
                                                             <div className="relative group/msg" id={`compact-msg-${msg.id}`}>
-                                                                <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
+                                                                <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${editingMessageId != null && msg.serverId === editingMessageId ? 'msg-editing' : ''} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
                                                                     {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
-                                                                {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
-                                                                    <div className="whitespace-pre-wrap break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
+                                                                {editingMessageId != null && msg.serverId === editingMessageId ? (
+                                                                    <InlineMessageEditor value={editText} onChange={setEditText} onSave={handleSaveEdit} onCancel={handleCancelEdit} onDark={isMine} compact />
+                                                                ) : (!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
+                                                                    <div className="whitespace-pre-wrap break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}{msg.isEdited && <EditedTag />}</div>
                                                                 )}
                                                                 </div>
                                                                 <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
@@ -1523,42 +1537,26 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             );
                                         })}
                                     </AnimatePresence>
-                                    {/* Yazıyor göstergesi */}
-                                    <AnimatePresence>
-                                        {typingUsers.size > 0 && (
-                                            <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2 px-1">
-                                                <div className="flex gap-1">
-                                                    {[0, 1, 2].map(i => <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-text-muted" animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />)}
-                                                </div>
-                                                <span className="text-[11px] text-text-muted">{[...typingUsers].join(', ')} yazıyor...</span>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    <TypingIndicator names={[...typingUsers]} compact />
                                     <div className="h-1" />
                                 </div>
                             </div>
                             <div className="p-3 border-t border-border-main sticky bottom-0 z-20 bg-bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] relative">
-                                {!editingMessageId && mentionQuery !== null && (
+                                {mentionQuery !== null && (
                                     <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
                                 )}
                                 <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
-                                    {editingMessageId && (
-                                        <div className="flex items-center justify-between bg-bg-surface px-3 py-1.5 rounded-lg border border-primary-main/30 text-xs">
-                                            <span className="text-primary-main flex items-center gap-1.5"><Pencil size={12} /> Mesajı düzenliyorsun</span>
-                                            <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main"><X size={12} /></button>
-                                        </div>
-                                    )}
                                     <div className="flex items-center gap-1.5">
                                         <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Smile size={20} /></button>
                                         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Paperclip size={20} /></button>
                                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
-                                        <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
-                                            onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onBlur={() => setMentionQuery(null)}
+                                        <input type="text" value={messageInput} onChange={handleInputChange}
+                                            onKeyDown={handleInputKeyDown} onBlur={() => setMentionQuery(null)}
                                             placeholder={isUploading ? "Yükleniyor..." : "Mesaj yaz..."} disabled={isUploading}
                                             className="flex-1 bg-bg-surface border border-border-main rounded-xl px-3 py-3 text-[14px] text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
-                                        <button type="button" onClick={editingMessageId ? handleSaveEdit : handleSendMessage} disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
+                                        <button type="button" onClick={handleSendMessage} disabled={!messageInput.trim() || isUploading}
                                             className="p-3 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-md">
-                                            {editingMessageId ? <Pencil size={18} /> : <Send size={18} />}
+                                            <Send size={18} />
                                         </button>
                                     </div>
                                 </form>
@@ -1648,10 +1646,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                 })()}
 
                                                                 <div className="relative group/msg" id={`room-msg-${msg.id}`}>
-                                                                    <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
+                                                                    <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${editingMessageId != null && msg.serverId === editingMessageId ? 'msg-editing' : ''} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
                                                                         {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
-                                                                    {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
-                                                                        <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
+                                                                    {editingMessageId != null && msg.serverId === editingMessageId ? (
+                                                                        <InlineMessageEditor value={editText} onChange={setEditText} onSave={handleSaveEdit} onCancel={handleCancelEdit} onDark={isMine} />
+                                                                    ) : (!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
+                                                                        <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}{msg.isEdited && <EditedTag />}</div>
                                                                     )}
                                                                     </div>
                                                                     {/* Zaman damgası tooltip */}
@@ -1729,17 +1729,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 );
                                             })}
                                         </AnimatePresence>
-                                        {/* Yazıyor göstergesi */}
-                                        <AnimatePresence>
-                                            {typingUsers.size > 0 && (
-                                                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2 px-1">
-                                                    <div className="flex gap-1">
-                                                        {[0, 1, 2].map(i => <motion.div key={i} className="w-2 h-2 rounded-full bg-text-muted" animate={{ y: [0, -5, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />)}
-                                                    </div>
-                                                    <span className="text-[13px] text-text-muted">{[...typingUsers].join(', ')} yazıyor...</span>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+                                        <TypingIndicator names={[...typingUsers]} />
                                         <div className="h-2" />
                                     </div>
                                 </div>
@@ -1878,19 +1868,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                         {/* Mesaj input */}
                         <motion.div variants={itemVariants} className="relative sticky bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-base pt-2">
-                            {editingMessageId && (
-                                <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
-                                    <span className="text-primary-main flex items-center gap-2 font-medium"><Pencil size={14} /> Mesajı düzenliyorsun</span>
-                                    <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
-                                </div>
-                            )}
-                            {!editingMessageId && replyingToMessage && (
+                            {replyingToMessage && (
                                 <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
                                     <span className="text-primary-main flex items-center gap-2 font-medium"><Reply size={14} /> {replyingToMessage.username} yanıtlanıyor: <span className="text-text-muted truncate max-w-[150px]">{replyingToMessage.text}</span></span>
                                     <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
                                 </div>
                             )}
-                            <form onSubmit={editingMessageId ? handleSaveEdit : handleSendMessage}
+                            <form onSubmit={handleSendMessage}
                                 className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
                                 
                                 <button type="button" onClick={() => { setShowEmojiPicker(p => !p); setShowSoundboard(false); setShowYoutubeInput(false); }} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
@@ -1911,21 +1895,21 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     </>
                                 )}
                                 
-                                <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
-                                    onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onBlur={() => setMentionQuery(null)}
+                                <input type="text" value={messageInput} onChange={handleInputChange}
+                                    onKeyDown={handleInputKeyDown} onBlur={() => setMentionQuery(null)}
                                     placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
                                     className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
                                 
-                                <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim()) || isUploading}
+                                <button type="submit" disabled={!messageInput.trim() || isUploading}
                                     className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
-                                    {editingMessageId ? <Pencil size={18} className="mr-0 sm:mr-2" /> : <Send size={18} className="mr-0 sm:mr-2" />}
-                                    <span className="hidden sm:inline">{editingMessageId ? 'Kaydet' : 'Gönder'}</span>
+                                    <Send size={18} className="mr-0 sm:mr-2" />
+                                    <span className="hidden sm:inline">Gönder</span>
                                 </button>
                             </form>
                             <div className="absolute bottom-full mb-2 left-0 z-50">
                                 <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
                             </div>
-                            {!editingMessageId && mentionQuery !== null && (
+                            {mentionQuery !== null && (
                                 <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
                             )}
                             {isAnaSalon && (
