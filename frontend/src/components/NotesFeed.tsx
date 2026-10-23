@@ -19,6 +19,7 @@ interface NotesFeedProps {
 }
 
 const MAX_LEN = 280;
+const EXPIRE_AFTER_MS = 3 * 60 * 60 * 1000;
 const QUICK_EMOJIS = ['👍', '❤️', '😂', '🔥', '😮', '😢', '🎉', '👀', '💯', '🙏', '😎', '🤝'];
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -107,6 +108,8 @@ const PollBox = ({ post, now, myUsername, onVote }: Pick<PostItemProps, 'post' |
   const ended = post.eventAt != null && post.eventAt < now;
   const myChoice: PollChoice | null = votes.yes.includes(myUsername) ? 'yes' : votes.no.includes(myUsername) ? 'no' : null;
   const until = post.eventAt != null ? untilLabel(post.eventAt, now) : null;
+  // Sunucu, etkinlikten EXPIRE_AFTER_MS sonra oylamayı siler (FeedReminderService)
+  const removeIn = ended && post.eventAt != null ? untilLabel(post.eventAt + EXPIRE_AFTER_MS, now) : null;
 
   const option = (choice: PollChoice) => {
     const list = choice === 'yes' ? votes.yes : votes.no;
@@ -150,7 +153,7 @@ const PollBox = ({ post, now, myUsername, onVote }: Pick<PostItemProps, 'post' |
           <span className="font-semibold text-white/80">{formatEventAt(post.eventAt)}</span>
           <span className="text-white/35">·</span>
           {ended
-            ? <span className="text-white/40">Sona erdi</span>
+            ? <span className="text-white/40">Sona erdi{removeIn ? ` · ${removeIn} kaldırılır` : ''}</span>
             : <span className="text-primary-main/90">{until}</span>}
         </div>
       )}
