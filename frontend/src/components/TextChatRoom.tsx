@@ -6,7 +6,7 @@ import PingBadge, { SignalBars } from './PingBadge';
 import SpeakingBars from './SpeakingBars';
 import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check, Pin } from 'lucide-react';
+import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check, Pin, Headphones, HeadphoneOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
@@ -36,11 +36,11 @@ export interface TextRoomInfo {
 }
 
 // Uzak katilimcinin sesi. Ayarlardaki cikis cihazina yonlendirilir.
-const VoiceAudio: React.FC<{ stream: MediaStream; sinkId: string }> = ({ stream, sinkId }) => {
+const VoiceAudio: React.FC<{ stream: MediaStream; sinkId: string; muted: boolean }> = ({ stream, sinkId, muted }) => {
     const ref = useRef<HTMLAudioElement>(null);
     useEffect(() => { if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream; }, [stream]);
     useEffect(() => { applySinkId(ref.current, sinkId); }, [sinkId, stream]);
-    return <audio ref={ref} autoPlay playsInline />;
+    return <audio ref={ref} autoPlay playsInline muted={muted} />;
 };
 
 interface TextChatRoomProps {
@@ -1147,6 +1147,10 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                     className={`p-1.5 rounded-lg transition-colors ${voice.isMuted ? 'text-red-400 bg-red-500/10' : 'text-text-muted hover:text-text-main hover:bg-bg-surface'}`}>
                                     {voice.isMuted ? <MicOff size={16} /> : <Mic size={16} />}
                                 </button>
+                                <button onClick={voice.toggleDeafen} title={voice.deafened ? 'Sağırlaştırmayı kaldır' : 'Sağırlaştır'}
+                                    className={`p-1.5 rounded-lg transition-colors ${voice.deafened ? 'text-red-400 bg-red-500/10' : 'text-text-muted hover:text-text-main hover:bg-bg-surface'}`}>
+                                    {voice.deafened ? <HeadphoneOff size={16} /> : <Headphones size={16} />}
+                                </button>
                                 <button onClick={voice.leaveVoice} title="Ses kanalından ayrıl"
                                     className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
                                     <PhoneOff size={16} />
@@ -1157,7 +1161,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
                     {/* Uzak katılımcıların sesi (gizli audio öğeleri) */}
                     {Array.from(voice.remoteStreams.entries()).map(([connId, stream]) => (
-                        <VoiceAudio key={connId} stream={stream} sinkId={settings.speakerId} />
+                        <VoiceAudio key={connId} stream={stream} sinkId={settings.speakerId} muted={voice.deafened} />
                     ))}
 
                     {/* Chat alanı */}

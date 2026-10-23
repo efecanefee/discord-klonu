@@ -6,7 +6,7 @@ import PingBadge, { SignalBars } from './PingBadge';
 import SpeakingBars from './SpeakingBars';
 import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
-import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2, Pin } from 'lucide-react';
+import { Settings, LogOut, Send, Volume2, Mic, MicOff, VolumeX, Volume1, Camera, CameraOff, Monitor, MonitorOff, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Music2, Youtube, ListPlus, Maximize2, Minimize2, PictureInPicture2, Pin, Headphones, HeadphoneOff } from 'lucide-react';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useKeybinds } from '../hooks/useKeybinds';
 import { useStickToBottom } from '../hooks/useStickToBottom';
@@ -26,6 +26,7 @@ import { renderAvatar } from '../constants/avatars';
 import { roomApi } from '../services/roomApi';
 import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
 import { applySinkId } from '../utils/audioOutput';
+import { voiceControls, useVoiceControls } from '../utils/voiceControls';
 import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/mentions';
 import MentionAutocomplete from './MentionAutocomplete';
 import { notify } from '../utils/browserNotifications';
@@ -286,7 +287,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
     const {
-        localStream, remoteStreams, isMuted, toggleMute, setMicEnabled, isReady,
+        localStream, remoteStreams, isMuted, setMicEnabled, isReady,
         localVideoStream, screenStream,
         isCameraOn, isScreenSharing,
         toggleCamera, toggleScreenShare,
@@ -296,6 +297,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         speakingUsers, connectionIssues,
         getMicLevel, getPeers,
     } = useWebRTC();
+    const { micBlocked, deafened } = useVoiceControls();
 
     // Ping: kişilere (WebRTC) ve sunucuya gidiş-dönüş süresi
     const peerPings = usePeerPings(getPeers, isReady);
@@ -328,6 +330,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         soundboardVolumeRef.current = settings.soundboardVolume;
         if (soundboardAudioRef.current) soundboardAudioRef.current.volume = Math.min(1, masterVolume * settings.soundboardVolume);
     }, [settings.soundboardVolume, masterVolume]);
+    // Sağırken çalan soundboard sesi de duyulmasın
+    useEffect(() => {
+        if (soundboardAudioRef.current) soundboardAudioRef.current.muted = deafened;
+    }, [deafened]);
     const outputIdRef = useRef(selectedOutputId);
     useEffect(() => { outputIdRef.current = selectedOutputId; }, [selectedOutputId]);
     // Üst üste binmesin diye çalan son soundboard sesi
@@ -544,6 +550,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                 soundboardAudioRef.current?.pause();
                 const audio = new Audio(soundUrl);
                 audio.volume = Math.min(1, masterVolumeRef.current * soundboardVolumeRef.current);
+                audio.muted = voiceControls.get().deafened;
                 applySinkId(audio, outputIdRef.current);
                 soundboardAudioRef.current = audio;
                 audio.play().catch(() => { /* autoplay engellenmiş olabilir */ });
@@ -885,35 +892,33 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         setMessageInput(prev => prev + emoji);
     }, []);
 
-    // Mute değişince diğerlerine bildir
-    const handleToggleMute = useCallback(() => {
-        const newMuted = !isMuted;
-        toggleMute();
-        if (newMuted) playMuteSound(); else playUnmuteSound();
-        signalrService.notifyMuteStatus(roomId, newMuted);
-    }, [isMuted, toggleMute, playMuteSound, playUnmuteSound, roomId]);
+    // Sustur / sağırlaştır durumu lobideki kullanıcı kartıyla ortak
+    const handleToggleMute = voiceControls.toggleMic;
 
-    // Bas-Konuş modu açık/kapandığında mikrofonun başlangıç durumunu ayarla
+    // Mikrofonun durumu: sustur/sağırlaştır ve Bas-Konuş modundan türetilir.
+    // PTT açıkken mikrofon varsayılan olarak KAPALI; sadece tuş basılıyken açılır.
+    const prevMicBlockedRef = useRef<boolean | null>(null);
     useEffect(() => {
         if (!isReady) return;
-        if (settings.pushToTalk) {
-            // PTT açıkken mikrofon varsayılan olarak KAPALI; sadece tuş basılıyken açılır
-            setMicEnabled(false);
-            signalrService.notifyMuteStatus(roomId, true);
-        } else {
-            setMicEnabled(true);
-            signalrService.notifyMuteStatus(roomId, false);
+        const enabled = !settings.pushToTalk && !micBlocked;
+        setMicEnabled(enabled);
+        signalrService.notifyMuteStatus(roomId, !enabled);
+        // İlk uygulamada değil, yalnızca kullanıcı değiştirdiğinde ses çal
+        if (prevMicBlockedRef.current !== null && prevMicBlockedRef.current !== micBlocked) {
+            if (micBlocked) playMuteSound(); else playUnmuteSound();
         }
+        prevMicBlockedRef.current = micBlocked;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [settings.pushToTalk, isReady]);
+    }, [settings.pushToTalk, isReady, micBlocked]);
 
     // Global kısayollar: bas-konuş + mikrofon aç/kapat
     useKeybinds({
         pttEnabled: settings.pushToTalk,
         pttKey: settings.pttKey,
         muteToggleKey: settings.muteToggleKey,
-        onPTTDown: () => { setMicEnabled(true); playUnmuteSound(); signalrService.notifyMuteStatus(roomId, false); },
-        onPTTUp: () => { setMicEnabled(false); playMuteSound(); signalrService.notifyMuteStatus(roomId, true); },
+        // Susturulmuş veya sağırken bas-konuş mikrofonu açmaz
+        onPTTDown: () => { if (micBlocked) return; setMicEnabled(true); playUnmuteSound(); signalrService.notifyMuteStatus(roomId, false); },
+        onPTTUp: () => { if (micBlocked) return; setMicEnabled(false); playMuteSound(); signalrService.notifyMuteStatus(roomId, true); },
         onMuteToggle: () => { handleToggleMute(); },
     });
 
@@ -1111,7 +1116,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             {Array.from(remoteStreams.entries()).map(([connId, stream]) => {
                 const userObj = usersInRoom.find(u => u.connectionId === connId);
                 const uName = userObj?.username ?? 'Unknown';
-                return <AudioPlayer key={connId} stream={stream} volume={masterVolume * (userVolumes[uName] ?? 1.0)} sinkId={selectedOutputId} />;
+                return <AudioPlayer key={connId} stream={stream} volume={deafened ? 0 : masterVolume * (userVolumes[uName] ?? 1.0)} sinkId={selectedOutputId} />;
             })}
 
             {/* Senkron YouTube müzik oynatıcısı (yalnızca Ana Salon) */}
@@ -1252,6 +1257,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                         <button onClick={handleToggleMute}
                             className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer transition-colors ${isMuted ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-bg-base border-border-main text-text-main hover:text-primary-main'}`}>
                             {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
+                        </button>
+
+                        {/* Sağırlaştır */}
+                        <button onClick={voiceControls.toggleDeafen} title={deafened ? 'Sağırlaştırmayı Kaldır' : 'Sağırlaştır'}
+                            className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer transition-colors ${deafened ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-bg-base border-border-main text-text-main hover:text-primary-main'}`}>
+                            {deafened ? <HeadphoneOff size={18} /> : <Headphones size={18} />}
                         </button>
 
                         {isCameraOn && <video ref={localVideoRef} autoPlay muted className="w-9 h-9 rounded-xl object-cover border border-border-main" />}

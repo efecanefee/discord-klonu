@@ -12,11 +12,12 @@ import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
+import { voiceControls, useVoiceControls } from './utils/voiceControls';
 import { notify } from './utils/browserNotifications';
 import { resyncWebPush, disableWebPush } from './utils/webPush';
 import { onUpdateReady, applyUpdate } from './utils/swUpdate';
 import ConnectionStatusBanner from './components/ConnectionStatusBanner';
-import { Lock, Mail, MessageSquare, Plus, User, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, HeadphoneOff, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { spring, modalMotion, overlayMotion, staggerParent, staggerItem } from './utils/motion';
 import signalrService from './services/signalrService';
@@ -101,8 +102,7 @@ function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   // Varsayilan kapali: lobi ilk boyamada DM listesini render etmesin.
   const [isDMOpen, setIsDMOpen] = useState(false);
-  const [isMicMuted, setIsMicMuted] = useState(false);
-  const [isDeafened, setIsDeafened] = useState(false);
+  const { micBlocked: isMicMuted, deafened: isDeafened } = useVoiceControls();
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false);
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
@@ -1102,18 +1102,18 @@ function App() {
             </button>
             <div className="flex items-center pr-1 gap-0.5 shrink-0">
               <button 
-                onClick={() => setIsMicMuted(!isMicMuted)}
+                onClick={voiceControls.toggleMic}
                 className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
                 title={isMicMuted ? "Sesi Aç" : "Sustur"}
               >
                 {isMicMuted ? <MicOff size={18} className="text-red-400" /> : <Mic size={18} />}
               </button>
               <button 
-                onClick={() => setIsDeafened(!isDeafened)}
+                onClick={voiceControls.toggleDeafen}
                 className="p-1.5 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors"
                 title={isDeafened ? "Sağırlaştırmayı Kaldır" : "Sağırlaştır"}
               >
-                {isDeafened ? <Headphones size={18} className="text-red-400" /> : <Headphones size={18} />}
+                {isDeafened ? <HeadphoneOff size={18} className="text-red-400" /> : <Headphones size={18} />}
               </button>
               <button 
                 onClick={() => setIsSettingsModalOpen(true)}
