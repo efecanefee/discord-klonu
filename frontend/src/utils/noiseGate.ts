@@ -40,6 +40,17 @@ export function createNoiseGate(
     opts: { threshold: number; enabled: boolean }
 ): NoiseGate {
     const ctx = new AudioContext();
+    // Kullanici etkilesimi olmadan acilan AudioContext 'suspended' baslayabilir;
+    // o zaman kapidan cikan track sessiz kalir ve karsi taraf bizi hic duymaz
+    // (biz onlari duymaya devam ederiz). Hemen, durum degisince ve ilk
+    // etkilesimde yeniden baslat.
+    const resume = () => {
+        if (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted') ctx.resume().catch(() => { /* etkilesim bekleniyor */ });
+    };
+    resume();
+    ctx.onstatechange = resume;
+    const GESTURES = ['pointerdown', 'keydown', 'touchstart'] as const;
+    GESTURES.forEach(e => window.addEventListener(e, resume, true));
     const srcNode = ctx.createMediaStreamSource(source);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 512;
@@ -59,6 +70,17 @@ export function createNoiseGate(
 
     const data = new Uint8Array(analyser.fftSize);
 
+    const open = () => {
+        if (!isOpen) { isOpen = true; gain.gain.setTargetAtTime(1, ctx.currentTime, ATTACK_SEC); }
+    };
+
+    // Arka plandaki sekmede tarayici zamanlayicilari yavaslatir (saniyede bire,
+    // uzun surede dakikada bire kadar). Kapi kapaliyken boyle olursa konusma
+    // gec aciliyor ya da hic gitmiyordu (or. oyun oynarken). Sekme gizliyken
+    // kapi acik kalir; tarayicinin kendi gurultu bastirmasi calismaya devam eder.
+    const onVisibility = () => { if (document.hidden) open(); };
+    document.addEventListener('visibilitychange', onVisibility);
+
     const tick = () => {
         analyser.getByteTimeDomainData(data);
 
@@ -73,15 +95,15 @@ export function createNoiseGate(
         // dogrusal esleme kaydiriciyi kullanissiz yapiyor; karekok ile ac.
         level = Math.min(100, Math.sqrt(rms) * 100);
 
-        if (!enabled) {
-            if (!isOpen) { isOpen = true; gain.gain.setTargetAtTime(1, ctx.currentTime, ATTACK_SEC); }
+        if (!enabled || document.hidden) {
+            open();
             return;
         }
 
         const now = Date.now();
         if (level >= threshold) {
             openUntil = now + HOLD_MS;
-            if (!isOpen) { isOpen = true; gain.gain.setTargetAtTime(1, ctx.currentTime, ATTACK_SEC); }
+            open();
         } else if (isOpen && now > openUntil) {
             isOpen = false;
             gain.gain.setTargetAtTime(0, ctx.currentTime, RELEASE_SEC);
@@ -97,6 +119,9 @@ export function createNoiseGate(
         setEnabled: (v: boolean) => { enabled = v; },
         destroy: () => {
             clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibility);
+            GESTURES.forEach(e => window.removeEventListener(e, resume, true));
+            ctx.onstatechange = null;
             try { srcNode.disconnect(); analyser.disconnect(); gain.disconnect(); } catch { /* zaten kopmus */ }
             ctx.close().catch(() => { /* zaten kapali */ });
         },

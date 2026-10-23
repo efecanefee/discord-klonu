@@ -4,6 +4,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { getRtcConfig } from '../config/webrtc';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 import { playConnectionLostSound } from '../utils/sound';
+import { createSerialQueue, isPolite, watchPeerHealth } from '../utils/rtcRecovery';
 
 // Kopan bir peer icin ust uste en fazla kac ICE restart denenir
 const MAX_ICE_RESTARTS = 3;
@@ -50,6 +51,9 @@ export function useWebRTC() {
 
     const peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map());
     const iceCandidateQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+    // Peer basina sinyaller (ve bizim actigimiz offer'lar) sirayla islenir;
+    // eskiden ayni anda islenip ICE adaylari kayboluyordu.
+    const [signalQueue] = useState(createSerialQueue);
     // Her peer'dan gelen track'ler — karsi tarafin hangi stream'e ekledigine
     // bakmadan biz tutariz. Onceden ontrack'teki event.streams[0] haritaya
     // yaziliyordu; kamera/ekran track'i baska bir stream'le gelince mikrofonlu
@@ -112,16 +116,20 @@ export function useWebRTC() {
         updateSettings({ microphoneId: deviceId });
     }, [updateSettings]);
 
-    // Tüm peer'larla yeniden anlaş (track eklendi/çıkarıldı)
-    const renegotiate = async (pc: RTCPeerConnection, connId: string, label: string) => {
-        try {
-            const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-            await pc.setLocalDescription(offer);
-            signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
-        } catch (e) {
-            console.error(`[WebRTC] ${label} renegotiation hatası:`, e);
-        }
-    };
+    // Peer'a offer ac (ilk baglanti, track eklendi/cikarildi, ICE restart).
+    // Sinyal kuyruguna girer: o peer'dan gelen bir offer islenirken araya girmez.
+    const renegotiate = (pc: RTCPeerConnection, connId: string, label: string, opts?: RTCOfferOptions) =>
+        signalQueue.run(connId, async () => {
+            // Peer bu arada kapandiysa ya da yeniden kurulduysa eski nesneyle ugrasma
+            if (pc.signalingState === 'closed' || peerConnections.current.get(connId) !== pc) return;
+            try {
+                const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true, ...opts });
+                await pc.setLocalDescription(offer);
+                signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
+            } catch (e) {
+                console.error(`[WebRTC] ${label} renegotiation hatası:`, e);
+            }
+        });
 
     // Verilen track'leri gönderen sender'ları kaldır. Sender'ı "ilk video
     // sender" diye değil track kimliğiyle buluyoruz: kamera ve ekran aynı anda
@@ -334,23 +342,16 @@ export function useWebRTC() {
             let disconnectTimer: number | null = null;
             let issueTimer: number | null = null;
             const markIssue = () => setConnectionIssues(prev => prev.has(targetConnectionId) ? prev : new Set(prev).add(targetConnectionId));
-            // Glare onleme: iki taraf ayni anda restart ederse cakisir. Deterministik
-            // tie-break: yalnizca connectionId'si buyuk olan taraf yeniden offer acar,
-            // digeri yanit vermekle yetinir. Tek deneme yetmiyordu; 3 kez denenir.
-            const tryIceRestart = async (): Promise<boolean> => {
-                const myId = signalrService.connectionId ?? '';
-                if (pc.signalingState === 'closed' || iceRestarts >= MAX_ICE_RESTARTS || myId <= targetConnectionId) return false;
+            // Kopan peer icin ICE restart. Iki taraf ayni anda denerse cakisma
+            // (glare) sinyal handler'indaki kibar/kaba kuraliyla cozulur; bu yuzden
+            // artik iki taraf da deneyebilir (eskiden yalnizca biri deniyordu ve o
+            // taraf kopuklugu fark etmezse baglanti hic duzelmiyordu).
+            const tryIceRestart = (): boolean => {
+                if (pc.signalingState === 'closed' || iceRestarts >= MAX_ICE_RESTARTS) return false;
                 iceRestarts++;
                 console.warn(`[WebRTC ICE] ${targetConnectionId} kopuk, ICE restart deneniyor (${iceRestarts}/${MAX_ICE_RESTARTS}).`);
-                try {
-                    const offer = await pc.createOffer({ iceRestart: true });
-                    await pc.setLocalDescription(offer);
-                    signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), targetConnectionId);
-                    return true;
-                } catch (e) {
-                    console.error('[WebRTC] ICE restart hatasi:', e);
-                    return false;
-                }
+                renegotiate(pc, targetConnectionId, 'ICE restart', { iceRestart: true });
+                return true;
             };
             pc.oniceconnectionstatechange = async () => {
                 const state = pc.iceConnectionState;
@@ -365,7 +366,7 @@ export function useWebRTC() {
                         if (pc.iceConnectionState === 'disconnected') tryIceRestart();
                     }, 5000);
                 } else if (state === 'failed') {
-                    if (await tryIceRestart()) return;
+                    if (tryIceRestart()) return;
                     // Restart'i karsi taraf yapiyor olabilir; biraz bekle, duzelmediyse uyar.
                     if (issueTimer) clearTimeout(issueTimer);
                     issueTimer = window.setTimeout(() => {
@@ -385,77 +386,137 @@ export function useWebRTC() {
                 }
             };
 
+            // Takilan peer'i otomatik kurtar: once ICE restart, olmazsa baglantiyi
+            // sifirdan kur (eskiden bunun tek yolu odadan cikip girmekti).
+            watchPeerHealth(pc, (_reason, attempt) => {
+                if (attempt < 3) { renegotiate(pc, targetConnectionId, 'Kurtarma', { iceRestart: true }); return; }
+                // Iki taraf ayni anda sifirdan kurmasin: bunu yalnizca kaba taraf yapar, kibar taraf ister.
+                if (isPolite(signalrService.connectionId, targetConnectionId)) {
+                    signalrService.sendSignalToUser(JSON.stringify({ type: 'reset-request' }), targetConnectionId);
+                } else {
+                    rebuildPeer(targetConnectionId);
+                }
+            });
+
             return pc;
         };
 
-        const setupWebRTCListeners = () => {
-            const handleUserJoined = async (_joinedUsername: string, connectionId: string) => {
+        // Peer'in WebRTC durumunu temizler (kullanici listesi ChatRoom'da ayrica yonetilir)
+        const closePeer = (connectionId: string) => {
+            peerConnections.current.get(connectionId)?.close();
+            peerConnections.current.delete(connectionId);
+            iceCandidateQueues.current.delete(connectionId);
+            ignoredOffers.delete(connectionId);
+            remoteTracks.current.delete(connectionId);
+
+            const analyserData = analyserRefs.current.get(connectionId);
+            if (analyserData) {
+                clearInterval(analyserData.interval);
+                analyserRefs.current.delete(connectionId);
+            }
+            setSpeakingUsers(prev => {
+                const next = new Set(prev);
+                next.delete(connectionId);
+                return next;
+            });
+            setConnectionIssues(prev => {
+                if (!prev.has(connectionId)) return prev;
+                const next = new Set(prev);
+                next.delete(connectionId);
+                return next;
+            });
+            setRemoteStreams(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(connectionId);
+                return newMap;
+            });
+        };
+
+        // Son care kurtarma: eski peer'i at, yenisini kur ve offer ac. Karsi
+        // taraf 'reset' ile kendi eski peer'ini kapatir, gelen offer'la yenisini kurar.
+        const rebuildPeer = (connectionId: string) => {
+            signalQueue.run(connectionId, async () => {
+                console.warn(`[WebRTC] ${connectionId} baglantisi sifirdan kuruluyor.`);
+                signalrService.sendSignalToUser(JSON.stringify({ type: 'reset' }), connectionId);
+                closePeer(connectionId);
                 const pc = createPeerConnection(connectionId);
                 peerConnections.current.set(connectionId, pc);
-                try {
-                    const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-                    await pc.setLocalDescription(offer);
-                    signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connectionId);
-                } catch (e) {
-                    console.error('[WebRTC] Offer hatası:', e);
-                }
+                renegotiate(pc, connectionId, 'Yeniden kurulum');
+            });
+        };
+
+        // Kaba tarafin cakismada yok saydigi offer'in ICE adaylari hata verir; sessizce gec
+        const ignoredOffers = new Set<string>();
+
+        const drainIceQueue = async (connectionId: string, pc: RTCPeerConnection) => {
+            // Once kuyrugu al, sonra bosalt: dongu sirasinda gelen aday kaybolmasin
+            const queue = iceCandidateQueues.current.get(connectionId) ?? [];
+            iceCandidateQueues.current.set(connectionId, []);
+            for (const candidate of queue) {
+                try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); }
+                catch (e) { console.warn('[WebRTC] Bekleyen ICE adayi eklenemedi:', e); }
+            }
+        };
+
+        const setupWebRTCListeners = () => {
+            const handleUserJoined = (_joinedUsername: string, connectionId: string) => {
+                // Ayni baglanti icin eski bir peer kaldiysa (yeniden giris) temizle
+                if (peerConnections.current.has(connectionId)) closePeer(connectionId);
+                const pc = createPeerConnection(connectionId);
+                peerConnections.current.set(connectionId, pc);
+                renegotiate(pc, connectionId, 'Ilk baglanti');
             };
 
             const handleUserLeft = (_: string, connectionId: string) => {
-                peerConnections.current.get(connectionId)?.close();
-                peerConnections.current.delete(connectionId);
-                iceCandidateQueues.current.delete(connectionId);
-                remoteTracks.current.delete(connectionId);
-                
-                const analyserData = analyserRefs.current.get(connectionId);
-                if (analyserData) {
-                    clearInterval(analyserData.interval);
-                    analyserRefs.current.delete(connectionId);
-                }
-                setSpeakingUsers(prev => {
-                    const next = new Set(prev);
-                    next.delete(connectionId);
-                    return next;
-                });
-
-                setRemoteStreams(prev => {
-                    const newMap = new Map(prev);
-                    newMap.delete(connectionId);
-                    return newMap;
-                });
+                closePeer(connectionId);
+                signalQueue.delete(connectionId);
             };
 
-            const handleReceiveSignal = async (senderConnectionId: string, signalDataStr: string) => {
-                const signalData = JSON.parse(signalDataStr);
+            const processSignal = async (senderConnectionId: string, signalData: { type: string; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit }) => {
+                if (signalData.type === 'reset') { closePeer(senderConnectionId); return; }
+                if (signalData.type === 'reset-request') {
+                    if (!isPolite(signalrService.connectionId, senderConnectionId)) rebuildPeer(senderConnectionId);
+                    return;
+                }
+
                 let pc = peerConnections.current.get(senderConnectionId);
                 if (!pc) {
+                    // Bilinmeyen peer'dan offer disi sinyal: olu bir baglantidan kalmistir.
+                    // Eskiden burada bos peer kuruluyor ve hayalet baglanti kaliyordu.
+                    if (signalData.type !== 'offer') return;
                     pc = createPeerConnection(senderConnectionId);
                     peerConnections.current.set(senderConnectionId, pc);
                 }
                 try {
-                    if (signalData.type === 'offer') {
-                        await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
-                        
-                        const queue = iceCandidateQueues.current.get(senderConnectionId);
-                        if (queue && queue.length > 0) {
-                            for (const candidate of queue) await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                            iceCandidateQueues.current.set(senderConnectionId, []);
+                    if (signalData.type === 'offer' && signalData.sdp) {
+                        // Perfect negotiation: biz de offer acmisken offer gelirse cakisma var
+                        const collision = pc.signalingState !== 'stable';
+                        if (collision && !isPolite(signalrService.connectionId, senderConnectionId)) {
+                            ignoredOffers.add(senderConnectionId);
+                            return;
                         }
+                        ignoredOffers.delete(senderConnectionId);
+                        if (collision) await pc.setLocalDescription({ type: 'rollback' });
+                        await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
+                        await drainIceQueue(senderConnectionId, pc);
 
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
                         signalrService.sendSignalToUser(JSON.stringify({ type: 'answer', sdp: answer }), senderConnectionId);
-                    } else if (signalData.type === 'answer') {
+                        // Geri aldigimiz offer'daki degisiklikler (kamera vb.) kaybolmasin
+                        if (collision) renegotiate(pc, senderConnectionId, 'Cakisma sonrasi');
+                    } else if (signalData.type === 'answer' && signalData.sdp) {
+                        // Bekledigimiz bir offer yoksa bu eski/yinelenen bir yanittir
+                        if (pc.signalingState !== 'have-local-offer') return;
                         await pc.setRemoteDescription(new RTCSessionDescription(signalData.sdp));
-
-                        const queue = iceCandidateQueues.current.get(senderConnectionId);
-                        if (queue && queue.length > 0) {
-                            for (const candidate of queue) await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                            iceCandidateQueues.current.set(senderConnectionId, []);
-                        }
-                    } else if (signalData.type === 'ice') {
+                        await drainIceQueue(senderConnectionId, pc);
+                    } else if (signalData.type === 'ice' && signalData.candidate) {
                         if (pc.remoteDescription) {
-                            await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+                            try {
+                                await pc.addIceCandidate(new RTCIceCandidate(signalData.candidate));
+                            } catch (e) {
+                                if (!ignoredOffers.has(senderConnectionId)) throw e;
+                            }
                         } else {
                             const queue = iceCandidateQueues.current.get(senderConnectionId) || [];
                             queue.push(signalData.candidate);
@@ -491,6 +552,12 @@ export function useWebRTC() {
                 }
             };
 
+            const handleReceiveSignal = (senderConnectionId: string, signalDataStr: string) => {
+                let signalData;
+                try { signalData = JSON.parse(signalDataStr); } catch { return; }
+                signalQueue.run(senderConnectionId, () => processSignal(senderConnectionId, signalData));
+            };
+
             // Hub yeniden baglandi: connectionId'miz degisti ve sunucu digerlerine
             // eski baglantimiz icin UserLeft gonderdi. Eski peer'lar artik olu;
             // hepsini kapat. Odaya geri girince digerleri yeni baglantiya offer acar.
@@ -498,6 +565,8 @@ export function useWebRTC() {
                 peerConnections.current.forEach(pc => pc.close());
                 peerConnections.current.clear();
                 iceCandidateQueues.current.clear();
+                signalQueue.clear();
+                ignoredOffers.clear();
                 remoteTracks.current.clear();
                 analyserRefs.current.forEach(a => clearInterval(a.interval));
                 analyserRefs.current.clear();

@@ -5,6 +5,7 @@ import { getRtcConfig } from '../config/webrtc';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 import { playConnectionLostSound, playSelfLeaveSound } from '../utils/sound';
 import { voiceControls, useVoiceControls } from '../utils/voiceControls';
+import { createSerialQueue, isPolite, watchPeerHealth } from '../utils/rtcRecovery';
 
 // Kopan bir peer icin ust uste en fazla kac ICE restart denenir
 const MAX_ICE_RESTARTS = 3;
@@ -16,6 +17,7 @@ export type VoiceParticipant = VoiceUser;
  * Sinyalleşme mevcut SendSignalToUser/ReceiveSignal ile; peer keşfi ise
  * metin presence'ından bağımsız VoiceParticipants/VoiceUserJoined/VoiceUserLeft ile yapılır.
  * Kural (glare önleme): mevcut katılımcılar yeni gelene offer açar; yeni gelen yalnızca yanıtlar.
+ * Sonradan iki taraf aynı anda offer açarsa (ICE restart) kibar/kaba kuralı devreye girer.
  */
 export function useVoiceChannel() {
     const { settings } = useSettings();
@@ -36,6 +38,10 @@ export function useVoiceChannel() {
     const gateRef = useRef<NoiseGate | null>(null);
     const pcs = useRef<Map<string, RTCPeerConnection>>(new Map());
     const iceQueues = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+    // Peer basina sinyaller sirayla islenir (eskiden ayni anda islenip ICE adaylari kayboluyordu)
+    const [signalQueue] = useState(createSerialQueue);
+    // Kaba tarafin cakismada yok saydigi offer'in ICE adaylari hata verir; sessizce gec
+    const ignoredOffers = useRef<Set<string>>(new Set());
     const analysers = useRef<Map<string, { ctx: AudioContext; interval: number }>>(new Map());
     const activeKeyRef = useRef<string | null>(null);
     const selfRef = useRef<VoiceUser | null>(null);
@@ -91,6 +97,20 @@ export function useVoiceChannel() {
         } catch (e) { console.error('[Voice] Analyser hatası:', e); }
     };
 
+    // Peer'a offer ac (ilk baglanti, ICE restart). Sinyal kuyruguna girer.
+    const sendOffer = useCallback((pc: RTCPeerConnection, connId: string, opts?: RTCOfferOptions) =>
+        signalQueue.run(connId, async () => {
+            if (pc.signalingState === 'closed' || pcs.current.get(connId) !== pc) return;
+            try {
+                const offer = await pc.createOffer({ offerToReceiveAudio: true, ...opts });
+                await pc.setLocalDescription(offer);
+                signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
+            } catch (e) { console.error('[Voice] Offer hatası:', e); }
+        }), [signalQueue]);
+
+    // Son care kurtarma icin (createPeerConnection'dan once tanimlanamiyor, ref ile cagrilir)
+    const rebuildPeerRef = useRef<(connId: string) => void>(() => { });
+
     const createPeerConnection = useCallback((connId: string) => {
         const pc = new RTCPeerConnection(getRtcConfig());
         iceQueues.current.set(connId, []);
@@ -110,23 +130,14 @@ export function useVoiceChannel() {
         let disconnectTimer: number | null = null;
         let issueTimer: number | null = null;
         const markIssue = () => setConnectionIssues(prev => prev.has(connId) ? prev : new Set(prev).add(connId));
-        // Glare onleme: iki taraf ayni anda restart ederse cakisir. Deterministik
-        // tie-break: yalnizca connectionId'si buyuk olan taraf yeniden offer acar,
-        // digeri yanit vermekle yetinir. Tek deneme yetmiyordu; 3 kez denenir.
-        const tryIceRestart = async (): Promise<boolean> => {
-            const myId = signalrService.connectionId ?? '';
-            if (pc.signalingState === 'closed' || iceRestarts >= MAX_ICE_RESTARTS || myId <= connId) return false;
+        // Kopan peer icin ICE restart. Iki taraf ayni anda denerse cakisma sinyal
+        // handler'indaki kibar/kaba kuraliyla cozulur; bu yuzden iki taraf da dener.
+        const tryIceRestart = (): boolean => {
+            if (pc.signalingState === 'closed' || iceRestarts >= MAX_ICE_RESTARTS) return false;
             iceRestarts++;
             console.warn(`[Voice ICE] ${connId} kopuk, ICE restart deneniyor (${iceRestarts}/${MAX_ICE_RESTARTS}).`);
-            try {
-                const offer = await pc.createOffer({ iceRestart: true });
-                await pc.setLocalDescription(offer);
-                signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), connId);
-                return true;
-            } catch (e) {
-                console.error('[Voice] ICE restart hatasi:', e);
-                return false;
-            }
+            sendOffer(pc, connId, { iceRestart: true });
+            return true;
         };
         pc.oniceconnectionstatechange = async () => {
             const state = pc.iceConnectionState;
@@ -141,7 +152,7 @@ export function useVoiceChannel() {
                     if (pc.iceConnectionState === 'disconnected') tryIceRestart();
                 }, 5000);
             } else if (state === 'failed') {
-                if (await tryIceRestart()) return;
+                if (tryIceRestart()) return;
                 // Restart'i karsi taraf yapiyor olabilir; biraz bekle, duzelmediyse uyar.
                 if (issueTimer) clearTimeout(issueTimer);
                 issueTimer = window.setTimeout(() => {
@@ -161,8 +172,19 @@ export function useVoiceChannel() {
             }
         };
 
+        // Takilan peer'i otomatik kurtar: once ICE restart, olmazsa sifirdan kur
+        watchPeerHealth(pc, (_reason, attempt) => {
+            if (attempt < 3) { sendOffer(pc, connId, { iceRestart: true }); return; }
+            // Iki taraf ayni anda sifirdan kurmasin: yalnizca kaba taraf kurar, kibar taraf ister.
+            if (isPolite(signalrService.connectionId, connId)) {
+                signalrService.sendSignalToUser(JSON.stringify({ type: 'reset-request' }), connId);
+            } else {
+                rebuildPeerRef.current(connId);
+            }
+        });
+
         return pc;
-    }, []);
+    }, [sendOffer]);
 
     // ---- sinyal & presence handler'ları (join'de kaydedilir) ----
     const handlersRef = useRef<{
@@ -176,10 +198,35 @@ export function useVoiceChannel() {
         pcs.current.get(connId)?.close();
         pcs.current.delete(connId);
         iceQueues.current.delete(connId);
+        ignoredOffers.current.delete(connId);
         cleanupAnalyser(connId);
         setRemoteStreams(prev => { const m = new Map(prev); m.delete(connId); return m; });
         setSpeakingConnIds(prev => { const s = new Set(prev); s.delete(connId); return s; });
         setConnectionIssues(prev => { const s = new Set(prev); s.delete(connId); return s; });
+    };
+
+    // Son care: eski peer'i at, yenisini kur ve offer ac. Karsi taraf 'reset'
+    // ile eski peer'ini kapatir, gelen offer'la yenisini kurar.
+    rebuildPeerRef.current = (connId: string) => {
+        signalQueue.run(connId, async () => {
+            if (!pcs.current.has(connId)) return;
+            console.warn(`[Voice] ${connId} baglantisi sifirdan kuruluyor.`);
+            signalrService.sendSignalToUser(JSON.stringify({ type: 'reset' }), connId);
+            closePeer(connId);
+            const pc = createPeerConnection(connId);
+            pcs.current.set(connId, pc);
+            sendOffer(pc, connId);
+        });
+    };
+
+    const drainIceQueue = async (connId: string, pc: RTCPeerConnection) => {
+        // Once kuyrugu al, sonra bosalt: dongu sirasinda gelen aday kaybolmasin
+        const q = iceQueues.current.get(connId) ?? [];
+        iceQueues.current.set(connId, []);
+        for (const c of q) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); }
+            catch (e) { console.warn('[Voice] Bekleyen ICE adayi eklenemedi:', e); }
+        }
     };
 
     const teardown = useCallback(() => {
@@ -194,6 +241,8 @@ export function useVoiceChannel() {
         pcs.current.forEach(pc => pc.close());
         pcs.current.clear();
         iceQueues.current.clear();
+        signalQueue.clear();
+        ignoredOffers.current.clear();
         analysers.current.forEach(a => { clearInterval(a.interval); a.ctx.close().catch(() => { }); });
         analysers.current.clear();
         gateRef.current?.destroy();
@@ -207,7 +256,7 @@ export function useVoiceChannel() {
         setSpeakingConnIds(new Set());
         setConnectionIssues(new Set());
         setParticipants([]);
-    }, []);
+    }, [signalQueue]);
 
     const leaveVoice = useCallback(() => {
         const key = activeKeyRef.current;
@@ -248,42 +297,67 @@ export function useVoiceChannel() {
         const onJoined = async (vk: string, user: VoiceUser) => {
             if (vk !== activeKeyRef.current || user.connectionId === (selfRef.current ?? self).connectionId) return;
             setParticipants(prev => prev.some(p => p.connectionId === user.connectionId) ? prev : [...prev, user]);
-            // Ben mevcut üyeyim → yeni gelene offer aç
+            // Ben mevcut üyeyim → yeni gelene offer aç (aynı bağlantıdan eski peer kaldıysa temizle)
+            if (pcs.current.has(user.connectionId)) closePeer(user.connectionId);
             const pc = createPeerConnection(user.connectionId);
             pcs.current.set(user.connectionId, pc);
-            try {
-                const offer = await pc.createOffer({ offerToReceiveAudio: true });
-                await pc.setLocalDescription(offer);
-                signalrService.sendSignalToUser(JSON.stringify({ type: 'offer', sdp: offer }), user.connectionId);
-            } catch (e) { console.error('[Voice] Offer hatası:', e); }
+            sendOffer(pc, user.connectionId);
         };
         const onLeft = (vk: string, connId: string) => {
             if (vk !== activeKeyRef.current) return;
             closePeer(connId);
+            signalQueue.delete(connId);
             setParticipants(prev => prev.filter(p => p.connectionId !== connId));
         };
-        const onSignal = async (senderConnId: string, dataStr: string) => {
-            let data: { type: string; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit };
-            try { data = JSON.parse(dataStr); } catch { return; }
+        const processSignal = async (senderConnId: string, data: { type: string; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit }) => {
+            if (data.type === 'reset') { closePeer(senderConnId); return; }
+            if (data.type === 'reset-request') {
+                if (!isPolite(signalrService.connectionId, senderConnId)) rebuildPeerRef.current(senderConnId);
+                return;
+            }
             let pc = pcs.current.get(senderConnId);
-            if (!pc) { pc = createPeerConnection(senderConnId); pcs.current.set(senderConnId, pc); }
+            if (!pc) {
+                // Bilinmeyen peer'dan offer dışı sinyal: ölü bir bağlantıdan kalmıştır
+                if (data.type !== 'offer') return;
+                pc = createPeerConnection(senderConnId);
+                pcs.current.set(senderConnId, pc);
+            }
             try {
                 if (data.type === 'offer' && data.sdp) {
+                    // Perfect negotiation: biz de offer açmışken offer gelirse çakışma var
+                    const collision = pc.signalingState !== 'stable';
+                    if (collision && !isPolite(signalrService.connectionId, senderConnId)) {
+                        ignoredOffers.current.add(senderConnId);
+                        return;
+                    }
+                    ignoredOffers.current.delete(senderConnId);
+                    if (collision) await pc.setLocalDescription({ type: 'rollback' });
                     await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                    const q = iceQueues.current.get(senderConnId);
-                    if (q?.length) { for (const c of q) await pc.addIceCandidate(new RTCIceCandidate(c)); iceQueues.current.set(senderConnId, []); }
+                    await drainIceQueue(senderConnId, pc);
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
                     signalrService.sendSignalToUser(JSON.stringify({ type: 'answer', sdp: answer }), senderConnId);
                 } else if (data.type === 'answer' && data.sdp) {
+                    // Beklediğimiz bir offer yoksa bu eski/yinelenen bir yanıttır
+                    if (pc.signalingState !== 'have-local-offer') return;
                     await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                    const q = iceQueues.current.get(senderConnId);
-                    if (q?.length) { for (const c of q) await pc.addIceCandidate(new RTCIceCandidate(c)); iceQueues.current.set(senderConnId, []); }
+                    await drainIceQueue(senderConnId, pc);
                 } else if (data.type === 'ice' && data.candidate) {
-                    if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-                    else { const q = iceQueues.current.get(senderConnId) || []; q.push(data.candidate); iceQueues.current.set(senderConnId, q); }
+                    if (pc.remoteDescription) {
+                        try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }
+                        catch (e) { if (!ignoredOffers.current.has(senderConnId)) throw e; }
+                    } else {
+                        const q = iceQueues.current.get(senderConnId) || [];
+                        q.push(data.candidate);
+                        iceQueues.current.set(senderConnId, q);
+                    }
                 }
             } catch (e) { console.error('[Voice] Sinyal hatası:', e); }
+        };
+        const onSignal = async (senderConnId: string, dataStr: string) => {
+            let data: { type: string; sdp?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit };
+            try { data = JSON.parse(dataStr); } catch { return; }
+            await signalQueue.run(senderConnId, () => processSignal(senderConnId, data));
         };
 
         handlersRef.current = { onParticipants, onJoined, onLeft, onSignal };
@@ -297,7 +371,7 @@ export function useVoiceChannel() {
         setActiveVoiceKey(voiceKey);
         setParticipants([self]);
         await signalrService.joinVoice(voiceKey);
-    }, [openMic, createPeerConnection, leaveVoice]);
+    }, [openMic, createPeerConnection, leaveVoice, sendOffer, signalQueue]);
 
     // Ayarlardan mikrofon degisirse: yeni stream ac, tum peer'larda track'i
     // degistir, eskisini durdur. Baglanti kopmaz, karsi taraf kesinti duymaz.
@@ -370,6 +444,8 @@ export function useVoiceChannel() {
             pcs.current.forEach(pc => pc.close());
             pcs.current.clear();
             iceQueues.current.clear();
+            signalQueue.clear();
+            ignoredOffers.current.clear();
             analysers.current.forEach(a => { clearInterval(a.interval); a.ctx.close().catch(() => { }); });
             analysers.current.clear();
             setRemoteStreams(new Map());
@@ -380,7 +456,7 @@ export function useVoiceChannel() {
         };
         signalrService.onReconnected(onReconnected);
         return () => signalrService.offReconnected(onReconnected);
-    }, []);
+    }, [signalQueue]);
 
     // Bir peer ile baglanti kalici olarak koptugunda sesli uyar
     const prevIssueCountRef = useRef(0);
