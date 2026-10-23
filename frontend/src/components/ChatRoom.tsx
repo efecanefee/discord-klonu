@@ -297,6 +297,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const fileInputRef = useRef<HTMLInputElement>(null);
     // Diğer kullanıcıların mute durumu
     const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
+    // Diğer kullanıcıların sağırlaştırma durumu
+    const [deafenedUsers, setDeafenedUsers] = useState<Record<string, boolean>>({});
     const [isTalking, setIsTalking] = useState(false);
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
@@ -312,6 +314,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         getMicLevel, getPeers,
     } = useWebRTC();
     const { micBlocked, deafened } = useVoiceControls();
+    // Odaya (yeniden) girince güncel durumu tekrar bildirmek için — SignalR
+    // effect'inin dep dizisine girmesinler diye ref.
+    const isMutedRef = useRef(isMuted);
+    useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+    const deafenedRef = useRef(deafened);
+    useEffect(() => { deafenedRef.current = deafened; }, [deafened]);
 
     // Ping: kişilere (WebRTC) ve sunucuya gidiş-dönüş süresi
     const peerPings = usePeerPings(getPeers, isReady);
@@ -519,6 +527,21 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         const handleRoomMuteStates = (muteStates: Record<string, boolean>) => {
             if (!isMounted) return;
             setMutedUsers(muteStates);
+            // Bu olay odaya her (yeniden) girişte gelir. Durumumuzu şimdi bildir:
+            // bağlantı kurulmadan önce yapılan bildirim düşüyordu ve yenileme
+            // sonrası sağırken diğerleri bunu hiç görmüyordu.
+            signalrService.notifyMuteStatus(roomId, isMutedRef.current);
+            signalrService.notifyDeafenStatus(roomId, deafenedRef.current);
+        };
+
+        const handleUserDeafenChanged = (_uName: string, connectionId: string, isDeafened: boolean) => {
+            if (!isMounted) return;
+            setDeafenedUsers(prev => ({ ...prev, [connectionId]: isDeafened }));
+        };
+
+        const handleRoomDeafenStates = (deafenStates: Record<string, boolean>) => {
+            if (!isMounted) return;
+            setDeafenedUsers(deafenStates);
         };
 
         // signalrService.onTyping?.(handleTyping);
@@ -604,6 +627,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         signalrService.onReceiveFileMessage(handleReceiveFileMessage);
         signalrService.onUserMuteChanged(handleUserMuteChanged);
         signalrService.onRoomMuteStates(handleRoomMuteStates);
+        signalrService.onUserDeafenChanged(handleUserDeafenChanged);
+        signalrService.onRoomDeafenStates(handleRoomDeafenStates);
 
         signalrService.startConnection(roomId, username);
 
@@ -630,6 +655,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             signalrService.offReceiveFileMessage(handleReceiveFileMessage);
             signalrService.offUserMuteChanged(handleUserMuteChanged);
             signalrService.offRoomMuteStates(handleRoomMuteStates);
+            signalrService.offUserDeafenChanged(handleUserDeafenChanged);
+            signalrService.offRoomDeafenStates(handleRoomDeafenStates);
             signalrService.offMemberBanned(handleMemberBanned);
             signalrService.offMemberKicked(handleMemberKicked);
             signalrService.offMemberRoleChanged(handleMemberRoleChanged);
@@ -940,6 +967,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         prevMicBlockedRef.current = micBlocked;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [settings.pushToTalk, isReady, micBlocked]);
+
+    // Sağırlaştırma durumunu odadakilere bildir (mikrofon gibi onlarda da görünsün)
+    useEffect(() => {
+        if (!isReady) return;
+        signalrService.notifyDeafenStatus(roomId, deafened);
+    }, [isReady, deafened, roomId]);
 
     // Global kısayollar: bas-konuş + mikrofon aç/kapat
     useKeybinds({
@@ -1373,7 +1406,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             <video ref={localVideoRef} autoPlay muted className="w-full h-full object-contain" />
                                             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg flex items-center gap-1.5 backdrop-blur-sm">
                                                 {username} (Sen)
-                                                {isMuted && <span title="Mikrofonun kapalı"><MicOff size={12} className="text-red-500" /></span>}
+                                                {deafened
+                                                    ? <span title="Sağırlaştırıldın"><HeadphoneOff size={12} className="text-red-500" /></span>
+                                                    : isMuted && <span title="Mikrofonun kapalı"><MicOff size={12} className="text-red-500" /></span>}
                                             </div>
                                         </div>
                                     )}
@@ -1387,7 +1422,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                     volume={userVolumes[uName] ?? 1.0}
                                                     onVolumeChange={(v) => setUserVolumes(prev => ({ ...prev, [uName]: v }))}
                                                 />
-                                                {mutedUsers[connId] && (
+                                                {deafenedUsers[connId] ? (
+                                                    <div className="absolute top-2 right-2 px-1.5 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm" title="Sağırlaştırıldı">
+                                                        <HeadphoneOff size={14} className="text-red-500" />
+                                                    </div>
+                                                ) : mutedUsers[connId] && (
                                                     <div className="absolute top-2 right-2 px-1.5 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm" title="Mikrofonu kapalı">
                                                         <MicOff size={14} className="text-red-500" />
                                                     </div>
@@ -1431,7 +1470,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}<SpeakingBars active={isSpeaking} className="ml-auto shrink-0" /></span>
                                                 {connectionIssues.has(u.connectionId)
                                                     ? <span title="Ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80">bağlanılamadı</span>
-                                                    : mutedUsers[u.connectionId] && <MicOff size={10} className="text-red-400 mt-0.5" />}
+                                                    : (u.connectionId === signalrService.connectionId ? deafened : deafenedUsers[u.connectionId])
+                                                        ? <span title="Sağırlaştırıldı"><HeadphoneOff size={10} className="text-red-400 mt-0.5" /></span>
+                                                        : (u.connectionId === signalrService.connectionId ? isMuted : mutedUsers[u.connectionId]) && <MicOff size={10} className="text-red-400 mt-0.5" />}
                                                 {/* Medya modunda da kişi başı ses ayarı (eskiden yalnızca normal görünümde vardı) */}
                                                 {u.username !== username && (
                                                     <input type="range" min="0" max="1" step="0.01" value={userVolumes[u.username] ?? 1.0}
@@ -1839,7 +1880,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                 <span className="font-semibold text-[14px] text-text-main truncate max-w-[110px] flex items-center gap-1">
                                                                     {u.username} {badge && <span title={u.role === 'owner' ? 'Kurucu' : 'Moderatör'}>{badge}</span>} {u.connectionId === signalrService.connectionId && <span className="text-[11px] text-text-muted font-normal">(Sen)</span>}
                                                                     <SpeakingBars active={isSpeaking} className="ml-0.5" />
-                                                                    {(u.connectionId === signalrService.connectionId ? isMuted : mutedUsers[u.connectionId]) && (
+                                                                    {(u.connectionId === signalrService.connectionId ? deafened : deafenedUsers[u.connectionId]) ? (
+                                                                        <span title="Sağırlaştırıldı" className="flex items-center justify-center">
+                                                                            <HeadphoneOff size={12} className="text-red-500 flex-shrink-0" />
+                                                                        </span>
+                                                                    ) : (u.connectionId === signalrService.connectionId ? isMuted : mutedUsers[u.connectionId]) && (
                                                                         <span title="Mikrofonu kapalı" className="flex items-center justify-center">
                                                                             <MicOff size={12} className="text-red-500 flex-shrink-0" />
                                                                         </span>
