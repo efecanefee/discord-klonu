@@ -70,6 +70,19 @@ export function useWebRTC() {
     const gateRef = useRef<NoiseGate | null>(null);
     const videoStreamRef = useRef<MediaStream | null>(null);
     const screenStreamRef = useRef<MediaStream | null>(null);
+    // Tüm ekran/pencere paylaşımında tarayıcı sistem sesini (WASAPI loopback)
+    // olduğu gibi yakalar; buna bizim çaldığımız sesli sohbet de dahil. O ses
+    // geri gönderilince konuşan kendi sesini duyuyordu. restrictOwnAudio bunu
+    // sistem sesinde engellemiyor, bu yüzden ekran sesi bir GainNode'dan geçirilir
+    // ve sohbette biri konuşurken kısılır (Discord'daki "ses kısma" gibi).
+    const screenDuckRef = useRef<{ ctx: AudioContext; gain: GainNode; raw: MediaStreamTrack } | null>(null);
+    const releaseScreenAudio = () => {
+        const d = screenDuckRef.current;
+        if (!d) return;
+        screenDuckRef.current = null;
+        d.raw.stop();
+        d.ctx.close().catch(() => { /* zaten kapalı */ });
+    };
 
     // Cihazları listele
     const loadDevices = useCallback(async () => {
@@ -184,6 +197,7 @@ export function useWebRTC() {
         if (isScreenSharing) {
             const tracks = screenStreamRef.current?.getTracks() ?? [];
             tracks.forEach(t => t.stop());
+            releaseScreenAudio();
             screenStreamRef.current = null;
             setScreenStream(null);
             setIsScreenSharing(false);
@@ -208,11 +222,35 @@ export function useWebRTC() {
                     systemAudio: 'include',
                 } as DisplayMediaStreamOptions);
 
+                const screenTrack = display.getVideoTracks()[0];
+                // Ekran sesi yalnızca kullanıcı paylaşım penceresinde "sesi de paylaş"ı
+                // seçtiyse gelir (Chrome: sekme veya tüm ekran). Eskiden hiç gönderilmiyordu.
+                let screenAudioTrack: MediaStreamTrack | undefined = display.getAudioTracks()[0];
+                // Sekme paylaşımında yalnızca o sekmenin sesi gelir, sohbet sesi
+                // karışmaz; kısma yalnızca tüm ekran/pencere (sistem sesi) için.
+                const surface = (screenTrack.getSettings() as { displaySurface?: string }).displaySurface;
+                if (screenAudioTrack && surface !== 'browser') {
+                    try {
+                        const ctx = new AudioContext();
+                        ctx.resume().catch(() => { /* kullanıcı etkileşimi sonrası açılır */ });
+                        const gain = ctx.createGain();
+                        const dest = ctx.createMediaStreamDestination();
+                        ctx.createMediaStreamSource(new MediaStream([screenAudioTrack])).connect(gain).connect(dest);
+                        screenDuckRef.current = { ctx, gain, raw: screenAudioTrack };
+                        screenAudioTrack = dest.stream.getAudioTracks()[0];
+                    } catch (err) {
+                        console.warn('[WebRTC] Ekran sesi kısma devresi kurulamadı:', err);
+                    }
+                }
+                // Peer'lara giden ekran stream'i: video + (işlenmiş) ses
+                const shared = new MediaStream(screenAudioTrack ? [screenTrack, screenAudioTrack] : [screenTrack]);
+
                 // Kullanıcı tarayıcıdan durdurursa — tam cleanup yap (peer connections dahil)
-                display.getVideoTracks()[0].onended = () => {
-                    if (screenStreamRef.current !== display) return;
-                    const tracks = display.getTracks();
+                screenTrack.onended = () => {
+                    if (screenStreamRef.current !== shared) return;
+                    const tracks = shared.getTracks();
                     tracks.forEach(t => t.stop());
+                    releaseScreenAudio();
                     screenStreamRef.current = null;
                     setScreenStream(null);
                     setIsScreenSharing(false);
@@ -220,21 +258,16 @@ export function useWebRTC() {
                     stopSending(tracks, 'screen-stopped', 'Browser-stop');
                 };
 
-                screenStreamRef.current = display;
-                setScreenStream(display);
+                screenStreamRef.current = shared;
+                setScreenStream(shared);
                 setIsScreenSharing(true);
-
-                const screenTrack = display.getVideoTracks()[0];
-                // Ekran sesi yalnızca kullanıcı paylaşım penceresinde "sesi de paylaş"ı
-                // seçtiyse gelir (Chrome: sekme veya tüm ekran). Eskiden hiç gönderilmiyordu.
-                const screenAudioTrack = display.getAudioTracks()[0];
                 setHasScreenAudio(!!screenAudioTrack);
                 setIsScreenAudioOn(true);
                 // Metin/detay odaklı içerik ipucu: encoder keskinliği önceliklendirir
                 try { screenTrack.contentHint = 'detail'; } catch { /* eski tarayıcı */ }
                 peerConnections.current.forEach(async (pc, connId) => {
-                    const sender = pc.addTrack(screenTrack, streamRef.current ?? display);
-                    if (screenAudioTrack) pc.addTrack(screenAudioTrack, streamRef.current ?? display);
+                    const sender = pc.addTrack(screenTrack, streamRef.current ?? shared);
+                    if (screenAudioTrack) pc.addTrack(screenAudioTrack, streamRef.current ?? shared);
                     // Kalite: bitrate tavanını yükselt + çözünürlüğü koru (kare hızından feda et).
                     // WebRTC'nin varsayılan ~2.5Mbps tavanı ekran metnini bulanıklaştırıyor.
                     try {
@@ -252,6 +285,15 @@ export function useWebRTC() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isScreenSharing]);
+
+    // Sesli sohbette biri konuşurken ekran sesini kıs, susunca geri aç.
+    // Kısma hızlı (yankı kaçmasın), geri açılma yavaş (kelime arası pompalamasın).
+    useEffect(() => {
+        const d = screenDuckRef.current;
+        if (!d) return;
+        const talking = speakingUsers.size > 0;
+        d.gain.gain.setTargetAtTime(talking ? 0.04 : 1, d.ctx.currentTime, talking ? 0.02 : 0.35);
+    }, [speakingUsers, isScreenSharing]);
 
     // Paylaşım sürerken sistem sesini kapat/aç. Track durdurulmaz, yalnızca
     // devre dışı bırakılır (sessizlik gider); böylece yeniden anlaşma gerekmez.
@@ -648,6 +690,7 @@ export function useWebRTC() {
             rawStreamRef.current = null;
             videoStreamRef.current?.getTracks().forEach(t => t.stop());
             screenStreamRef.current?.getTracks().forEach(t => t.stop());
+            releaseScreenAudio();
             currentPCs.forEach(pc => pc.close());
             currentPCs.clear();
             remoteTracks.current.clear();
