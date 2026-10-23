@@ -282,6 +282,75 @@ namespace DiscordClone.Api.Controllers
             return Ok(channels.Select(c => new { c.Id, c.Name, c.Type, c.Position, c.MessageKey }));
         }
 
+        public class UnreadRequest { public Dictionary<string, long> LastRead { get; set; } = new(); }
+
+        /// <summary>
+        /// Okunmamış mesaj sayıları. İstemci "son okuduğum an" haritasını (anahtar = oda adı
+        /// ya da kanal messageKey) gönderir; yalnızca erişebildiği odaların sayıları döner.
+        /// </summary>
+        [HttpPost("unread")]
+        public async Task<IActionResult> GetUnreadCounts([FromBody] UnreadRequest body)
+        {
+            if (CurrentUserId == null) return Unauthorized();
+            var me = CurrentUserId;
+            var myName = User.Identity?.Name ?? "";
+
+            // Mesajlar 7 günde temizlendiği için daha eskisine bakmaya gerek yok
+            var weekAgo = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
+            var lastRead = (body?.LastRead ?? new())
+                .Where(kv => !string.IsNullOrWhiteSpace(kv.Key) && kv.Key.Length <= 120)
+                .Take(150)
+                .ToDictionary(kv => kv.Key, kv => Math.Max(kv.Value, weekAgo));
+            if (lastRead.Count == 0) return Ok(Array.Empty<object>());
+            var keys = lastRead.Keys.ToList();
+
+            // anahtar → oda: oda adı (varsayılan kanal) ya da kanal messageKey'i
+            var roomsByName = await _db.Rooms.AsNoTracking()
+                .Where(r => keys.Contains(r.Name))
+                .Select(r => new { r.Id, r.Name, r.IsPrivate, r.CreatedBy })
+                .ToListAsync();
+            var channelRows = await _db.Channels.AsNoTracking()
+                .Where(c => keys.Contains(c.MessageKey) && c.Type == "text")
+                .Join(_db.Rooms, c => c.RoomId, r => r.Id, (c, r) => new { c.MessageKey, r.Id, r.Name, r.IsPrivate, r.CreatedBy })
+                .ToListAsync();
+
+            var keyToRoom = new Dictionary<string, (int Id, string Name, bool IsPrivate)>();
+            foreach (var r in roomsByName) keyToRoom[r.Name] = (r.Id, r.Name, r.IsPrivate && r.CreatedBy != "system");
+            foreach (var c in channelRows) keyToRoom[c.MessageKey] = (c.Id, c.Name, c.IsPrivate && c.CreatedBy != "system");
+
+            // Gizli odalar yalnızca üyelere
+            var privateIds = keyToRoom.Values.Where(v => v.IsPrivate).Select(v => v.Id).Distinct().ToList();
+            var memberOf = privateIds.Count == 0 ? new HashSet<int>() : (await _db.RoomMembers.AsNoTracking()
+                .Where(m => m.UserId == me && privateIds.Contains(m.RoomId))
+                .Select(m => m.RoomId).ToListAsync()).ToHashSet();
+            var bannedFrom = (await _db.RoomBans.AsNoTracking()
+                .Where(b => b.UserId == me).Select(b => b.RoomId).ToListAsync()).ToHashSet();
+
+            var allowed = keyToRoom
+                .Where(kv => (!kv.Value.IsPrivate || memberOf.Contains(kv.Value.Id)) && !bannedFrom.Contains(kv.Value.Id))
+                .Select(kv => kv.Key).ToList();
+            if (allowed.Count == 0) return Ok(Array.Empty<object>());
+
+            var minTs = allowed.Min(k => lastRead[k]);
+            var rows = await _db.Messages.AsNoTracking()
+                .Where(m => allowed.Contains(m.RoomId) && m.Timestamp > minTs && !m.IsDeleted
+                    && (m.UserId == null ? m.Username != myName : m.UserId != me))
+                .Select(m => new { m.RoomId, m.Timestamp })
+                .ToListAsync();
+
+            var result = allowed
+                .Select(k => new
+                {
+                    key = k,
+                    roomId = keyToRoom[k].Id,
+                    roomName = keyToRoom[k].Name,
+                    count = rows.Count(r => r.RoomId == k && r.Timestamp > lastRead[k]),
+                })
+                .Where(x => x.count > 0)
+                .ToList();
+            return Ok(result);
+        }
+
         public class CreateChannelBody { public string Name { get; set; } = ""; public string Type { get; set; } = "text"; }
 
         /// <summary>

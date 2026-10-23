@@ -13,7 +13,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import GifPicker from './GifPicker';
 import MessageFileAttachment from './MessageFileAttachment';
+import InlineMessageEditor from './InlineMessageEditor';
+import TypingIndicator from './TypingIndicator';
+import EditedTag from './EditedTag';
+import LinkPreviews from './LinkPreviews';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
@@ -28,6 +33,7 @@ import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/
 import MentionAutocomplete from './MentionAutocomplete';
 import { notify } from '../utils/browserNotifications';
 import { getLastRead, setLastRead } from '../utils/lastRead';
+import { useUnreadCounts, formatUnread } from '../hooks/useUnreadCounts';
 import ReactionChips, { type ReactionGroup } from './ReactionChips';
 
 export interface TextRoomInfo {
@@ -83,6 +89,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const [channels, setChannels] = useState<ChannelDto[]>([]);
     const [activeChannelKey, setActiveChannelKey] = useState<string>(roomId);
     const [activeChannelId, setActiveChannelId] = useState<number | null>(null);
+    // Diğer kanallardaki okunmamış mesajlar (aktif kanal zaten okunuyor)
+    const channelUnread = useUnreadCounts(true, 30_000);
     const [showAddChannel, setShowAddChannel] = useState(false);
     const [newChannelName, setNewChannelName] = useState('');
     const [newChannelType, setNewChannelType] = useState<'text' | 'voice'>('text');
@@ -295,6 +303,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     // Mesaj düzenleme / yanıtlama
     const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
     const [editText, setEditText] = useState('');
@@ -611,6 +620,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     // Dropdown açıkken ok tuşları/Enter/Tab/Esc input'ta yakalanır
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Escape' && pastedImage.file && mentionQuery === null) { pastedImage.clear(); return; }
+        // Boş kutuda ↑ = son mesajını düzenle (Discord kısayolu)
+        if (e.key === 'ArrowUp' && !messageInput && mentionQuery === null) {
+            const lastMine = [...messages].reverse().find(m => m.type === 'message' && m.username === username && m.serverId && !m.pending && !m.fileUrl);
+            if (lastMine) { e.preventDefault(); handleStartEdit(lastMine); }
+            return;
+        }
         if (mentionQuery === null || mentionCandidates.length === 0) return;
         if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionCandidates.length); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionCandidates.length) % mentionCandidates.length); }
@@ -619,12 +634,16 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     };
 
     // Optimistic UI — mesaj gönder
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-        const pasted = pastedImage.take();
-        if (pasted) handleFileUpload(pasted);
-        if (!messageInput.trim()) return;
-        const text = messageInput.trim();
+    // override: kutudaki metin yerine gönderilecek içerik (ör. seçilen GIF linki)
+    const handleSendMessage = (e?: React.FormEvent, override?: string) => {
+        e?.preventDefault();
+        if (override === undefined) {
+            const pasted = pastedImage.take();
+            if (pasted) handleFileUpload(pasted);
+        }
+        const raw = override ?? messageInput;
+        if (!raw.trim()) return;
+        const text = raw.trim();
         // Kendi mesajını gönderen yukarıdaysa da en alta iner
         scrollToBottom();
 
@@ -641,7 +660,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         }]);
 
         playSendSound();
-        setMessageInput('');
+        if (override === undefined) setMessageInput('');
         setReplyingToMessage(null);
 
         signalrService.sendMessage(activeChannelKey, username, text, replyingToMessage?.serverId || replyingToMessage?.id);
@@ -718,15 +737,18 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         }
     }, []);
     const handleSaveEdit = useCallback(() => {
-        if (editingMessageId && editText.trim()) {
-            signalrService.editMessage(editingMessageId, editText.trim());
+        const next = editText.trim();
+        const original = messages.find(m => m.serverId === editingMessageId)?.text;
+        // Boş ya da değişmemişse sunucuya gitmeden kapat
+        if (editingMessageId && next && next !== original) {
+            signalrService.editMessage(editingMessageId, next);
             setMessages(prev => prev.map(m =>
-                m.serverId === editingMessageId ? { ...m, text: editText.trim(), isEdited: true } : m
+                m.serverId === editingMessageId ? { ...m, text: next, isEdited: true } : m
             ));
         }
         setEditingMessageId(null);
         setEditText('');
-    }, [editingMessageId, editText]);
+    }, [editingMessageId, editText, messages]);
     const handleCancelEdit = useCallback(() => {
         setEditingMessageId(null);
         setEditText('');
@@ -1069,9 +1091,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                 {textChannels.map(ch => (
                                     <div key={ch.id} className="group relative">
                                         <button onClick={() => switchChannel(ch)}
-                                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] transition-colors ${ch.id === activeChannelId ? 'bg-primary-main/15 text-text-main font-medium' : 'text-text-muted hover:bg-bg-surface hover:text-text-main'}`}>
+                                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] transition-colors ${ch.id === activeChannelId ? 'bg-primary-main/15 text-text-main font-medium' : (channelUnread.byKey[ch.messageKey] ?? 0) > 0 ? 'text-text-main font-semibold hover:bg-bg-surface' : 'text-text-muted hover:bg-bg-surface hover:text-text-main'}`}>
                                             <Hash size={15} className="shrink-0 opacity-70" />
                                             <span className="truncate">{ch.name}</span>
+                                            {ch.id !== activeChannelId && (channelUnread.byKey[ch.messageKey] ?? 0) > 0 && (
+                                                <span className={`unread-badge ml-auto ${canManageRoom && textChannels.length > 1 ? 'group-hover:opacity-0' : ''}`}>{formatUnread(channelUnread.byKey[ch.messageKey])}</span>
+                                            )}
                                         </button>
                                         {canManageRoom && textChannels.length > 1 && (
                                             <button onClick={() => handleDeleteChannel(ch)} title="Kanalı sil"
@@ -1234,10 +1259,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                         })()}
 
                                                         <div className="relative group/msg" id={`text-msg-${msg.id}`}>
-                                                            <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
+                                                            <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${editingMessageId != null && msg.serverId === editingMessageId ? 'msg-editing' : ''} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
                                                                 {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
-                                                                {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
-                                                                    <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
+                                                                {editingMessageId != null && msg.serverId === editingMessageId ? (
+                                                                    <InlineMessageEditor value={editText} onChange={setEditText} onSave={handleSaveEdit} onCancel={handleCancelEdit} onDark={isMine} />
+                                                                ) : (!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
+                                                                    <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}{msg.isEdited && <EditedTag />}</div>
                                                                 )}
                                                             </div>
                                                             <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
@@ -1293,6 +1320,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                                 )}
                                                             </div>
                                                         </div>
+                                                        {!msg.fileUrl && <LinkPreviews text={msg.text} align={isMine ? 'end' : 'start'} />}
                                                         {msg.reactions && msg.serverId && (
                                                             <ReactionChips reactions={msg.reactions} myUsername={username} onToggle={(e) => signalrService.toggleReaction(activeChannelKey, msg.serverId!, e)} />
                                                         )}
@@ -1303,16 +1331,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                         );
                                     })}
                                 </AnimatePresence>
-                                <AnimatePresence>
-                                    {typingUsers.size > 0 && (
-                                        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2 px-1">
-                                            <div className="flex gap-1">
-                                                {[0, 1, 2].map(i => <motion.div key={i} className="w-2 h-2 rounded-full bg-text-muted" animate={{ y: [0, -5, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />)}
-                                            </div>
-                                            <span className="text-[13px] text-text-muted">{[...typingUsers].join(', ')} yazıyor...</span>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
+                                <TypingIndicator names={[...typingUsers]} />
                                 <div className="h-2" />
                             </div>
                         </div>
@@ -1367,46 +1386,45 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
                 {/* Mesaj input */}
                 <motion.div variants={itemVariants} className="relative sticky bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-base pt-2">
-                    {editingMessageId && (
-                        <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
-                            <span className="text-primary-main flex items-center gap-2 font-medium"><Pencil size={14} /> Mesajı düzenliyorsun</span>
-                            <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
-                        </div>
-                    )}
-                    {!editingMessageId && replyingToMessage && (
+                    {replyingToMessage && (
                         <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
                             <span className="text-primary-main flex items-center gap-2 font-medium"><Reply size={14} /> {replyingToMessage.username} yanıtlanıyor: <span className="text-text-muted truncate max-w-[150px]">{replyingToMessage.text}</span></span>
                             <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
                         </div>
                     )}
-                    {!editingMessageId && <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />}
-                    <form onSubmit={editingMessageId ? handleSaveEdit : handleSendMessage}
+                    <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />
+                    <form onSubmit={handleSendMessage}
                         className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
 
                         <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
                             <Smile size={20} />
+                        </button>
+                        <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+                            className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                            <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
                         </button>
                         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
                             <Paperclip size={20} />
                         </button>
                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
 
-                        <input type="text" ref={messageInputElRef} value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
-                            onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onPaste={editingMessageId ? undefined : pastedImage.onPaste}
+                        <input type="text" ref={messageInputElRef} value={messageInput} onChange={handleInputChange}
+                            onKeyDown={handleInputKeyDown} onPaste={pastedImage.onPaste}
                             onBlur={() => setMentionQuery(null)}
                             placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
                             className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
 
-                        <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim() && !pastedImage.file) || isUploading}
+                        <button type="submit" disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
                             className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
-                            {editingMessageId ? <Pencil size={18} className="mr-0 sm:mr-2" /> : <Send size={18} className="mr-0 sm:mr-2" />}
-                            <span className="hidden sm:inline">{editingMessageId ? 'Kaydet' : 'Gönder'}</span>
+                            <Send size={18} className="mr-0 sm:mr-2" />
+                            <span className="hidden sm:inline">Gönder</span>
                         </button>
                     </form>
                     <div className="absolute bottom-full mb-2 left-0 z-50">
                         <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                        <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
                     </div>
-                    {!editingMessageId && mentionQuery !== null && (
+                    {mentionQuery !== null && (
                         <MentionAutocomplete
                             candidates={mentionCandidates}
                             activeIndex={mentionIndex}

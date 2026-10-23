@@ -596,14 +596,20 @@ namespace DiscordClone.Api.Hubs
             }
         }
 
+        // Düzenlenen mesaj üst sınırı — boş ya da aşırı uzun metinle düzenleme yapılamaz
+        private const int MaxEditLength = 4000;
+
         // Mesaj düzenleme
         public async Task EditMessage(long messageId, string newText)
         {
             var username = Context.User?.Identity?.Name;
             if (username == null) return;
 
-            var msg = await _db.Messages.FirstOrDefaultAsync(m => m.Id == messageId && m.Username == username);
-            if (msg == null) return;
+            newText = (newText ?? string.Empty).Trim();
+            if (newText.Length == 0 || newText.Length > MaxEditLength) return;
+
+            var msg = await _db.Messages.FirstOrDefaultAsync(m => m.Id == messageId && m.Username == username && !m.IsDeleted);
+            if (msg == null || msg.Text == newText) return;
 
             msg.Text = newText;
             msg.IsEdited = true;
@@ -854,8 +860,11 @@ namespace DiscordClone.Api.Hubs
             var userId = Context.UserIdentifier;
             if (string.IsNullOrEmpty(userId)) return;
 
+            newContent = (newContent ?? string.Empty).Trim();
+            if (newContent.Length == 0 || newContent.Length > MaxEditLength) return;
+
             var msg = await _db.DirectMessages.FindAsync(messageId);
-            if (msg == null || msg.SenderId != userId || msg.IsDeleted) return;
+            if (msg == null || msg.SenderId != userId || msg.IsDeleted || msg.Content == newContent) return;
 
             msg.Content = newContent;
             msg.IsEdited = true;

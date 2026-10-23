@@ -16,9 +16,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import GifPicker from './GifPicker';
 import SoundboardPanel from './SoundboardPanel';
 import YoutubePlayerPanel from './YoutubePlayerPanel';
+import { useElementFullscreen } from '../hooks/useElementFullscreen';
 import MessageFileAttachment from './MessageFileAttachment';
+import InlineMessageEditor from './InlineMessageEditor';
+import TypingIndicator from './TypingIndicator';
+import EditedTag from './EditedTag';
+import LinkPreviews from './LinkPreviews';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
@@ -126,26 +132,11 @@ const RemoteVideoPlayer: React.FC<{
 }> = ({ stream, label, volume, onVolumeChange }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [isFullscreen, setIsFullscreen] = useState(false);
+    const { isFullscreen, controlsHidden, toggle: toggleFullscreen, poke } = useElementFullscreen(containerRef, videoRef);
 
     useEffect(() => {
         if (videoRef.current) videoRef.current.srcObject = stream;
     }, [stream]);
-
-    // Fullscreen state'i tarayıcı event'inden takip et (Esc ile çıkış dahil)
-    useEffect(() => {
-        const onFsChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
-        document.addEventListener('fullscreenchange', onFsChange);
-        return () => document.removeEventListener('fullscreenchange', onFsChange);
-    }, []);
-
-    const toggleFullscreen = () => {
-        if (document.fullscreenElement === containerRef.current) {
-            document.exitFullscreen().catch(() => { /* yoksay */ });
-        } else {
-            containerRef.current?.requestFullscreen().catch(() => { /* desteklenmiyor */ });
-        }
-    };
 
     const togglePiP = async () => {
         try {
@@ -177,15 +168,34 @@ const RemoteVideoPlayer: React.FC<{
     if (!hasVideo) return null;
 
     return (
-        <div ref={containerRef} className="group/video relative w-full h-full flex justify-center items-center rounded-xl overflow-hidden border border-border-main bg-black">
+        <div ref={containerRef} tabIndex={0}
+            onDoubleClick={toggleFullscreen}
+            onMouseMove={poke}
+            onKeyDown={e => { if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); } }}
+            className={`group/video relative w-full h-full flex justify-center items-center overflow-hidden bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-main ${isFullscreen ? '' : 'rounded-xl border border-border-main'} ${controlsHidden ? 'cursor-none' : ''}`}
+            title={isFullscreen ? undefined : 'Çift tıkla: tam ekran'}>
             {/* Ses AudioPlayer'dan gelir — video muted, çift ses olmaz */}
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-contain" />
-            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm flex items-center gap-1.5">
-                {label}
-            </div>
 
-            {/* Meet tarzı hover kontrolleri: ses / PiP / tam ekran */}
-            <div className="absolute bottom-2 right-2 flex items-center gap-1.5 opacity-0 group-hover/video:opacity-100 transition-opacity duration-150">
+            {/* Tam ekranda üst şerit: kim paylaşıyor + nasıl çıkılır */}
+            {isFullscreen && (
+                <div className={`absolute top-0 inset-x-0 px-5 py-4 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent text-white transition-opacity duration-300 ${controlsHidden ? 'opacity-0' : 'opacity-100'}`}>
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
+                        {label}
+                    </span>
+                    <span className="text-xs text-white/70">Çıkmak için <kbd className="px-1.5 py-0.5 rounded bg-white/15 font-mono text-[11px]">Esc</kbd></span>
+                </div>
+            )}
+            {!isFullscreen && (
+                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg backdrop-blur-sm flex items-center gap-1.5">
+                    {label}
+                </div>
+            )}
+
+            {/* Meet tarzı kontroller: ses / PiP / tam ekran. Dokunmatikte hep görünür */}
+            <div onDoubleClick={e => e.stopPropagation()} className={`absolute flex items-center gap-1.5 transition-opacity duration-200 ${isFullscreen ? 'bottom-6 left-1/2 -translate-x-1/2 px-2 py-2 rounded-2xl bg-black/60 backdrop-blur-md' : 'bottom-2 right-2'} ${
+                controlsHidden ? 'opacity-0 pointer-events-none' : isFullscreen ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 group-focus-within/video:opacity-100 [@media(hover:none)]:opacity-100'}`}>
                 {onVolumeChange && (
                     <div className="flex items-center gap-1.5 px-2 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm">
                         {(volume ?? 1) === 0
@@ -194,18 +204,18 @@ const RemoteVideoPlayer: React.FC<{
                         <input
                             type="range" min="0" max="1" step="0.01" value={volume ?? 1}
                             onChange={e => onVolumeChange(parseFloat(e.target.value))}
-                            className="w-16 accent-white cursor-pointer"
+                            className={`${isFullscreen ? 'w-28' : 'w-16'} accent-white cursor-pointer`}
                             title="Ses seviyesi"
                         />
                     </div>
                 )}
                 <button onClick={togglePiP} title="Küçük pencerede izle (PiP)"
                     className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm cursor-pointer">
-                    <PictureInPicture2 size={14} />
+                    <PictureInPicture2 size={isFullscreen ? 18 : 14} />
                 </button>
-                <button onClick={toggleFullscreen} title={isFullscreen ? 'Tam ekrandan çık' : 'Tam ekran'}
+                <button onClick={toggleFullscreen} title={isFullscreen ? 'Tam ekrandan çık (F)' : 'Tam ekran (F)'}
                     className="p-1.5 bg-black/60 hover:bg-black/80 text-white rounded-lg backdrop-blur-sm cursor-pointer">
-                    {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={14} />}
                 </button>
             </div>
         </div>
@@ -275,6 +285,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     // Mesaj düzenleme
     const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
     const [editText, setEditText] = useState('');
@@ -760,6 +771,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // Dropdown açıkken ok tuşları/Enter/Tab/Esc input'ta yakalanır
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Escape' && pastedImage.file && mentionQuery === null) { pastedImage.clear(); return; }
+        // Boş kutuda ↑ = son mesajını düzenle (Discord kısayolu)
+        if (e.key === 'ArrowUp' && !messageInput && mentionQuery === null) {
+            const lastMine = [...messages].reverse().find(m => m.type === 'message' && m.username === username && m.serverId && !m.pending && !m.fileUrl);
+            if (lastMine) { e.preventDefault(); handleStartEdit(lastMine); }
+            return;
+        }
         if (mentionQuery === null || mentionCandidates.length === 0) return;
         if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % mentionCandidates.length); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + mentionCandidates.length) % mentionCandidates.length); }
@@ -768,12 +785,16 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     };
 
     // Optimistic UI — mesaj gönder
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-        const pasted = pastedImage.take();
-        if (pasted) handleFileUpload(pasted);
-        if (!messageInput.trim()) return;
-        const text = messageInput.trim();
+    // override: kutudaki metin yerine gönderilecek içerik (ör. seçilen GIF linki)
+    const handleSendMessage = (e?: React.FormEvent, override?: string) => {
+        e?.preventDefault();
+        if (override === undefined) {
+            const pasted = pastedImage.take();
+            if (pasted) handleFileUpload(pasted);
+        }
+        const raw = override ?? messageInput;
+        if (!raw.trim()) return;
+        const text = raw.trim();
         // Kendi mesajını gönderen yukarıdaysa da en alta iner
         scrollToBottom();
 
@@ -791,7 +812,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         }]);
 
         playSendSound();
-        setMessageInput('');
+        if (override === undefined) setMessageInput('');
         setReplyingToMessage(null);
 
         // Backend'e gönder — SignalR confirm gelince pending kaldır
@@ -879,15 +900,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         }
     }, []);
     const handleSaveEdit = useCallback(() => {
-        if (editingMessageId && editText.trim()) {
-            signalrService.editMessage(editingMessageId, editText.trim());
+        const next = editText.trim();
+        const original = messages.find(m => m.serverId === editingMessageId)?.text;
+        // Boş ya da değişmemişse sunucuya gitmeden kapat
+        if (editingMessageId && next && next !== original) {
+            signalrService.editMessage(editingMessageId, next);
             setMessages(prev => prev.map(m =>
-                m.serverId === editingMessageId ? { ...m, text: editText.trim(), isEdited: true } : m
+                m.serverId === editingMessageId ? { ...m, text: next, isEdited: true } : m
             ));
         }
         setEditingMessageId(null);
         setEditText('');
-    }, [editingMessageId, editText]);
+    }, [editingMessageId, editText, messages]);
     const handleCancelEdit = useCallback(() => {
         setEditingMessageId(null);
         setEditText('');
@@ -1485,10 +1509,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                             })()}
 
                                                             <div className="relative group/msg" id={`compact-msg-${msg.id}`}>
-                                                                <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
+                                                                <div className={`px-3 py-2 rounded-xl shadow-sm text-[13px] leading-snug transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${editingMessageId != null && msg.serverId === editingMessageId ? 'msg-editing' : ''} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
                                                                     {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
-                                                                {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
-                                                                    <div className="whitespace-pre-wrap break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
+                                                                {editingMessageId != null && msg.serverId === editingMessageId ? (
+                                                                    <InlineMessageEditor value={editText} onChange={setEditText} onSave={handleSaveEdit} onCancel={handleCancelEdit} onDark={isMine} compact />
+                                                                ) : (!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
+                                                                    <div className="whitespace-pre-wrap break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}{msg.isEdited && <EditedTag />}</div>
                                                                 )}
                                                                 </div>
                                                                 <div className={`absolute -top-7 ${isMine ? 'right-0' : 'left-0'} opacity-0 group-hover/msg:opacity-100 transition-opacity duration-150 pointer-events-none z-10`}>
@@ -1523,53 +1549,43 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         {pinButton(msg, 10)}
                                                                     </div>
                                                             </div>
+                                                            {!msg.fileUrl && <LinkPreviews text={msg.text} align={isMine ? 'end' : 'start'} compact />}
                                                         </div>
                                                     </div>
                                                 </motion.div>
                                             );
                                         })}
                                     </AnimatePresence>
-                                    {/* Yazıyor göstergesi */}
-                                    <AnimatePresence>
-                                        {typingUsers.size > 0 && (
-                                            <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2 px-1">
-                                                <div className="flex gap-1">
-                                                    {[0, 1, 2].map(i => <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-text-muted" animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />)}
-                                                </div>
-                                                <span className="text-[11px] text-text-muted">{[...typingUsers].join(', ')} yazıyor...</span>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    <TypingIndicator names={[...typingUsers]} compact />
                                     <div className="h-1" />
                                 </div>
                             </div>
                             <div className="p-3 border-t border-border-main sticky bottom-0 z-20 bg-bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] relative">
-                                {!editingMessageId && mentionQuery !== null && (
+                                {mentionQuery !== null && (
                                     <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
                                 )}
                                 <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
-                                    {!editingMessageId && <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />}
-                                    {editingMessageId && (
-                                        <div className="flex items-center justify-between bg-bg-surface px-3 py-1.5 rounded-lg border border-primary-main/30 text-xs">
-                                            <span className="text-primary-main flex items-center gap-1.5"><Pencil size={12} /> Mesajı düzenliyorsun</span>
-                                            <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main"><X size={12} /></button>
-                                        </div>
-                                    )}
+                                    <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />
                                     <div className="flex items-center gap-1.5">
                                         <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Smile size={20} /></button>
+                                        <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+                                            className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                            <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
+                                        </button>
                                         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Paperclip size={20} /></button>
                                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
-                                        <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
-                                            onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onPaste={editingMessageId ? undefined : pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
+                                        <input type="text" value={messageInput} onChange={handleInputChange}
+                                            onKeyDown={handleInputKeyDown} onPaste={pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
                                             placeholder={isUploading ? "Yükleniyor..." : "Mesaj yaz..."} disabled={isUploading}
                                             className="flex-1 bg-bg-surface border border-border-main rounded-xl px-3 py-3 text-[14px] text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
-                                        <button type="button" onClick={editingMessageId ? handleSaveEdit : handleSendMessage} disabled={(editingMessageId ? !editText.trim() : !messageInput.trim() && !pastedImage.file) || isUploading}
+                                        <button type="button" onClick={handleSendMessage} disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
                                             className="p-3 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white disabled:opacity-50 transition-all active:scale-95 cursor-pointer ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-md">
-                                            {editingMessageId ? <Pencil size={18} /> : <Send size={18} />}
+                                            <Send size={18} />
                                         </button>
                                     </div>
                                 </form>
                                 <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                                <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
                             </div>
                         </motion.div>
                     </div>
@@ -1655,10 +1671,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                 })()}
 
                                                                 <div className="relative group/msg" id={`room-msg-${msg.id}`}>
-                                                                    <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
+                                                                    <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${editingMessageId != null && msg.serverId === editingMessageId ? 'msg-editing' : ''} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
                                                                         {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
-                                                                    {(!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
-                                                                        <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}</div>
+                                                                    {editingMessageId != null && msg.serverId === editingMessageId ? (
+                                                                        <InlineMessageEditor value={editText} onChange={setEditText} onSave={handleSaveEdit} onCancel={handleCancelEdit} onDark={isMine} />
+                                                                    ) : (!msg.fileUrl || !msg.text.startsWith('[Dosya:')) && msg.text && (
+                                                                        <div className="whitespace-pre-wrap text-[15px] leading-relaxed break-words cursor-pointer transition-all duration-200 p-1 rounded" title="Kopyalamak için tıkla" onClick={(e) => handleCopyMessage(msg.text, e)}>{renderMessageText(msg.text)}{msg.isEdited && <EditedTag />}</div>
                                                                     )}
                                                                     </div>
                                                                     {/* Zaman damgası tooltip */}
@@ -1726,6 +1744,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         )}
                                                                     </div>
                                                                 </div>
+                                                                {!msg.fileUrl && <LinkPreviews text={msg.text} align={isMine ? 'end' : 'start'} />}
                                                                 {msg.reactions && msg.serverId && (
                                                                     <ReactionChips reactions={msg.reactions} myUsername={username} onToggle={(e) => signalrService.toggleReaction(roomId, msg.serverId!, e)} />
                                                                 )}
@@ -1736,17 +1755,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 );
                                             })}
                                         </AnimatePresence>
-                                        {/* Yazıyor göstergesi */}
-                                        <AnimatePresence>
-                                            {typingUsers.size > 0 && (
-                                                <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2 px-1">
-                                                    <div className="flex gap-1">
-                                                        {[0, 1, 2].map(i => <motion.div key={i} className="w-2 h-2 rounded-full bg-text-muted" animate={{ y: [0, -5, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />)}
-                                                    </div>
-                                                    <span className="text-[13px] text-text-muted">{[...typingUsers].join(', ')} yazıyor...</span>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+                                        <TypingIndicator names={[...typingUsers]} />
                                         <div className="h-2" />
                                     </div>
                                 </div>
@@ -1885,24 +1894,22 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                         {/* Mesaj input */}
                         <motion.div variants={itemVariants} className="relative sticky bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-base pt-2">
-                            {editingMessageId && (
-                                <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
-                                    <span className="text-primary-main flex items-center gap-2 font-medium"><Pencil size={14} /> Mesajı düzenliyorsun</span>
-                                    <button type="button" onClick={handleCancelEdit} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
-                                </div>
-                            )}
-                            {!editingMessageId && replyingToMessage && (
+                            {replyingToMessage && (
                                 <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
                                     <span className="text-primary-main flex items-center gap-2 font-medium"><Reply size={14} /> {replyingToMessage.username} yanıtlanıyor: <span className="text-text-muted truncate max-w-[150px]">{replyingToMessage.text}</span></span>
                                     <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
                                 </div>
                             )}
-                            {!editingMessageId && <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />}
-                            <form onSubmit={editingMessageId ? handleSaveEdit : handleSendMessage}
+                            <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />
+                            <form onSubmit={handleSendMessage}
                                 className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
                                 
                                 <button type="button" onClick={() => { setShowEmojiPicker(p => !p); setShowSoundboard(false); setShowYoutubeInput(false); }} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
                                     <Smile size={20} />
+                                </button>
+                                <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+                                    className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                    <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
                                 </button>
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
                                     <Paperclip size={20} />
@@ -1919,21 +1926,22 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     </>
                                 )}
                                 
-                                <input type="text" value={editingMessageId ? editText : messageInput} onChange={e => editingMessageId ? setEditText(e.target.value) : handleInputChange(e)}
-                                    onKeyDown={editingMessageId ? undefined : handleInputKeyDown} onPaste={editingMessageId ? undefined : pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
+                                <input type="text" value={messageInput} onChange={handleInputChange}
+                                    onKeyDown={handleInputKeyDown} onPaste={pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
                                     placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
                                     className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
                                 
-                                <button type="submit" disabled={(editingMessageId ? !editText.trim() : !messageInput.trim() && !pastedImage.file) || isUploading}
+                                <button type="submit" disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
                                     className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
-                                    {editingMessageId ? <Pencil size={18} className="mr-0 sm:mr-2" /> : <Send size={18} className="mr-0 sm:mr-2" />}
-                                    <span className="hidden sm:inline">{editingMessageId ? 'Kaydet' : 'Gönder'}</span>
+                                    <Send size={18} className="mr-0 sm:mr-2" />
+                                    <span className="hidden sm:inline">Gönder</span>
                                 </button>
                             </form>
                             <div className="absolute bottom-full mb-2 left-0 z-50">
                                 <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                                <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
                             </div>
-                            {!editingMessageId && mentionQuery !== null && (
+                            {mentionQuery !== null && (
                                 <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
                             )}
                             {isAnaSalon && (

@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { ChevronRight, Hash, Lock, Music, Trash2, Users, Volume2 } from 'lucide-react';
+import { formatUnread } from '../hooks/useUnreadCounts';
 
 // App'teki RoomData'nin kartin ihtiyac duydugu kesiti — App'e tip bagimliligi
 // kurmamak icin yapisal tanim.
@@ -19,6 +20,7 @@ interface RoomCardProps {
   apiBaseUrl: string;
   onJoin: (room: RoomCardData) => void;
   onDelete: (room: RoomCardData) => void;
+  unreadCount?: number;
 }
 
 const getRoomVisuals = (room: RoomCardData) => {
@@ -37,7 +39,7 @@ const getRoomVisuals = (room: RoomCardData) => {
 // Hover gorselleri tamamen CSS'te (index.css: .room-card). Buradaki tek state,
 // uzerine gelince odadaki kullanicilari gosteren liste — o da yalnizca bu
 // karti yeniden render eder, App'e dokunmaz.
-const RoomCard = memo(function RoomCard({ room, isOwner, showMeta = false, apiBaseUrl, onJoin, onDelete }: RoomCardProps) {
+const RoomCard = memo(function RoomCard({ room, isOwner, showMeta = false, apiBaseUrl, onJoin, onDelete, unreadCount = 0 }: RoomCardProps) {
   const [users, setUsers] = useState<{ username: string }[]>([]);
   const hoverTimer = useRef<number | null>(null);
 
@@ -115,6 +117,7 @@ const RoomCard = memo(function RoomCard({ room, isOwner, showMeta = false, apiBa
       </div>
 
       <div className="relative flex items-center gap-1 flex-shrink-0">
+        {unreadCount > 0 && <span className="unread-badge relative" aria-label={`${unreadCount} okunmamış mesaj`}>{formatUnread(unreadCount)}</span>}
         {isOwner && (
           <span
             role="button"
