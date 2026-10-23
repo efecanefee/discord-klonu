@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import GifPicker from './GifPicker';
 import SoundboardPanel from './SoundboardPanel';
 import YoutubePlayerPanel from './YoutubePlayerPanel';
 import MessageFileAttachment from './MessageFileAttachment';
@@ -277,6 +278,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     // Mesaj düzenleme
     const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
     const [editText, setEditText] = useState('');
@@ -774,10 +776,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     };
 
     // Optimistic UI — mesaj gönder
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!messageInput.trim()) return;
-        const text = messageInput.trim();
+    // override: kutudaki metin yerine gönderilecek içerik (ör. seçilen GIF linki)
+    const handleSendMessage = (e?: React.FormEvent, override?: string) => {
+        e?.preventDefault();
+        const raw = override ?? messageInput;
+        if (!raw.trim()) return;
+        const text = raw.trim();
         // Kendi mesajını gönderen yukarıdaysa da en alta iner
         scrollToBottom();
 
@@ -795,7 +799,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         }]);
 
         playSendSound();
-        setMessageInput('');
+        if (override === undefined) setMessageInput('');
         setReplyingToMessage(null);
 
         // Backend'e gönder — SignalR confirm gelince pending kaldır
@@ -1550,6 +1554,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <form onSubmit={handleSendMessage} className="flex flex-col gap-2">
                                     <div className="flex items-center gap-1.5">
                                         <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Smile size={20} /></button>
+                                        <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+                                            className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                            <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
+                                        </button>
                                         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 text-text-muted hover:text-text-main cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"><Paperclip size={20} /></button>
                                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
                                         <input type="text" value={messageInput} onChange={handleInputChange}
@@ -1563,6 +1571,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     </div>
                                 </form>
                                 <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                                <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
                             </div>
                         </motion.div>
                     </div>
@@ -1883,6 +1892,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <button type="button" onClick={() => { setShowEmojiPicker(p => !p); setShowSoundboard(false); setShowYoutubeInput(false); }} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
                                     <Smile size={20} />
                                 </button>
+                                <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+                                    className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                    <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
+                                </button>
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
                                     <Paperclip size={20} />
                                 </button>
@@ -1911,6 +1924,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             </form>
                             <div className="absolute bottom-full mb-2 left-0 z-50">
                                 <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                                <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
                             </div>
                             {mentionQuery !== null && (
                                 <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />

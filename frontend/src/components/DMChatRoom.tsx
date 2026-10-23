@@ -4,6 +4,7 @@ import { Send, Check, CheckCheck, X, Pencil, Reply, Smile, Paperclip } from 'luc
 import { renderAvatar } from '../constants/avatars';
 import signalrService from '../services/signalrService';
 import EmojiPicker from './EmojiPicker';
+import GifPicker from './GifPicker';
 import MessageFileAttachment from './MessageFileAttachment';
 import InlineMessageEditor from './InlineMessageEditor';
 import TypingIndicator from './TypingIndicator';
@@ -75,6 +76,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   // Giden "yazıyor" sinyali her tuşta değil ~2.5 sn'de bir gönderilir
   const lastTypingSentRef = useRef(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -401,6 +403,14 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                 </div>
               )}
             </AnimatePresence>
+          </div>
+          <div className="relative">
+            <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+              className={`p-2 transition-colors cursor-pointer ${showGifPicker ? 'text-primary-main' : 'text-white/30 hover:text-white'}`}>
+              <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
+            </button>
+            <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)}
+              onSelect={g => { scrollToBottom(); signalrService.sendDirectMessage(targetUser.id, g.url, replyingToMessage?.id); setReplyingToMessage(null); }} />
           </div>
           <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="p-3 text-white/30 hover:text-white transition-colors cursor-pointer disabled:opacity-50">
             <Paperclip size={20} />

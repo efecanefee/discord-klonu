@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
 import EmojiPicker from './EmojiPicker';
+import GifPicker from './GifPicker';
 import MessageFileAttachment from './MessageFileAttachment';
 import InlineMessageEditor from './InlineMessageEditor';
 import TypingIndicator from './TypingIndicator';
@@ -297,6 +298,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGifPicker, setShowGifPicker] = useState(false);
     // Mesaj düzenleme / yanıtlama
     const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
     const [editText, setEditText] = useState('');
@@ -625,10 +627,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     };
 
     // Optimistic UI — mesaj gönder
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!messageInput.trim()) return;
-        const text = messageInput.trim();
+    // override: kutudaki metin yerine gönderilecek içerik (ör. seçilen GIF linki)
+    const handleSendMessage = (e?: React.FormEvent, override?: string) => {
+        e?.preventDefault();
+        const raw = override ?? messageInput;
+        if (!raw.trim()) return;
+        const text = raw.trim();
         // Kendi mesajını gönderen yukarıdaysa da en alta iner
         scrollToBottom();
 
@@ -645,7 +649,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         }]);
 
         playSendSound();
-        setMessageInput('');
+        if (override === undefined) setMessageInput('');
         setReplyingToMessage(null);
 
         signalrService.sendMessage(activeChannelKey, username, text, replyingToMessage?.serverId || replyingToMessage?.id);
@@ -1380,6 +1384,10 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                         <button type="button" onClick={() => setShowEmojiPicker(p => !p)} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
                             <Smile size={20} />
                         </button>
+                        <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+                            className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                            <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
+                        </button>
                         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
                             <Paperclip size={20} />
                         </button>
@@ -1399,6 +1407,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                     </form>
                     <div className="absolute bottom-full mb-2 left-0 z-50">
                         <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                        <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
                     </div>
                     {mentionQuery !== null && (
                         <MentionAutocomplete
