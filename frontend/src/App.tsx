@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import ChatRoom from './components/ChatRoom';
 import TextChatRoom from './components/TextChatRoom';
 import DMChatRoom from './components/DMChatRoom';
+import { useUnreadCounts } from './hooks/useUnreadCounts';
 import MiniDock from './components/MiniDock';
 import ProfileModal, { type ProfileSaveData } from './components/ProfileModal';
 import CreateRoomModal from './components/CreateRoomModal';
@@ -99,6 +100,8 @@ function App() {
   const [myCustomStatusMessage, setMyCustomStatusMessage] = useState('');
   const [myShowLastSeen, setMyShowLastSeen] = useState(true);
   const [userId, setUserId] = useState(localStorage.getItem('userId') || '');
+  // Oda/kanal okunmamış rozetleri (yalnızca giriş yapılmışken)
+  const unread = useUnreadCounts(!!userId);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   // Varsayilan kapali: lobi ilk boyamada DM listesini render etmesin.
   const [isDMOpen, setIsDMOpen] = useState(false);
@@ -193,6 +196,7 @@ function App() {
       apiBaseUrl={API_BASE_URL}
       onJoin={() => handleJoinRoom(room)}
       onDelete={() => setDeleteConfirmRoom(room)}
+      unreadCount={unread.byRoom[room.id] ?? 0}
     />
   );
 
@@ -1924,6 +1928,7 @@ function App() {
             <MyServersPanel
               open={isServersOpen}
               onToggle={() => setIsServersOpen(o => !o)}
+              unreadByRoom={unread.byRoom}
               refreshSignal={rooms.length + serverListVersion * 1000}
               onSelectRoom={(r) => {
                 const full = rooms.find(x => x.id === r.id);

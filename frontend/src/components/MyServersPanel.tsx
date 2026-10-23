@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Server, Lock, ChevronRight, ChevronDown, Compass } from 'lucide-react';
 import { roomApi, type MyRoomDto } from '../services/roomApi';
 import { roleLabel } from '../utils/roles';
+import { formatUnread } from '../hooks/useUnreadCounts';
 
 interface MyServersPanelProps {
   open: boolean;                          // panel acik mi (state App'te: sarmalayici boyutu da ona gore degisiyor)
   onToggle: () => void;
   refreshSignal?: number;                 // degisince listeyi tazeler (yalnizca panel acikken)
   onSelectRoom: (room: MyRoomDto) => void;
+  unreadByRoom?: Record<number, number>;
 }
 
 const roleStyle = (role: string) => {
@@ -17,7 +19,7 @@ const roleStyle = (role: string) => {
   return { color: 'var(--color-primary-main)', glow: 'rgba(var(--accent-rgb),0.30)', badge: '' };
 };
 
-const MyServersPanel: React.FC<MyServersPanelProps> = ({ open, onToggle, refreshSignal, onSelectRoom }) => {
+const MyServersPanel: React.FC<MyServersPanelProps> = ({ open, onToggle, refreshSignal, onSelectRoom, unreadByRoom }) => {
   const [rooms, setRooms] = useState<MyRoomDto[] | null>(null);
   // Tembel yukleme: liste ilk acilista (ve acikken refreshSignal degisince)
   // cekilir — lobi acilirken bosuna istek atilip render maliyeti odenmez.
@@ -130,6 +132,7 @@ const MyServersPanel: React.FC<MyServersPanelProps> = ({ open, onToggle, refresh
                         <span className="text-[11px] font-medium" style={{ color: rs.color }}>{roleLabel(room.role)}</span>
                       </div>
                     </div>
+                    {(unreadByRoom?.[room.id] ?? 0) > 0 && <span className="unread-badge relative" aria-label={`${unreadByRoom![room.id]} okunmamış mesaj`}>{formatUnread(unreadByRoom![room.id])}</span>}
                     <ChevronRight size={16} className="room-card-chevron relative" />
                   </motion.button>
                 );

@@ -934,3 +934,23 @@ html.reduce-motion .badge-shine { display: none; }
   text-align: left;
   animation: sm-fade 0.25s ease both;
 }
+
+/* ===== Okunmamış mesaj rozeti (oda kartı, sunucularım, kanal listesi) ===== */
+.unread-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px var(--color-bg-card, #12141d), 0 4px 12px rgba(239, 68, 68, 0.35);
+  font-variant-numeric: tabular-nums;
+  animation: sm-pop 0.3s var(--ease-out-expo) both;
+  transition: opacity 150ms ease;
+}

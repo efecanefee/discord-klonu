@@ -31,6 +31,7 @@ import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/
 import MentionAutocomplete from './MentionAutocomplete';
 import { notify } from '../utils/browserNotifications';
 import { getLastRead, setLastRead } from '../utils/lastRead';
+import { useUnreadCounts, formatUnread } from '../hooks/useUnreadCounts';
 import ReactionChips, { type ReactionGroup } from './ReactionChips';
 
 export interface TextRoomInfo {
@@ -86,6 +87,8 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const [channels, setChannels] = useState<ChannelDto[]>([]);
     const [activeChannelKey, setActiveChannelKey] = useState<string>(roomId);
     const [activeChannelId, setActiveChannelId] = useState<number | null>(null);
+    // Diğer kanallardaki okunmamış mesajlar (aktif kanal zaten okunuyor)
+    const channelUnread = useUnreadCounts(true, 30_000);
     const [showAddChannel, setShowAddChannel] = useState(false);
     const [newChannelName, setNewChannelName] = useState('');
     const [newChannelType, setNewChannelType] = useState<'text' | 'voice'>('text');
@@ -1080,9 +1083,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                 {textChannels.map(ch => (
                                     <div key={ch.id} className="group relative">
                                         <button onClick={() => switchChannel(ch)}
-                                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] transition-colors ${ch.id === activeChannelId ? 'bg-primary-main/15 text-text-main font-medium' : 'text-text-muted hover:bg-bg-surface hover:text-text-main'}`}>
+                                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[14px] transition-colors ${ch.id === activeChannelId ? 'bg-primary-main/15 text-text-main font-medium' : (channelUnread.byKey[ch.messageKey] ?? 0) > 0 ? 'text-text-main font-semibold hover:bg-bg-surface' : 'text-text-muted hover:bg-bg-surface hover:text-text-main'}`}>
                                             <Hash size={15} className="shrink-0 opacity-70" />
                                             <span className="truncate">{ch.name}</span>
+                                            {ch.id !== activeChannelId && (channelUnread.byKey[ch.messageKey] ?? 0) > 0 && (
+                                                <span className={`unread-badge ml-auto ${canManageRoom && textChannels.length > 1 ? 'group-hover:opacity-0' : ''}`}>{formatUnread(channelUnread.byKey[ch.messageKey])}</span>
+                                            )}
                                         </button>
                                         {canManageRoom && textChannels.length > 1 && (
                                             <button onClick={() => handleDeleteChannel(ch)} title="Kanalı sil"
