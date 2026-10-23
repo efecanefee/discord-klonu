@@ -953,12 +953,26 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     // Sustur / sağırlaştır durumu lobideki kullanıcı kartıyla ortak
     const handleToggleMute = voiceControls.toggleMic;
 
+    // Bas-konuş yalnızca bir tuş atanmışsa geçerli. Tuşu başka kısayola verince
+    // pttKey boşalıyordu; PTT açık kalınca mikrofon hiçbir şekilde açılamıyordu.
+    const pttActive = settings.pushToTalk && !!settings.pttKey;
+
+    // Susturulmuşken bas-konuş tuşuna basınca neden açılmadığını göster
+    const [micHint, setMicHint] = useState<string | null>(null);
+    const micHintTimerRef = useRef<number | null>(null);
+    const showMicHint = (text: string) => {
+        setMicHint(text);
+        if (micHintTimerRef.current) clearTimeout(micHintTimerRef.current);
+        micHintTimerRef.current = window.setTimeout(() => setMicHint(null), 2500);
+    };
+    useEffect(() => () => { if (micHintTimerRef.current) clearTimeout(micHintTimerRef.current); }, []);
+
     // Mikrofonun durumu: sustur/sağırlaştır ve Bas-Konuş modundan türetilir.
     // PTT açıkken mikrofon varsayılan olarak KAPALI; sadece tuş basılıyken açılır.
     const prevMicBlockedRef = useRef<boolean | null>(null);
     useEffect(() => {
         if (!isReady) return;
-        const enabled = !settings.pushToTalk && !micBlocked;
+        const enabled = !pttActive && !micBlocked;
         setMicEnabled(enabled);
         signalrService.notifyMuteStatus(roomId, !enabled);
         // İlk uygulamada değil, yalnızca kullanıcı değiştirdiğinde ses çal
@@ -967,7 +981,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         }
         prevMicBlockedRef.current = micBlocked;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [settings.pushToTalk, isReady, micBlocked]);
+    }, [pttActive, isReady, micBlocked]);
 
     // Sağırlaştırma durumunu odadakilere bildir (mikrofon gibi onlarda da görünsün)
     useEffect(() => {
@@ -977,11 +991,14 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
     // Global kısayollar: bas-konuş + mikrofon aç/kapat
     useKeybinds({
-        pttEnabled: settings.pushToTalk,
+        pttEnabled: pttActive,
         pttKey: settings.pttKey,
         muteToggleKey: settings.muteToggleKey,
         // Susturulmuş veya sağırken bas-konuş mikrofonu açmaz
-        onPTTDown: () => { if (micBlocked) return; setMicEnabled(true); playUnmuteSound(); signalrService.notifyMuteStatus(roomId, false); },
+        onPTTDown: () => {
+            if (micBlocked) { showMicHint(deafened ? 'Sağırlaştırılmışsın — önce kaldır' : 'Mikrofonun kapalı — önce mikrofon butonuyla aç'); return; }
+            setMicEnabled(true); playUnmuteSound(); signalrService.notifyMuteStatus(roomId, false);
+        },
         onPTTUp: () => { if (micBlocked) return; setMicEnabled(false); playMuteSound(); signalrService.notifyMuteStatus(roomId, true); },
         onMuteToggle: () => { handleToggleMute(); },
     });
@@ -1325,11 +1342,24 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             </button>
                         )}
 
-                        {/* Mikrofon */}
-                        <button onClick={handleToggleMute}
-                            className={`flex items-center justify-center p-2.5 rounded-xl border cursor-pointer transition-colors ${isMuted ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-bg-base border-border-main text-text-main hover:text-primary-main'}`}>
-                            {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
-                        </button>
+                        {/* Mikrofon — kullanıcının sustur seçimini gösterir. Eskiden track
+                            durumunu gösteriyordu: bas-konuş açıkken buton hep kırmızı kalıyor,
+                            tıklamak hiçbir şey yapmıyor gibi görünüyordu. */}
+                        <div className="relative">
+                            <button onClick={handleToggleMute}
+                                title={micBlocked ? 'Mikrofonu aç' : pttActive ? `Bas-konuş açık — konuşmak için ${settings.pttKey} tuşunu basılı tut. Tıkla: sustur` : 'Mikrofonu kapat'}
+                                className={`relative flex items-center justify-center p-2.5 rounded-xl border cursor-pointer transition-colors ${micBlocked ? 'bg-red-500/10 border-red-500/30 text-red-500' : pttActive && !isMuted ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-bg-base border-border-main text-text-main hover:text-primary-main'}`}>
+                                {micBlocked ? <MicOff size={18} /> : <Mic size={18} />}
+                                {pttActive && !micBlocked && (
+                                    <span className="absolute -bottom-1 -right-1 px-1 rounded bg-bg-surface border border-border-main text-[8px] font-bold leading-[12px] text-text-muted">BK</span>
+                                )}
+                            </button>
+                            {micHint && (
+                                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-1.5 rounded-lg bg-black/80 text-white text-xs shadow-lg z-50 pointer-events-none">
+                                    {micHint}
+                                </div>
+                            )}
+                        </div>
 
                         {/* Sağırlaştır */}
                         <button onClick={voiceControls.toggleDeafen} title={deafened ? 'Sağırlaştırmayı Kaldır' : 'Sağırlaştır'}
