@@ -8,7 +8,8 @@ namespace DiscordClone.Api.Services
 {
     // Tarihli oylamalarda etkinlik saati yaklaşınca "Evet" diyenlere Web Push
     // hatırlatması gönderir. Her oylama için yalnızca bir kez (reminded bayrağı).
-    // Etkinlik saatinden ExpireAfter kadar sonra oylama kendiliğinden silinir.
+    // Etkinlik saatinden ExpireAfter kadar sonra oylama, paylaşılmasından
+    // NoteLifetime kadar sonra da normal not kendiliğinden silinir.
     public class FeedReminderService : BackgroundService
     {
         // Etkinlikten ne kadar önce hatırlatılır
@@ -18,6 +19,8 @@ namespace DiscordClone.Api.Services
         private static readonly TimeSpan Interval = TimeSpan.FromMinutes(1);
         // Etkinlik bittikten sonra oylamanın akışta kalacağı süre
         private static readonly TimeSpan ExpireAfter = TimeSpan.FromHours(3);
+        // Normal notların akışta kalacağı süre
+        private static readonly TimeSpan NoteLifetime = TimeSpan.FromDays(7);
 
         private readonly IServiceProvider _services;
         private readonly IPushNotificationService _push;
@@ -51,11 +54,11 @@ namespace DiscordClone.Api.Services
 
                 try
                 {
-                    await DeleteExpiredPollsAsync(stoppingToken);
+                    await DeleteExpiredPostsAsync(stoppingToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    _logger.LogError(ex, "[FeedReminder] Süresi dolan oylamalar silinemedi.");
+                    _logger.LogError(ex, "[FeedReminder] Süresi dolan gönderiler silinemedi.");
                 }
 
                 await Task.Delay(Interval, stoppingToken);
@@ -105,16 +108,19 @@ namespace DiscordClone.Api.Services
             _logger.LogInformation($"[FeedReminder] {due.Count} oylama için hatırlatma gönderildi.");
         }
 
-        // Etkinlik saati üzerinden ExpireAfter geçen oylamaları (oy ve tepkileriyle)
-        // siler ve açık istemcilere duyurur; akıştan anında kaybolurlar.
-        private async Task DeleteExpiredPollsAsync(CancellationToken ct)
+        // Süresi dolan gönderileri (oy ve tepkileriyle) siler ve açık istemcilere
+        // duyurur; akıştan anında kaybolurlar.
+        private async Task DeleteExpiredPostsAsync(CancellationToken ct)
         {
             using var scope = _services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            var cutoff = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - (long)ExpireAfter.TotalMilliseconds;
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var pollCutoff = now - (long)ExpireAfter.TotalMilliseconds;
+            var noteCutoff = now - (long)NoteLifetime.TotalMilliseconds;
             var ids = await db.FeedPosts
-                .Where(p => p.Kind == FeedPostKinds.Poll && p.EventAt != null && p.EventAt < cutoff)
+                .Where(p => (p.Kind == FeedPostKinds.Poll && p.EventAt != null && p.EventAt < pollCutoff)
+                            || (p.Kind != FeedPostKinds.Poll && p.CreatedAt < noteCutoff))
                 .Select(p => p.Id)
                 .ToListAsync(ct);
             if (ids.Count == 0) return;
@@ -126,7 +132,7 @@ namespace DiscordClone.Api.Services
             foreach (var id in ids)
                 await _hubContext.Clients.All.SendAsync("FeedPostDeleted", id, ct);
 
-            _logger.LogInformation($"[FeedReminder] Süresi dolan {ids.Count} oylama silindi.");
+            _logger.LogInformation($"[FeedReminder] Süresi dolan {ids.Count} gönderi silindi.");
         }
     }
 }

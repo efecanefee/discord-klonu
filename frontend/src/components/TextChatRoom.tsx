@@ -7,6 +7,8 @@ import SpeakingBars from './SpeakingBars';
 import { usePeerPings, useServerPing } from '../hooks/usePing';
 import { useAudioNotifications } from '../hooks/useAudioNotifications';
 import { LogOut, Send, Search, X, Code, Smile, Paperclip, Pencil, FileText, Reply, Users, Hash, Info, Settings, Volume2, Plus, Trash2, Mic, MicOff, PhoneOff, DoorOpen, Link2, Check, Pin, Headphones, HeadphoneOff } from 'lucide-react';
+import PastedImagePreview from './PastedImagePreview';
+import { usePastedImage } from '../hooks/usePastedImage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { messageMotion, voiceMemberMotion } from '../utils/motion';
 import type { Variants } from 'framer-motion';
@@ -309,6 +311,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     // Dosya yükleme
     const [isDragging, setIsDragging] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const pastedImage = usePastedImage();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5098';
 
@@ -616,6 +619,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
     // Dropdown açıkken ok tuşları/Enter/Tab/Esc input'ta yakalanır
     const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Escape' && pastedImage.file && mentionQuery === null) { pastedImage.clear(); return; }
         // Boş kutuda ↑ = son mesajını düzenle (Discord kısayolu)
         if (e.key === 'ArrowUp' && !messageInput && mentionQuery === null) {
             const lastMine = [...messages].reverse().find(m => m.type === 'message' && m.username === username && m.serverId && !m.pending && !m.fileUrl);
@@ -633,6 +637,10 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     // override: kutudaki metin yerine gönderilecek içerik (ör. seçilen GIF linki)
     const handleSendMessage = (e?: React.FormEvent, override?: string) => {
         e?.preventDefault();
+        if (override === undefined) {
+            const pasted = pastedImage.take();
+            if (pasted) handleFileUpload(pasted);
+        }
         const raw = override ?? messageInput;
         if (!raw.trim()) return;
         const text = raw.trim();
@@ -1384,6 +1392,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
                         </div>
                     )}
+                    <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />
                     <form onSubmit={handleSendMessage}
                         className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
 
@@ -1400,12 +1409,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                         <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
 
                         <input type="text" ref={messageInputElRef} value={messageInput} onChange={handleInputChange}
-                            onKeyDown={handleInputKeyDown}
+                            onKeyDown={handleInputKeyDown} onPaste={pastedImage.onPaste}
                             onBlur={() => setMentionQuery(null)}
                             placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
                             className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
 
-                        <button type="submit" disabled={!messageInput.trim() || isUploading}
+                        <button type="submit" disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
                             className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
                             <Send size={18} className="mr-0 sm:mr-2" />
                             <span className="hidden sm:inline">Gönder</span>

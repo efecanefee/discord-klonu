@@ -39,7 +39,7 @@ interface StoreSound {
 type Tab = 'board' | 'store';
 type StoreSort = 'new' | 'popular' | 'played';
 
-const MAX_OWN = 10;
+const MAX_OWN = 20;
 const MAX_SAVED = 30;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const AUDIO_EXT = /\.(mp3|ogg)$/i;

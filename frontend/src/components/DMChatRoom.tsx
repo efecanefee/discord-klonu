@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Check, CheckCheck, X, Pencil, Reply, Smile, Paperclip } from 'lucide-react';
+import PastedImagePreview from './PastedImagePreview';
+import { usePastedImage } from '../hooks/usePastedImage';
 import { renderAvatar } from '../constants/avatars';
 import signalrService from '../services/signalrService';
 import EmojiPicker from './EmojiPicker';
@@ -78,6 +80,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const pastedImage = usePastedImage();
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -177,6 +180,9 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    const pasted = pastedImage.take();
+    if (pasted) handleFileUpload(pasted);
+
     if (!newMessage.trim()) return;
     scrollToBottom();
 
@@ -387,6 +393,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             </button>
           </div>
         )}
+        {!editingMessageId && <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />}
         <form onSubmit={handleSendMessage} className="relative flex items-center bg-[#18181b]/50 border border-white/10 rounded-2xl transition-all shadow-inner focus-within:border-primary-main/50 focus-within:bg-[#18181b]/80">
           <div className="relative">
             <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 text-white/30 hover:text-white transition-colors cursor-pointer">
@@ -424,14 +431,15 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
               setNewMessage(e.target.value);
               handleTypingStart();
             }}
-            onKeyDown={handleInputKeyDown}
+            onPaste={pastedImage.onPaste}
+            onKeyDown={(e) => { if (e.key === 'Escape' && pastedImage.file) { pastedImage.clear(); return; } handleInputKeyDown(e); }}
             placeholder={isUploading ? 'Dosya yükleniyor...' : `@${targetUser.username} kişisine mesaj gönder...`}
             disabled={isUploading}
             className="w-full bg-transparent py-4 text-[15px] text-white placeholder:text-white/30 outline-none flex-1"
           />
           <button
             type="submit"
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() && !(pastedImage.file && !editingMessageId)}
             className="mr-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-primary-main text-white hover:bg-primary-hover disabled:opacity-50 disabled:hover:bg-primary-main transition-all cursor-pointer"
           >
             <Send size={18} />
