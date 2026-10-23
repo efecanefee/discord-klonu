@@ -209,6 +209,16 @@ namespace DiscordClone.Api.Controllers
             var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return NotFound("Kullanıcı bulunamadı.");
 
+            // Türkçe harfler (İ, Ş, Ğ ...) bazı klavyelerden ayrışık gelebilir; tek biçime indir
+            request.Username = (request.Username ?? string.Empty).Normalize(System.Text.NormalizationForm.FormC);
+
+            // Yeni kullanıcı adı: Unicode harf (Türkçe dahil), rakam, nokta, tire, alt çizgi.
+            // Yalnızca değiştiğinde kontrol edilir ki eski biçimdeki adlar profili kilitlemesin.
+            if (user.Username != request.Username && !UsernameRules.IsValid(request.Username))
+            {
+                return BadRequest("Kullanıcı adı sadece harf, rakam, nokta, tire ve alt çizgi içerebilir.");
+            }
+
             // Check if username is taken by another user
             if (user.Username != request.Username && await _db.Users.AnyAsync(u => u.Username == request.Username))
             {
@@ -308,6 +318,15 @@ namespace DiscordClone.Api.Controllers
         public string? BannerColor { get; set; }
         public string? AccentColor { get; set; }
         public string? Bio { get; set; }
+    }
+
+    public static class UsernameRules
+    {
+        public const int MaxLength = 32;
+
+        public static bool IsValid(string username) =>
+            username.Length is > 0 and <= MaxLength &&
+            username.All(c => char.IsLetterOrDigit(c) || c is '_' or '.' or '-');
     }
 
     public static class ProfileColors

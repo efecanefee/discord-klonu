@@ -4,6 +4,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { getRtcConfig } from '../config/webrtc';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 import { playConnectionLostSound, playSelfLeaveSound } from '../utils/sound';
+import { voiceControls, useVoiceControls } from '../utils/voiceControls';
 
 // Kopan bir peer icin ust uste en fazla kac ICE restart denenir
 const MAX_ICE_RESTARTS = 3;
@@ -22,7 +23,8 @@ export function useVoiceChannel() {
     const [participants, setParticipants] = useState<VoiceParticipant[]>([]);
     const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
     const [speakingConnIds, setSpeakingConnIds] = useState<Set<string>>(new Set());
-    const [isMuted, setIsMuted] = useState(false);
+    // Sustur / sağırlaştır lobideki kullanıcı kartıyla ortak; sağırken mikrofon da kapalı
+    const { micBlocked: isMuted, deafened } = useVoiceControls();
     // ICE'i kalici olarak basarisiz olan peer'lar — UI'da uyari gostermek icin.
     const [connectionIssues, setConnectionIssues] = useState<Set<string>>(new Set());
 
@@ -216,7 +218,6 @@ export function useVoiceChannel() {
         activeKeyRef.current = null;
         selfRef.current = null;
         setActiveVoiceKey(null);
-        setIsMuted(false);
     }, [teardown]);
 
     const joinVoice = useCallback(async (voiceKey: string, self: VoiceUser) => {
@@ -234,7 +235,9 @@ export function useVoiceChannel() {
             alert('Mikrofona erişilemedi. Tarayıcı izinlerini kontrol et.');
             return;
         }
-        setIsMuted(false);
+        const micTrack = localStreamRef.current?.getAudioTracks()[0];
+        const vc = voiceControls.get();
+        if (micTrack) micTrack.enabled = !vc.micMuted && !vc.deafened;
 
         const onParticipants = (vk: string, users: VoiceUser[]) => {
             if (vk !== activeKeyRef.current) return;
@@ -350,10 +353,13 @@ export function useVoiceChannel() {
         gateRef.current?.setThreshold(settings.noiseGateThreshold);
     }, [settings.noiseGateEnabled, settings.noiseGateThreshold]);
 
-    const toggleMute = useCallback(() => {
+    // Sustur/sağırlaştır değişince (oda içinden veya lobiden) mikrofona uygula
+    useEffect(() => {
         const track = localStreamRef.current?.getAudioTracks()[0];
-        if (track) { track.enabled = !track.enabled; setIsMuted(!track.enabled); }
-    }, []);
+        if (track) track.enabled = !isMuted;
+    }, [isMuted]);
+
+    const toggleMute = voiceControls.toggleMic;
 
     // Hub yeniden baglandi: connectionId'miz degisti, sunucu bizi ses kanalindan
     // cikardi. Mikrofonu acik tutup eski peer'lari kapat; signalrService ardindan
@@ -389,5 +395,5 @@ export function useVoiceChannel() {
     // Ping ölçümü için mevcut peer bağlantıları (ref — kimliği sabit)
     const getPeers = useCallback(() => pcs.current, []);
 
-    return { getPeers, activeVoiceKey, participants, remoteStreams, speakingConnIds, connectionIssues, isMuted, toggleMute, joinVoice, leaveVoice };
+    return { getPeers, activeVoiceKey, participants, remoteStreams, speakingConnIds, connectionIssues, isMuted, deafened, toggleMute, toggleDeafen: voiceControls.toggleDeafen, joinVoice, leaveVoice };
 }

@@ -146,22 +146,26 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!username.trim()) {
+    // Bazı klavyeler "İ", "Ş" gibi harfleri harf + birleşik işaret olarak yollar;
+    // tek karaktere indir ki doğrulama ve benzersizlik kontrolü tutarlı olsun.
+    const name = username.normalize('NFC');
+    if (!name.trim()) {
       setError('Kullanıcı adı boş olamaz.');
       return;
     }
-    if (username.includes(' ')) {
+    if (name.includes(' ')) {
       setError('Kullanıcı adı boşluk içeremez.');
       return;
     }
-    if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
+    // \p{L}: Türkçe dahil tüm dillerdeki harfler (ğ, ü, ş, ı, ö, ç, İ ...)
+    if (!/^[\p{L}\p{N}_.-]+$/u.test(name)) {
       setError('Kullanıcı adı sadece harf, rakam, nokta, tire ve alt çizgi içerebilir.');
       return;
     }
     setIsLoading(true);
     setError('');
     try {
-      await onSave({ username, firstName, lastName, avatarId, bannerColor, accentColor, bio: bio.trim() });
+      await onSave({ username: name, firstName, lastName, avatarId, bannerColor, accentColor, bio: bio.trim() });
       invalidateUserProfile(userId);
       onClose();
     } catch (err: any) {
@@ -233,6 +237,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
+                    maxLength={32}
                     className="w-full bg-bg-base border border-[#334155] rounded-xl pl-9 pr-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Kullanıcı adınız"
                   />
