@@ -41,6 +41,7 @@ builder.Services.AddResend(options =>
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IRoomAuthorizationService, RoomAuthorizationService>();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ILinkPreviewService, LinkPreviewService>();
 builder.Services.AddScoped<IWeeklyStatsService, WeeklyStatsService>();
 builder.Services.AddHostedService<VoiceTimeFlushService>();
 

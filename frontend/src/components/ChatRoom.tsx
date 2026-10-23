@@ -20,6 +20,7 @@ import MessageFileAttachment from './MessageFileAttachment';
 import InlineMessageEditor from './InlineMessageEditor';
 import TypingIndicator from './TypingIndicator';
 import EditedTag from './EditedTag';
+import LinkPreviews from './LinkPreviews';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
@@ -1531,6 +1532,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         {pinButton(msg, 10)}
                                                                     </div>
                                                             </div>
+                                                            {!msg.fileUrl && <LinkPreviews text={msg.text} align={isMine ? 'end' : 'start'} compact />}
                                                         </div>
                                                     </div>
                                                 </motion.div>
@@ -1719,6 +1721,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                         )}
                                                                     </div>
                                                                 </div>
+                                                                {!msg.fileUrl && <LinkPreviews text={msg.text} align={isMine ? 'end' : 'start'} />}
                                                                 {msg.reactions && msg.serverId && (
                                                                     <ReactionChips reactions={msg.reactions} myUsername={username} onToggle={(e) => signalrService.toggleReaction(roomId, msg.serverId!, e)} />
                                                                 )}

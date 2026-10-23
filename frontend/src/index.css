@@ -921,3 +921,16 @@ html.reduce-motion .badge-shine { display: none; }
 .msg-editing {
   box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.55), 0 8px 28px rgba(var(--accent-rgb), 0.18);
 }
+
+/* ===== Link önizleme kartları (YouTube, X, genel siteler) ===== */
+.link-card {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--color-bg-surface, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border-main, rgba(255,255,255,0.08));
+  border-left: 3px solid var(--lc, rgba(var(--accent-rgb), 0.8));
+  box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+  text-align: left;
+  animation: sm-fade 0.25s ease both;
+}

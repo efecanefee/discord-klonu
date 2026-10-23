@@ -8,7 +8,27 @@ import MessageFileAttachment from './MessageFileAttachment';
 import InlineMessageEditor from './InlineMessageEditor';
 import TypingIndicator from './TypingIndicator';
 import EditedTag from './EditedTag';
+import LinkPreviews from './LinkPreviews';
 import { useStickToBottom } from '../hooks/useStickToBottom';
+
+// Metindeki http(s) linklerini tıklanabilir yapar; doğrudan resim/GIF linki görsel olarak açılır
+const linkify = (text: string, onDark: boolean): React.ReactNode[] =>
+  text.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+    if (i % 2 === 0) return part;
+    if (/\.(jpe?g|gif|png|webp)(\?.*)?$/i.test(part)) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="block my-1 w-fit" onClick={e => e.stopPropagation()}>
+          <img src={part} alt="" loading="lazy" className="max-w-[260px] sm:max-w-[340px] max-h-64 rounded-lg object-contain bg-black/20" />
+        </a>
+      );
+    }
+    return (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+        className={`underline underline-offset-2 break-all ${onDark ? 'text-white' : 'text-blue-400 hover:text-blue-300'}`}>
+        {part}
+      </a>
+    );
+  });
 
 interface DirectMessage {
   id: number;
@@ -329,7 +349,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                       {editingMessageId === msg.id ? (
                         <InlineMessageEditor value={editText} onChange={setEditText} onSave={saveEditing} onCancel={cancelEditing} onDark={isMe} />
                       ) : (!msg.fileUrl || !msg.content.startsWith('[Dosya:')) && (
-                        <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{msg.content}{msg.isEdited && <EditedTag />}</p>
+                        <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{linkify(msg.content, isMe)}{msg.isEdited && <EditedTag />}</p>
                       )}
                       <div className={`flex items-center gap-1.5 mt-2 text-[10px] ${isMe ? 'text-white/60 justify-end' : 'text-white/40'}`}>
                         <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -339,6 +359,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                       </div>
                     </div>
                   </div>
+                  {!msg.fileUrl && !msg.isDeleted && editingMessageId !== msg.id && <LinkPreviews text={msg.content} align={isMe ? 'end' : 'start'} />}
                 </div>
               </motion.div>
               </React.Fragment>

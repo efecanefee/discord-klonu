@@ -15,6 +15,7 @@ import MessageFileAttachment from './MessageFileAttachment';
 import InlineMessageEditor from './InlineMessageEditor';
 import TypingIndicator from './TypingIndicator';
 import EditedTag from './EditedTag';
+import LinkPreviews from './LinkPreviews';
 import UserPopoverCard, { type PopoverUser } from './UserPopoverCard';
 import PopoverPortal from './PopoverPortal';
 import RoomSettingsModal from './RoomSettingsModal';
@@ -1301,6 +1302,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                                 )}
                                                             </div>
                                                         </div>
+                                                        {!msg.fileUrl && <LinkPreviews text={msg.text} align={isMine ? 'end' : 'start'} />}
                                                         {msg.reactions && msg.serverId && (
                                                             <ReactionChips reactions={msg.reactions} myUsername={username} onToggle={(e) => signalrService.toggleReaction(activeChannelKey, msg.serverId!, e)} />
                                                         )}
