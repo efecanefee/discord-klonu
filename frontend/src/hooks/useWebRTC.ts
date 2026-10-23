@@ -698,18 +698,39 @@ export function useWebRTC() {
         };
     }, []);
 
-    // Ayarlardan mikrofon degisince canli stream'i degistir. init() ilk stream'i
-    // zaten dogru cihazla actigi icin mount'ta calismamali.
+    // Mikrofon cihazi koparsa (kulaklik cikti, Bluetooth degisti) track 'ended'
+    // olur ve tiklayarak acmak ise yaramaz; eskiden tek care odadan cikip
+    // girmekti. Kopunca mikrofonu yeniden ac.
+    const [micRestart, setMicRestart] = useState(0);
+    useEffect(() => {
+        const track = rawStreamRef.current?.getAudioTracks()[0];
+        if (!track) return;
+        const onEnded = () => {
+            console.warn('[WebRTC] Mikrofon koptu, yeniden aciliyor.');
+            setMicRestart(n => n + 1);
+        };
+        track.addEventListener('ended', onEnded);
+        return () => track.removeEventListener('ended', onEnded);
+    }, [localStream]);
+
+    // Ayarlardan mikrofon degisince (ya da mikrofon kopunca) canli stream'i
+    // degistir. init() ilk stream'i zaten dogru cihazla actigi icin mount'ta
+    // calismamali.
     const appliedMicRef = useRef<string | null>(null);
+    const appliedRestartRef = useRef(0);
     useEffect(() => {
         if (!isReady) return;
         if (appliedMicRef.current === null) { appliedMicRef.current = selectedMicId; return; }
-        if (appliedMicRef.current === selectedMicId) return;
+        const isRestart = micRestart !== appliedRestartRef.current;
+        if (!isRestart && appliedMicRef.current === selectedMicId) return;
         appliedMicRef.current = selectedMicId;
+        appliedRestartRef.current = micRestart;
 
         let cancelled = false;
         (async () => {
-            const opened = await openMicStream(selectedMicId);
+            let opened = await openMicStream(selectedMicId);
+            // Secili cihaz artik yoksa varsayilan mikrofona dus
+            if (!opened && isRestart && selectedMicId && selectedMicId !== 'default') opened = await openMicStream('default');
             if (!opened) return;
             if (cancelled) {
                 opened.gate.destroy();
@@ -739,7 +760,7 @@ export function useWebRTC() {
         })();
 
         return () => { cancelled = true; };
-    }, [selectedMicId, isReady, openMicStream]);
+    }, [selectedMicId, isReady, openMicStream, micRestart]);
 
     // Tarayici gurultu filtresi degisince canli stream'e uygula.
     // Kisit HAM track'e uygulanmali — islenmis stream MediaStreamDestination'dan

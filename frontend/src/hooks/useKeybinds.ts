@@ -45,9 +45,10 @@ export function useKeybinds({ pttEnabled, pttKey, muteToggleKey, onPTTDown, onPT
 
             // Bas-konuş (basılı tut)
             if (pttEnabled && e.code === pttKey) {
+                // Tekrar eden keydown'lar da odaktaki butonu tetiklemesin
+                e.preventDefault();
                 if (!pttHeld.current) {
                     pttHeld.current = true;
-                    e.preventDefault();
                     cbRef.current.onPTTDown();
                 }
             }
@@ -55,6 +56,10 @@ export function useKeybinds({ pttEnabled, pttKey, muteToggleKey, onPTTDown, onPT
 
         const handleKeyUp = (e: KeyboardEvent) => {
             if (pttEnabled && e.code === pttKey) {
+                // Odaktaki buton (az önce tıklanan mikrofon butonu gibi) Space/Enter
+                // bırakılınca tıklanmış sayılıyordu: bas-konuş her bırakışta mikrofonu
+                // susturup açıyordu. Yazı alanı dışında varsayılan davranışı engelle.
+                if (!isTypingTarget(e.target)) e.preventDefault();
                 if (pttHeld.current) {
                     pttHeld.current = false;
                     cbRef.current.onPTTUp();
