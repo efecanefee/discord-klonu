@@ -6,6 +6,8 @@ import WebPushToggle from './WebPushToggle';
 import { useSettings, THEMES, ACCENTS } from '../contexts/SettingsContext';
 import { createNoiseGate, type NoiseGate } from '../utils/noiseGate';
 import KeybindInput from './KeybindInput';
+import { useChatPrefs, unblockUser } from '../utils/chatPrefs';
+import { renderAvatar } from '../constants/avatars';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ interface SettingsModalProps {
 type TabType = 'audio' | 'notifications' | 'ui' | 'privacy';
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLastSeen = true, onUpdatePrivacy }) => {
+  const chatPrefs = useChatPrefs();
   const { settings, updateSettings } = useSettings();
   const [activeTab, setActiveTab] = useState<TabType>('audio');
   
@@ -592,6 +595,30 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                     </div>
                   </div>
                 </label>
+
+                {/* Engellenen kullanıcılar */}
+                <div className="p-4 rounded-xl border border-border-main bg-surface-subtle">
+                  <div className="font-semibold text-text-main">Engellenen Kullanıcılar</div>
+                  <div className="text-xs text-text-muted mt-1">Engellediğin kişiler sana mesaj atamaz, odalardaki mesajları gizlenir. Biz kimlik ya da yüz taraması istemiyoruz; hesabın yalnızca e-postanla korunur.</div>
+                  {chatPrefs.blocked.length === 0 ? (
+                    <div className="mt-3 text-xs text-text-muted/80">Kimseyi engellemedin.</div>
+                  ) : (
+                    <div className="mt-3 space-y-1.5">
+                      {chatPrefs.blocked.map(b => (
+                        <div key={b.id} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 bg-white/[0.03]">
+                          <div className="w-7 h-7 rounded-full overflow-hidden bg-bg-surface flex items-center justify-center text-sm shrink-0">
+                            {renderAvatar(b.avatarId || 'default')}
+                          </div>
+                          <span className="text-sm font-medium text-text-main truncate flex-1">{b.username}</span>
+                          <button onClick={() => unblockUser(b.id)}
+                            className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold text-primary-main hover:bg-primary-main/10 transition-colors cursor-pointer">
+                            Engeli kaldır
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             

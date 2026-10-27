@@ -22,6 +22,10 @@ namespace DiscordClone.Api.Data
         public DbSet<FeedPost> FeedPosts { get; set; }
         public DbSet<FeedPollVote> FeedPollVotes { get; set; }
         public DbSet<FeedReaction> FeedReactions { get; set; }
+        public DbSet<UserBlock> UserBlocks { get; set; }
+        public DbSet<UserMute> UserMutes { get; set; }
+        public DbSet<DmPin> DmPins { get; set; }
+        public DbSet<SavedMessage> SavedMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -321,6 +325,38 @@ namespace DiscordClone.Api.Data
             modelBuilder.Entity<FeedReaction>().Property(r => r.Emoji).HasColumnName("emoji");
             modelBuilder.Entity<FeedReaction>().Property(r => r.CreatedAt).HasColumnName("created_at");
             modelBuilder.Entity<FeedReaction>().HasIndex(r => new { r.PostId, r.UserId, r.Emoji }).IsUnique();
+
+            // Engelleme, susturma, DM sabitleme, kaydedilen mesajlar
+            modelBuilder.Entity<UserBlock>().ToTable("user_blocks");
+            modelBuilder.Entity<UserBlock>().HasKey(b => new { b.BlockerId, b.BlockedId });
+            modelBuilder.Entity<UserBlock>().Property(b => b.BlockerId).HasColumnName("blocker_id");
+            modelBuilder.Entity<UserBlock>().Property(b => b.BlockedId).HasColumnName("blocked_id");
+            modelBuilder.Entity<UserBlock>().Property(b => b.CreatedAt).HasColumnName("created_at");
+
+            modelBuilder.Entity<UserMute>().ToTable("user_mutes");
+            modelBuilder.Entity<UserMute>().HasKey(m => new { m.UserId, m.TargetKey });
+            modelBuilder.Entity<UserMute>().Property(m => m.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<UserMute>().Property(m => m.TargetKey).HasColumnName("target_key");
+            modelBuilder.Entity<UserMute>().Property(m => m.UntilMs).HasColumnName("until_ms");
+
+            modelBuilder.Entity<DmPin>().ToTable("dm_pins");
+            modelBuilder.Entity<DmPin>().HasKey(p => new { p.UserId, p.OtherUserId });
+            modelBuilder.Entity<DmPin>().Property(p => p.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<DmPin>().Property(p => p.OtherUserId).HasColumnName("other_user_id");
+            modelBuilder.Entity<DmPin>().Property(p => p.CreatedAt).HasColumnName("created_at");
+
+            modelBuilder.Entity<SavedMessage>().ToTable("saved_messages");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.Id).HasColumnName("id");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.UserId).HasColumnName("user_id");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.Kind).HasColumnName("kind");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.Location).HasColumnName("location");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.Author).HasColumnName("author");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.AuthorAvatarId).HasColumnName("author_avatar_id");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.Text).HasColumnName("text");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.FileUrl).HasColumnName("file_url");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.FileName).HasColumnName("file_name");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.MessageTs).HasColumnName("message_ts");
+            modelBuilder.Entity<SavedMessage>().Property(m => m.SavedAt).HasColumnName("saved_at");
         }
     }
 }

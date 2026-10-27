@@ -36,6 +36,12 @@ import { roleBadgeEmoji, sortByRole, roleRank } from '../utils/roles';
 import { applySinkId } from '../utils/audioOutput';
 import { voiceControls, useVoiceControls } from '../utils/voiceControls';
 import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/mentions';
+import { renderMarkdown } from '../utils/markdown';
+import { useChatPrefs, isMuted as isChatMuted, isBlockedUsername, roomMuteKey } from '../utils/chatPrefs';
+import MuteMenuButton from './MuteMenuButton';
+import SavedMessagesButton from './SavedMessagesButton';
+import SaveMessageButton from './SaveMessageButton';
+import BlockedMessageStub from './BlockedMessageStub';
 import MentionAutocomplete from './MentionAutocomplete';
 import { notify } from '../utils/browserNotifications';
 import { getLastRead, setLastRead } from '../utils/lastRead';
@@ -282,6 +288,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
     const [firstUnreadId, setFirstUnreadId] = useState<number | null>(null);
     // Hangi mesajın hızlı emoji paleti açık (msg.id)
     const [reactionPickerFor, setReactionPickerFor] = useState<number | null>(null);
+    const chatPrefs = useChatPrefs();
+    // Engellenen kullanıcıların tek tek "Göster" denen mesajları
+    const [revealedBlocked, setRevealedBlocked] = useState<Set<number>>(() => new Set());
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -753,12 +762,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             unreadCount.current += 1;
             document.title = `(${unreadCount.current}) SandalyeciMetin`;
 
-            if (settings.pushNotificationsEnabled) {
-                const mentioned = containsMention(lastMsg.text, username);
+            const mentioned = containsMention(lastMsg.text, username);
+            const silenced = isBlockedUsername(lastMsg.username, chatPrefs) || (!mentioned && isChatMuted(roomMuteKey(roomId), chatPrefs));
+            if (settings.pushNotificationsEnabled && !silenced) {
                 notify(mentioned ? `${lastMsg.username} seni etiketledi` : lastMsg.username, lastMsg.text, { tag: mentioned ? 'mention' : 'chat-message' });
             }
         }
-    }, [messages, username, settings.pushNotificationsEnabled]);
+    }, [messages, username, settings.pushNotificationsEnabled, chatPrefs, roomId]);
 
     // Görünürken gelen mesajlar okundu sayılır (ayraç bir sonraki girişte doğru olur)
     useEffect(() => {
@@ -1053,6 +1063,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             <Pin size={size} className={pinnedIds.has(msg.serverId) ? 'text-white' : 'text-text-main'} />
         </button>
     ) : null;
+    const saveButton = (msg: Message, size: number) => !msg.pending ? (
+        <SaveMessageButton size={size} payload={() => ({ kind: 'room', location: roomId, author: msg.username, authorAvatarId: msg.avatarId, text: msg.text, fileUrl: msg.fileUrl, fileName: msg.fileName, messageTs: msg.timestamp })} />
+    ) : null;
     const pinMark = (msg: Message, size: number) => msg.serverId != null && pinnedIds.has(msg.serverId)
         ? <Pin size={size} className="inline-block ml-1 -mt-0.5 text-primary-main anim-pop" aria-label="Sabitlenmiş" />
         : null;
@@ -1137,7 +1150,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
         segments.forEach((seg, i) => {
             if (seg.start > lastIndex) {
-                parts.push(<React.Fragment key={`text${i}`}>{renderTextWithLinks(text.slice(lastIndex, seg.start), `txt_${i}`)}</React.Fragment>);
+                parts.push(<React.Fragment key={`text${i}`}>{renderMarkdown(text.slice(lastIndex, seg.start), `txt_${i}`, renderTextWithLinks)}</React.Fragment>);
             }
             if (seg.inline) {
                 parts.push(
@@ -1169,7 +1182,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
         });
 
         if (lastIndex < text.length) {
-            parts.push(<React.Fragment key="last">{renderTextWithLinks(text.slice(lastIndex), 'last')}</React.Fragment>);
+            parts.push(<React.Fragment key="last">{renderMarkdown(text.slice(lastIndex), 'last', renderTextWithLinks)}</React.Fragment>);
         }
 
         return parts.length > 0 ? parts : text;
@@ -1541,6 +1554,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Sohbet</span>
                                 <div className="flex items-center gap-2">
                                     <span className="bg-bg-surface px-2 py-0.5 rounded-lg border border-border-main text-text-main font-semibold text-[11px]">{messages.filter(m => m.type === 'message').length}</span>
+                                    <MuteMenuButton muteKey={roomMuteKey(roomId)} targetLabel="Odayı" mentionsStillNotify
+                                        className="relative text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-[13px] [&>svg]:h-[13px]" />
+                                    <SavedMessagesButton className="relative text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-[13px] [&>svg]:h-[13px]" />
                                     <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username} onUnpin={togglePin} onJump={jumpToMessage}
                                         className="relative text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-[13px] [&>svg]:h-[13px]" />
                                     <button onClick={() => setShowSearch(p => !p)} className="text-text-muted hover:text-text-main transition-colors cursor-pointer"><Search size={13} /></button>
@@ -1568,6 +1584,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 </motion.div>
                                             );
                                             const isMine = msg.username === username;
+                                            if (!isMine && isBlockedUsername(msg.username, chatPrefs) && !revealedBlocked.has(msg.id)) return (
+                                                <BlockedMessageStub key={msg.id} onReveal={() => setRevealedBlocked(prev => new Set(prev).add(msg.id))} />
+                                            );
                                             return (
                                                 <motion.div initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} key={msg.id}
                                                     className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -1633,6 +1652,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                                 <Reply size={11} className="text-text-main" />
                                                                             </button>
                                                                         )}
+                                                                        {saveButton(msg, 10)}
                                                                         {pinButton(msg, 10)}
                                                                     </div>
                                                             </div>
@@ -1691,6 +1711,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                 className="bg-bg-surface border border-border-main rounded-xl px-3 py-1.5 text-sm text-text-main placeholder:text-text-muted focus:outline-none focus:border-primary-main" autoFocus />
                                         )}
                                     </AnimatePresence>
+                                    <MuteMenuButton muteKey={roomMuteKey(roomId)} targetLabel="Odayı" mentionsStillNotify
+                                        className="relative p-1.5 rounded-lg text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-4 [&>svg]:h-4" />
+                                    <SavedMessagesButton className="relative p-1.5 rounded-lg text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-4 [&>svg]:h-4" />
                                     <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username} onUnpin={togglePin} onJump={jumpToMessage}
                                         className="relative p-1.5 rounded-lg text-text-muted hover:text-text-main transition-colors cursor-pointer [&>svg]:w-4 [&>svg]:h-4" />
                                     <button onClick={() => { setShowSearch(p => !p); setSearchQuery(''); }}
@@ -1726,6 +1749,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                     </React.Fragment>
                                                 );
                                                 const isMine = msg.username === username;
+                                                if (!isMine && isBlockedUsername(msg.username, chatPrefs) && !revealedBlocked.has(msg.id)) return (
+                                                    <React.Fragment key={msg.id}>
+                                                        {unreadDivider}
+                                                        <BlockedMessageStub onReveal={() => setRevealedBlocked(prev => new Set(prev).add(msg.id))} />
+                                                    </React.Fragment>
+                                                );
                                                 return (
                                                     <React.Fragment key={msg.id}>
                                                     {unreadDivider}
@@ -1811,6 +1840,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                                                                 <Reply size={12} className="text-text-main" />
                                                                             </button>
                                                                         )}
+                                                                        {saveButton(msg, 11)}
                                                                         {pinButton(msg, 11)}
                                                                         {msg.serverId && !msg.pending && (
                                                                             <div className="relative">

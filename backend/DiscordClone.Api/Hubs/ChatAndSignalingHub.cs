@@ -67,6 +67,22 @@ namespace DiscordClone.Api.Hubs
         private static string Preview(string text, int max = 140) =>
             text.Length <= max ? text : text[..(max - 1)] + "…";
 
+        // İki kullanıcıdan biri diğerini engellediyse aralarında DM olmaz
+        private Task<bool> IsBlockedEitherWayAsync(string a, string b) =>
+            _db.UserBlocks.AnyAsync(x => (x.BlockerId == a && x.BlockedId == b) || (x.BlockerId == b && x.BlockedId == a));
+
+        private Task<bool> IsMutedAsync(string userId, string targetKey)
+        {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            return _db.UserMutes.AnyAsync(m => m.UserId == userId && m.TargetKey == targetKey && (m.UntilMs == null || m.UntilMs > now));
+        }
+
+        private async Task EnsureCanDirectMessageAsync(string senderId, string receiverId)
+        {
+            if (await IsBlockedEitherWayAsync(senderId, receiverId))
+                throw new HubException("Bu kullanıcıyla mesajlaşamazsın.");
+        }
+
         public override async Task OnConnectedAsync()
         {
             var uid = Context.UserIdentifier ?? Context.ConnectionId;
@@ -385,6 +401,7 @@ namespace DiscordClone.Api.Hubs
 
             var mentioned = await _db.Users
                 .Where(u => names.Contains(u.Username.ToLower()) && u.Id != senderId)
+                .Where(u => senderId == null || !_db.UserBlocks.Any(b => b.BlockerId == u.Id && b.BlockedId == senderId))
                 .Select(u => u.Id)
                 .ToListAsync();
             if (mentioned.Count == 0) return;
@@ -792,6 +809,7 @@ namespace DiscordClone.Api.Hubs
         {
             var senderId = Context.UserIdentifier;
             if (string.IsNullOrEmpty(senderId) || string.IsNullOrWhiteSpace(content)) return;
+            await EnsureCanDirectMessageAsync(senderId, receiverId);
 
             var sender = await _db.Users.FindAsync(senderId);
 
@@ -826,8 +844,9 @@ namespace DiscordClone.Api.Hubs
         // Alıcıya ve gönderene mesajı gönder (Eğer online iseler)
             await Clients.Users(new[] { senderId, receiverId }).SendAsync("ReceiveDirectMessage", dmData);
 
-            _push.SendToUsers(new[] { receiverId }, new PushPayload(
-                sender?.Username ?? "Yeni mesaj", Preview(content), Tag: $"dm-{senderId}", Url: "/"));
+            if (!await IsMutedAsync(receiverId, $"dm:{senderId}"))
+                _push.SendToUsers(new[] { receiverId }, new PushPayload(
+                    sender?.Username ?? "Yeni mesaj", Preview(content), Tag: $"dm-{senderId}", Url: "/"));
         }
 
         // Özel mesajda dosya/görsel gönder
@@ -835,6 +854,7 @@ namespace DiscordClone.Api.Hubs
         {
             var senderId = Context.UserIdentifier;
             if (string.IsNullOrEmpty(senderId) || string.IsNullOrWhiteSpace(fileUrl)) return;
+            await EnsureCanDirectMessageAsync(senderId, receiverId);
 
             var sender = await _db.Users.FindAsync(senderId);
 
@@ -871,8 +891,9 @@ namespace DiscordClone.Api.Hubs
 
             await Clients.Users(new[] { senderId, receiverId }).SendAsync("ReceiveDirectMessage", dmData);
 
-            _push.SendToUsers(new[] { receiverId }, new PushPayload(
-                sender?.Username ?? "Yeni mesaj", $"📎 {fileName}", Tag: $"dm-{senderId}", Url: "/"));
+            if (!await IsMutedAsync(receiverId, $"dm:{senderId}"))
+                _push.SendToUsers(new[] { receiverId }, new PushPayload(
+                    sender?.Username ?? "Yeni mesaj", $"📎 {fileName}", Tag: $"dm-{senderId}", Url: "/"));
         }
 
         public async Task EditDirectMessage(long messageId, string newContent)

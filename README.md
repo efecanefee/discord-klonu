@@ -31,6 +31,10 @@ SandalyeciMetin; sabit sohbet odaları (Ana Salon, Müzik Odası), kullanıcıla
 - **Yanıtlama, düzenleme, silme** (yönetici silmesi dahil) · **"yazıyor..." göstergesi**
 - **"Yeni Mesajlar" ayracı** — son okuduğun yerden devam et
 - Kod blokları (`` `inline` `` / ` ```blok``` `), URL otomatik link + resim embed
+- **Metin biçimlendirme** — `**kalın**`, `*italik*`, `__altı çizili__`, `~~üstü çizili~~`, `> alıntı`, `||spoiler||`
+- **Kaydedilenler** — mesajları yer imine ekle; oda mesajları silinse de kopyası kalır
+- **Bildirim susturma** — oda/sunucu veya DM bazında 15 dk, 1 sa, 8 sa, 24 sa ya da süresiz (odalarda @bahsetmeler yine gelir)
+- **Kullanıcı engelleme** — engellenen kişi DM atamaz, odalardaki mesajları gizlenir; ayarlardan yönetilir
 - Dosya / resim gönderme (sürükle-bırak), emoji picker, mesajlarda arama, pagination
 - Mesaj geçmişi: odalarda son 7 gün, DM'lerde son 14 gün (Supabase PostgreSQL)
 
@@ -60,6 +64,7 @@ SandalyeciMetin; sabit sohbet odaları (Ana Salon, Müzik Odası), kullanıcıla
 - Okundu bilgisi (✓ / ✓✓), "yazıyor..." göstergesi
 - **Okunmamış rozetleri** — çevrimdışıyken gelen mesajlar login sonrası da görünür
 - Oda içinden çıkmadan açılan DM overlay'i
+- **DM sabitleme** — önemli sohbetleri listenin en üstüne sabitle
 
 ### 👤 Kullanıcı & Profil
 - JWT kimlik doğrulama; e-posta doğrulama ve şifre sıfırlama (Resend)

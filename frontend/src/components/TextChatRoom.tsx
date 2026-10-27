@@ -30,6 +30,12 @@ import { roleBadgeEmoji, sortByRole, roleRank, roleLabel } from '../utils/roles'
 import { useSettings } from '../contexts/SettingsContext';
 import { applySinkId } from '../utils/audioOutput';
 import { parseMentions, containsMention, getActiveMentionQuery } from '../utils/mentions';
+import { renderMarkdown } from '../utils/markdown';
+import { useChatPrefs, isMuted, isBlockedUsername, roomMuteKey } from '../utils/chatPrefs';
+import MuteMenuButton from './MuteMenuButton';
+import SavedMessagesButton from './SavedMessagesButton';
+import SaveMessageButton from './SaveMessageButton';
+import BlockedMessageStub from './BlockedMessageStub';
 import MentionAutocomplete from './MentionAutocomplete';
 import { notify } from '../utils/browserNotifications';
 import { getLastRead, setLastRead } from '../utils/lastRead';
@@ -300,6 +306,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
     const [firstUnreadId, setFirstUnreadId] = useState<number | null>(null);
     // Hangi mesajın hızlı emoji paleti açık (msg.id)
     const [reactionPickerFor, setReactionPickerFor] = useState<number | null>(null);
+    const chatPrefs = useChatPrefs();
+    // Engellenen kullanıcıların tek tek "Göster" denen mesajları
+    const [revealedBlocked, setRevealedBlocked] = useState<Set<number>>(() => new Set());
     const messageIdCounter = useRef(0);
     // Emoji picker
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -568,12 +577,13 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         if (document.hidden) {
             unreadCount.current += 1;
             document.title = `(${unreadCount.current}) SandalyeciMetin`;
-            if (settings.pushNotificationsEnabled) {
-                const mentioned = containsMention(lastMsg.text, username);
+            const mentioned = containsMention(lastMsg.text, username);
+            const silenced = isBlockedUsername(lastMsg.username, chatPrefs) || (!mentioned && isMuted(roomMuteKey(roomId), chatPrefs));
+            if (settings.pushNotificationsEnabled && !silenced) {
                 notify(mentioned ? `${lastMsg.username} seni etiketledi` : lastMsg.username, lastMsg.text, { tag: mentioned ? 'mention' : 'chat-message' });
             }
         }
-    }, [messages, username, settings.pushNotificationsEnabled]);
+    }, [messages, username, settings.pushNotificationsEnabled, chatPrefs, roomId]);
 
     // Görünürken gelen mesajlar okundu sayılır (ayraç bir sonraki girişte doğru olur)
     useEffect(() => {
@@ -872,7 +882,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
 
         segments.forEach((seg, i) => {
             if (seg.start > lastIndex) {
-                parts.push(<React.Fragment key={`text${i}`}>{renderTextWithLinks(text.slice(lastIndex, seg.start), `txt_${i}`)}</React.Fragment>);
+                parts.push(<React.Fragment key={`text${i}`}>{renderMarkdown(text.slice(lastIndex, seg.start), `txt_${i}`, renderTextWithLinks)}</React.Fragment>);
             }
             if (seg.inline) {
                 parts.push(
@@ -904,7 +914,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
         });
 
         if (lastIndex < text.length) {
-            parts.push(<React.Fragment key="last">{renderTextWithLinks(text.slice(lastIndex), 'last')}</React.Fragment>);
+            parts.push(<React.Fragment key="last">{renderMarkdown(text.slice(lastIndex), 'last', renderTextWithLinks)}</React.Fragment>);
         }
         return parts.length > 0 ? parts : text;
     };
@@ -966,6 +976,10 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                 {merged.length || 1}
                             </span>
                         </button>
+
+                        {/* Bildirim susturma ve kaydedilenler */}
+                        <MuteMenuButton muteKey={roomMuteKey(roomId)} targetLabel="Sunucuyu" mentionsStillNotify />
+                        <SavedMessagesButton />
 
                         {/* Sabitlenmiş mesajlar */}
                         <PinnedMessagesButton pins={pins} canPin={canPin} myUsername={username}
@@ -1224,6 +1238,12 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                             </React.Fragment>
                                         );
                                         const isMine = msg.username === username;
+                                        if (!isMine && isBlockedUsername(msg.username, chatPrefs) && !revealedBlocked.has(msg.id)) return (
+                                            <React.Fragment key={msg.id}>
+                                                {unreadDivider}
+                                                <BlockedMessageStub onReveal={() => setRevealedBlocked(prev => new Set(prev).add(msg.id))} />
+                                            </React.Fragment>
+                                        );
                                         return (
                                             <React.Fragment key={msg.id}>
                                             {unreadDivider}
@@ -1295,6 +1315,9 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                                     <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-bg-surface border border-border-main hover:bg-border-main flex items-center justify-center cursor-pointer" title="Yanıtla">
                                                                         <Reply size={12} className="text-text-main" />
                                                                     </button>
+                                                                )}
+                                                                {!msg.pending && (
+                                                                    <SaveMessageButton payload={() => ({ kind: 'room', location: roomInfo?.name || roomId, author: msg.username, authorAvatarId: msg.avatarId, text: msg.text, fileUrl: msg.fileUrl, fileName: msg.fileName, messageTs: msg.timestamp })} />
                                                                 )}
                                                                 {canPin && msg.serverId && !msg.pending && (
                                                                     <button onClick={() => togglePin(msg.serverId!)} className={`w-6 h-6 rounded-full border flex items-center justify-center cursor-pointer ${pinnedIds.has(msg.serverId) ? 'bg-primary-main border-primary-main' : 'bg-bg-surface border-border-main hover:bg-border-main'}`} title={pinnedIds.has(msg.serverId) ? 'Sabitlemeyi kaldır' : 'Sabitle'}>
