@@ -201,7 +201,7 @@ const RemoteVideoPlayer: React.FC<{
 
             {/* Meet tarzı kontroller: ses / PiP / tam ekran. Dokunmatikte hep görünür */}
             <div onDoubleClick={e => e.stopPropagation()} className={`absolute flex items-center gap-1.5 transition-opacity duration-200 ${isFullscreen ? 'bottom-6 left-1/2 -translate-x-1/2 px-2 py-2 rounded-2xl bg-black/60 backdrop-blur-md' : 'bottom-2 right-2'} ${
-                controlsHidden ? 'opacity-0 pointer-events-none' : isFullscreen ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 group-focus-within/video:opacity-100 [@media(hover:none)]:opacity-100'}`}>
+                controlsHidden ? 'opacity-0 pointer-events-none' : isFullscreen ? 'opacity-100' : 'opacity-90 group-hover/video:opacity-100'}`}>
                 {onVolumeChange && (
                     <div className="flex items-center gap-1.5 px-2 py-1.5 bg-black/60 rounded-lg backdrop-blur-sm">
                         {(volume ?? 1) === 0
@@ -1015,6 +1015,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
     const hasRemoteVideo = Array.from(remoteStreams.values()).some(s => s.getVideoTracks().length > 0);
     const isMediaActive = isCameraOn || isScreenSharing || hasRemoteVideo;
+    // Sahne görünümünde görüntüsü olmayan herkes avatar kutucuğu olarak çıkar (Discord gibi)
+    const stageAvatarUsers = sortedUsers.filter(u => {
+        if (u.connectionId === signalrService.connectionId) return !isCameraOn && !isScreenSharing;
+        const s = remoteStreams.get(u.connectionId);
+        return !s || !s.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
+    });
 
 
     // Mesaj filtresi (search)
@@ -1217,18 +1223,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             {isAnaSalon && <YoutubePlayerPanel roomId={roomId} username={username} />}
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible"
-                className="relative z-10 flex flex-col h-full max-w-[1400px] mx-auto w-full p-4 sm:p-6 lg:p-8">
+                className="relative z-10 flex flex-col h-full max-w-[1600px] mx-auto w-full p-3 sm:p-4 lg:px-5 lg:py-4">
 
                 {/* ===== HEADER ===== */}
                 <motion.div variants={itemVariants}
-                    className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 mb-4 bg-bg-surface border border-border-main rounded-2xl shadow-card">
+                    className="flex flex-wrap items-center justify-between gap-3 px-1 py-1 mb-3">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-bg-base rounded-[14px] border border-border-main shadow-sm">
-                            <Users className="text-primary-main" size={22} />
+                        <div className="p-2 bg-bg-card rounded-xl border border-border-main">
+                            <Users className="text-primary-main" size={18} />
                         </div>
-                        <div>
-                            <h2 className="text-[17px] font-semibold text-text-main tracking-tight leading-none mb-1">{roomId}</h2>
-                            <span className="text-[12px] text-text-muted">Sohbet Odası</span>
+                        <div className="flex items-baseline gap-2.5 min-w-0">
+                            <h2 className="text-[18px] font-semibold text-text-main tracking-tight leading-none truncate">{roomId}</h2>
+                            <span className="hidden sm:inline text-[13px] text-text-muted whitespace-nowrap">Sohbet Odası</span>
                         </div>
                     </div>
 
@@ -1427,11 +1433,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
 
                 {/* ===== MEDYA MODU ===== */}
                 {isMediaActive ? (
-                    <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-4 mb-4">
+                    <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-3">
+                        {/* Sahne: görüntüler + kamerası kapalı olanlar avatar kutucuğu olarak */}
                         <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
                             <div className="relative flex-1 flex flex-col bg-black/40 rounded-2xl overflow-hidden">
-                                <div className={`flex-1 grid gap-2 p-2 ${(() => {
-                                    const total = (isCameraOn && !isScreenSharing ? 1 : 0) + (isScreenSharing ? 1 : 0) + Array.from(remoteStreams.values()).reduce((n, s) => n + s.getVideoTracks().length, 0);
+                                <div className={`flex-1 grid auto-rows-fr gap-2 p-2 overflow-y-auto custom-scrollbar ${(() => {
+                                    const total = (isCameraOn && !isScreenSharing ? 1 : 0) + (isScreenSharing ? 1 : 0) + Array.from(remoteStreams.values()).reduce((n, s) => n + s.getVideoTracks().length, 0) + stageAvatarUsers.length;
                                     return total <= 1 ? 'grid-cols-1' : total <= 4 ? 'grid-cols-2' : 'grid-cols-3';
                                 })()}`}>
                                     {screenStream && (
@@ -1493,6 +1500,48 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                             </div>
                                         );
                                     })}
+                                    {stageAvatarUsers.map((u) => {
+                                        const isMe = u.connectionId === signalrService.connectionId;
+                                        const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
+                                        const isDeaf = isMe ? deafened : deafenedUsers[u.connectionId];
+                                        const isMicOff = isMe ? isMuted : mutedUsers[u.connectionId];
+                                        const vol = userVolumes[u.username] ?? 1.0;
+                                        return (
+                                            <div key={u.connectionId}
+                                                className={`relative min-h-[140px] flex flex-col items-center justify-center gap-3 rounded-xl border bg-bg-surface transition-colors ${isSpeaking ? 'border-emerald-500 shadow-[inset_0_0_0_1px_rgb(16,185,129)]' : 'border-border-main'}`}>
+                                                <div className={`w-20 h-20 rounded-full overflow-hidden flex items-center justify-center text-3xl bg-bg-card ${isSpeaking ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-bg-surface' : ''}`}>
+                                                    {renderAvatar(u.avatarId || 'default')}
+                                                </div>
+                                                <span className="flex items-center gap-1.5 text-[14px] font-semibold text-text-main max-w-[90%] truncate">
+                                                    {u.username}{isMe && <span className="text-[12px] font-normal text-text-muted">(Sen)</span>}
+                                                    <SpeakingBars active={isSpeaking} />
+                                                </span>
+                                                {(isDeaf || isMicOff || connectionIssues.has(u.connectionId)) && (
+                                                    <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-1.5 bg-black/50 rounded-lg">
+                                                        {connectionIssues.has(u.connectionId)
+                                                            ? <span className="text-[11px] text-amber-400" title="Ses bağlantısı kurulamadı">bağlanılamadı</span>
+                                                            : isDeaf
+                                                                ? <span title="Sağırlaştırıldı"><HeadphoneOff size={14} className="text-red-500" /></span>
+                                                                : <span title="Mikrofonu kapalı"><MicOff size={14} className="text-red-500" /></span>}
+                                                    </div>
+                                                )}
+                                                {/* Kişi başı ses ayarı — her zaman görünür */}
+                                                {!isMe && (
+                                                    <div className="absolute bottom-2 right-2 flex items-center gap-1.5 px-2 py-1.5 bg-black/50 rounded-lg">
+                                                        <button type="button" onClick={() => setUserVolumes(prev => ({ ...prev, [u.username]: vol === 0 ? 1 : 0 }))}
+                                                            title={vol === 0 ? 'Sesi aç' : 'Sesi kapat'} aria-label={vol === 0 ? `${u.username} sesini aç` : `${u.username} sesini kapat`}
+                                                            className="cursor-pointer">
+                                                            {vol === 0 ? <VolumeX size={14} className="text-red-400" /> : <Volume2 size={14} className="text-white" />}
+                                                        </button>
+                                                        <input type="range" min="0" max="1" step="0.01" value={vol}
+                                                            onChange={e => setUserVolumes(prev => ({ ...prev, [u.username]: parseFloat(e.target.value) }))}
+                                                            title={`${u.username} ses seviyesi`} aria-label={`${u.username} ses seviyesi`}
+                                                            className="w-20 accent-white cursor-pointer" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 {isCameraOn && isScreenSharing && (
                                     <div className="absolute bottom-4 right-4 w-48 h-36 rounded-xl overflow-hidden border-2 border-border-main shadow-2xl bg-black z-10 flex justify-center items-center">
@@ -1502,54 +1551,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             </div>
                         </motion.div>
 
-                        {/* Kullanıcılar Sidebar (Medya Modunda) */}
-                        <motion.div variants={itemVariants} className="hidden lg:flex w-48 flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
-                            <div className="p-3 border-b border-border-main bg-bg-surface/30">
-                                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center justify-between">
-                                    <span>Odada</span>
-                                    <span className="bg-bg-surface px-2 py-0.5 rounded-lg border border-border-main text-text-main font-semibold text-[11px]">
-                                        {Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}
-                                    </span>
-                                </h3>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
-                                <AnimatePresence initial={false}>
-                                {sortedUsers.map((u) => {
-                                    const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
-                                    const badge = roleBadgeEmoji(u.role);
-                                    return (
-                                        <motion.div layout {...voiceMemberMotion} key={u.connectionId} className={`flex items-center gap-2 p-2 rounded-xl transition-colors ${isSpeaking ? 'bg-emerald-500/10 border border-emerald-500/30' : 'border border-transparent hover:bg-bg-surface'}`}>
-                                            <div className="relative flex-shrink-0">
-                                                <span className="voice-join-ring" />
-                                                <div className={`relative w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-sm ${isSpeaking ? 'ring-2 ring-emerald-500/60' : ''}`}>
-                                                    {renderAvatar(u.avatarId || 'default')}
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col min-w-0 flex-1">
-                                                <span className="text-xs font-medium text-text-main truncate flex items-center gap-1">{u.username} {badge && <span>{badge}</span>}<SpeakingBars active={isSpeaking} className="ml-auto shrink-0" /></span>
-                                                {connectionIssues.has(u.connectionId)
-                                                    ? <span title="Ses baglantisi kurulamadi" className="text-[10px] text-amber-400/80">bağlanılamadı</span>
-                                                    : (u.connectionId === signalrService.connectionId ? deafened : deafenedUsers[u.connectionId])
-                                                        ? <span title="Sağırlaştırıldı"><HeadphoneOff size={10} className="text-red-400 mt-0.5" /></span>
-                                                        : (u.connectionId === signalrService.connectionId ? isMuted : mutedUsers[u.connectionId]) && <MicOff size={10} className="text-red-400 mt-0.5" />}
-                                                {/* Medya modunda da kişi başı ses ayarı (eskiden yalnızca normal görünümde vardı) */}
-                                                {u.username !== username && (
-                                                    <input type="range" min="0" max="1" step="0.01" value={userVolumes[u.username] ?? 1.0}
-                                                        onChange={e => setUserVolumes(prev => ({ ...prev, [u.username]: parseFloat(e.target.value) }))}
-                                                        title={`${u.username} ses seviyesi`}
-                                                        aria-label={`${u.username} ses seviyesi`}
-                                                        className="mt-1 w-full h-1 bg-bg-base rounded-full appearance-none cursor-pointer accent-primary-main" />
-                                                )}
-                                            </div>
-                                        </motion.div>
-                                    );
-                                })}
-                                </AnimatePresence>
-                            </div>
-                        </motion.div>
-
                         {/* Kompakt Chat */}
-                        <motion.div variants={itemVariants} className="w-full lg:w-96 h-80 lg:h-auto flex flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
+                        <motion.div variants={itemVariants} className="w-full lg:w-[400px] h-80 lg:h-auto flex flex-col bg-bg-card border border-border-main rounded-2xl shadow-card overflow-hidden shrink-0">
                             <div className="p-3 border-b border-border-main bg-bg-surface/30 flex items-center justify-between">
                                 <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Sohbet</span>
                                 <div className="flex items-center gap-2">
@@ -1699,11 +1702,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                 ) : (
                     /* ===== NORMAL MOD ===== */
                     <>
-                        <div className="flex flex-1 overflow-hidden gap-6 mb-6">
-                            {/* Chat alanı */}
-                            <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
+                        <div className="flex flex-1 min-h-0 gap-3">
+                            {/* Chat alanı — mesaj kutusu da bu kartın içinde */}
+                            <motion.div variants={itemVariants} className="relative flex-1 flex flex-col min-h-0 bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
                                 {/* Arama */}
-                                <div className="flex items-center justify-end px-5 pt-4 pb-0 gap-2">
+                                <div className="flex items-center gap-1.5 h-12 shrink-0 pl-5 pr-3 border-b border-border-main">
+                                    <span className="text-[13px] font-semibold text-text-muted mr-auto">Sohbet</span>
                                     <AnimatePresence>
                                         {showSearch && (
                                             <motion.input initial={{ width: 0, opacity: 0 }} animate={{ width: 200, opacity: 1 }} exit={{ width: 0, opacity: 0 }}
@@ -1722,7 +1726,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     </button>
                                 </div>
 
-                                <div ref={chatScrollRef} onScroll={handleChatScroll} className="relative flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
+                                <div ref={chatScrollRef} onScroll={handleChatScroll} className="relative flex-1 min-h-0 overflow-y-auto px-5 py-4 sm:px-6 custom-scrollbar">
                                     {visibleMessages.length === 0 && !searchQuery && (
                                         <div className="absolute inset-0 flex items-center justify-center flex-col gap-4 pointer-events-none">
                                             <div className="p-4 bg-bg-surface rounded-2xl border border-border-main shadow-sm"><Send size={32} className="text-text-muted" /></div>
@@ -1876,6 +1880,94 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         <div className="h-2" />
                                     </div>
                                 </div>
+                            {/* Mesaj input */}
+                            <div className="relative z-20 px-3 sm:px-4 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                                {replyingToMessage && (
+                                    <div className="absolute -top-12 left-3 right-3 sm:left-4 sm:right-4 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
+                                        <span className="text-primary-main flex items-center gap-2 font-medium"><Reply size={14} /> {replyingToMessage.username} yanıtlanıyor: <span className="text-text-muted truncate max-w-[150px]">{replyingToMessage.text}</span></span>
+                                        <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
+                                    </div>
+                                )}
+                                <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />
+                                <form onSubmit={handleSendMessage}
+                                    className="flex flex-row items-center p-1.5 bg-bg-surface border border-border-main rounded-xl focus-within:border-primary-main transition-all duration-200 relative z-20">
+                                
+                                    <button type="button" onClick={() => { setShowEmojiPicker(p => !p); setShowSoundboard(false); setShowYoutubeInput(false); }} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
+                                        <Smile size={20} />
+                                    </button>
+                                    <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+                                        className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                        <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
+                                    </button>
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
+                                        <Paperclip size={20} />
+                                    </button>
+                                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
+                                    {isAnaSalon && (
+                                        <>
+                                            <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard & Ses Mağazası" data-open={showSoundboard} className="sb-trigger p-3 transition-colors cursor-pointer">
+                                                <Music2 size={20} />
+                                            </button>
+                                            <button type="button" onClick={() => { setShowYoutubeInput(p => !p); setShowSoundboard(false); setShowEmojiPicker(false); }} title="YouTube'dan müzik aç" className={`p-3 transition-colors cursor-pointer ${showYoutubeInput ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                                <Youtube size={20} />
+                                            </button>
+                                        </>
+                                    )}
+                                
+                                    <input type="text" value={messageInput} onChange={handleInputChange}
+                                        onKeyDown={handleInputKeyDown} onPaste={pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
+                                        placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
+                                        className="w-full bg-transparent px-3 py-2.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
+                                
+                                    <button type="submit" disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
+                                        className="flex items-center justify-center px-3 sm:px-4 py-2.5 mr-0.5 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-fill-end))] text-white font-semibold disabled:opacity-50 transition-all hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
+                                        <Send size={18} className="mr-0 sm:mr-2" />
+                                        <span className="hidden sm:inline">Gönder</span>
+                                    </button>
+                                </form>
+                                <div className="absolute bottom-full mb-2 left-0 z-50">
+                                    <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                                    <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
+                                </div>
+                                {mentionQuery !== null && (
+                                    <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
+                                )}
+                                {isAnaSalon && (
+                                    <div className="absolute bottom-full mb-2 left-0 right-0 sm:right-auto z-50">
+                                        <SoundboardPanel isOpen={showSoundboard} onClose={() => setShowSoundboard(false)} roomId={roomId} apiBaseUrl={API_BASE_URL} />
+                                    </div>
+                                )}
+                                {isAnaSalon && showYoutubeInput && (
+                                    <div className="absolute bottom-full mb-2 left-0 z-50">
+                                        <div className="flex flex-col gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px] max-w-[calc(100vw-1.5rem)]">
+                                            <div className="flex items-center gap-2">
+                                                <Youtube size={18} className="text-red-500 shrink-0" />
+                                                <input
+                                                    type="text"
+                                                    value={youtubeUrlInput}
+                                                    onChange={e => setYoutubeUrlInput(e.target.value)}
+                                                    onKeyDown={e => { if (e.key === 'Enter') handleStartYoutube(); }}
+                                                    placeholder="YouTube linkini yapıştır..."
+                                                    autoFocus
+                                                    className="flex-1 min-w-0 bg-bg-base border border-border-main rounded-xl px-3 py-2 text-text-main text-sm outline-none focus:border-primary-main transition-colors"
+                                                />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button type="button" onClick={() => handleStartYoutube()} disabled={!youtubeUrlInput.trim()}
+                                                    title="Odadakilere izleme partisi daveti gönderir; kabul edenler birlikte izler"
+                                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-40">
+                                                    <Youtube size={14} /> Aç
+                                                </button>
+                                                <button type="button" onClick={() => handleEnqueueYoutube()} disabled={!youtubeUrlInput.trim()}
+                                                    title="Videoyu sıraya ekler; çalan bittiğinde otomatik geçilir"
+                                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary-main/15 text-primary-main text-xs font-semibold hover:bg-primary-main/25 transition-colors disabled:opacity-40">
+                                                    <ListPlus size={14} /> Kuyruğa ekle
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             </motion.div>
 
                             {/* Mobil çekmece karartması */}
@@ -1890,7 +1982,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             {/* Users Sidebar — masaüstünde sabit yan panel, mobilde sağdan kayan çekmece */}
                             <motion.div variants={itemVariants}
                                 className={`flex-col bg-bg-card border border-border-main shadow-card overflow-hidden shrink-0
-                                    md:static md:flex md:w-72 md:h-auto md:rounded-2xl md:z-auto md:translate-x-0 md:transition-none
+                                    md:static md:flex md:w-[260px] md:h-auto md:rounded-2xl md:z-auto md:translate-x-0 md:transition-none
                                     fixed top-0 right-0 h-[100dvh] w-[85%] max-w-xs z-50 border-l transition-transform duration-300 ease-out
                                     ${showMobileMembers ? 'flex translate-x-0' : 'flex translate-x-full md:translate-x-0'}`}>
                                 <div className="p-5 border-b border-border-main bg-bg-surface/30">
@@ -2012,95 +2104,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 </div>
                             </motion.div>
                         </div>
-
-                        {/* Mesaj input */}
-                        <motion.div variants={itemVariants} className="relative sticky bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-base pt-2">
-                            {replyingToMessage && (
-                                <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
-                                    <span className="text-primary-main flex items-center gap-2 font-medium"><Reply size={14} /> {replyingToMessage.username} yanıtlanıyor: <span className="text-text-muted truncate max-w-[150px]">{replyingToMessage.text}</span></span>
-                                    <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
-                                </div>
-                            )}
-                            <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />
-                            <form onSubmit={handleSendMessage}
-                                className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
-                                
-                                <button type="button" onClick={() => { setShowEmojiPicker(p => !p); setShowSoundboard(false); setShowYoutubeInput(false); }} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
-                                    <Smile size={20} />
-                                </button>
-                                <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
-                                    className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
-                                    <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
-                                </button>
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
-                                    <Paperclip size={20} />
-                                </button>
-                                <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
-                                {isAnaSalon && (
-                                    <>
-                                        <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard & Ses Mağazası" data-open={showSoundboard} className="sb-trigger p-3 transition-colors cursor-pointer">
-                                            <Music2 size={20} />
-                                        </button>
-                                        <button type="button" onClick={() => { setShowYoutubeInput(p => !p); setShowSoundboard(false); setShowEmojiPicker(false); }} title="YouTube'dan müzik aç" className={`p-3 transition-colors cursor-pointer ${showYoutubeInput ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
-                                            <Youtube size={20} />
-                                        </button>
-                                    </>
-                                )}
-                                
-                                <input type="text" value={messageInput} onChange={handleInputChange}
-                                    onKeyDown={handleInputKeyDown} onPaste={pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
-                                    placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
-                                    className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
-                                
-                                <button type="submit" disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
-                                    className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-fill-end))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
-                                    <Send size={18} className="mr-0 sm:mr-2" />
-                                    <span className="hidden sm:inline">Gönder</span>
-                                </button>
-                            </form>
-                            <div className="absolute bottom-full mb-2 left-0 z-50">
-                                <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
-                                <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
-                            </div>
-                            {mentionQuery !== null && (
-                                <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
-                            )}
-                            {isAnaSalon && (
-                                <div className="absolute bottom-full mb-2 left-0 right-0 sm:right-auto z-50">
-                                    <SoundboardPanel isOpen={showSoundboard} onClose={() => setShowSoundboard(false)} roomId={roomId} apiBaseUrl={API_BASE_URL} />
-                                </div>
-                            )}
-                            {isAnaSalon && showYoutubeInput && (
-                                <div className="absolute bottom-full mb-2 left-0 z-50">
-                                    <div className="flex flex-col gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px] max-w-[calc(100vw-1.5rem)]">
-                                        <div className="flex items-center gap-2">
-                                            <Youtube size={18} className="text-red-500 shrink-0" />
-                                            <input
-                                                type="text"
-                                                value={youtubeUrlInput}
-                                                onChange={e => setYoutubeUrlInput(e.target.value)}
-                                                onKeyDown={e => { if (e.key === 'Enter') handleStartYoutube(); }}
-                                                placeholder="YouTube linkini yapıştır..."
-                                                autoFocus
-                                                className="flex-1 min-w-0 bg-bg-base border border-border-main rounded-xl px-3 py-2 text-text-main text-sm outline-none focus:border-primary-main transition-colors"
-                                            />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button type="button" onClick={() => handleStartYoutube()} disabled={!youtubeUrlInput.trim()}
-                                                title="Odadakilere izleme partisi daveti gönderir; kabul edenler birlikte izler"
-                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-40">
-                                                <Youtube size={14} /> Aç
-                                            </button>
-                                            <button type="button" onClick={() => handleEnqueueYoutube()} disabled={!youtubeUrlInput.trim()}
-                                                title="Videoyu sıraya ekler; çalan bittiğinde otomatik geçilir"
-                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary-main/15 text-primary-main text-xs font-semibold hover:bg-primary-main/25 transition-colors disabled:opacity-40">
-                                                <ListPlus size={14} /> Kuyruğa ekle
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
                     </>
                 )}
             </motion.div>
