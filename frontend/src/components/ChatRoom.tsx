@@ -1217,18 +1217,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
             {isAnaSalon && <YoutubePlayerPanel roomId={roomId} username={username} />}
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible"
-                className="relative z-10 flex flex-col h-full max-w-[1400px] mx-auto w-full p-4 sm:p-6 lg:p-8">
+                className="relative z-10 flex flex-col h-full max-w-[1600px] mx-auto w-full p-3 sm:p-4 lg:px-5 lg:py-4">
 
                 {/* ===== HEADER ===== */}
                 <motion.div variants={itemVariants}
-                    className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 mb-4 bg-bg-surface border border-border-main rounded-2xl shadow-card">
+                    className="flex flex-wrap items-center justify-between gap-3 px-1 py-1 mb-3">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-bg-base rounded-[14px] border border-border-main shadow-sm">
-                            <Users className="text-primary-main" size={22} />
+                        <div className="p-2 bg-bg-card rounded-xl border border-border-main">
+                            <Users className="text-primary-main" size={18} />
                         </div>
-                        <div>
-                            <h2 className="text-[17px] font-semibold text-text-main tracking-tight leading-none mb-1">{roomId}</h2>
-                            <span className="text-[12px] text-text-muted">Sohbet Odası</span>
+                        <div className="flex items-baseline gap-2.5 min-w-0">
+                            <h2 className="text-[18px] font-semibold text-text-main tracking-tight leading-none truncate">{roomId}</h2>
+                            <span className="hidden sm:inline text-[13px] text-text-muted whitespace-nowrap">Sohbet Odası</span>
                         </div>
                     </div>
 
@@ -1699,11 +1699,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                 ) : (
                     /* ===== NORMAL MOD ===== */
                     <>
-                        <div className="flex flex-1 overflow-hidden gap-6 mb-6">
-                            {/* Chat alanı */}
-                            <motion.div variants={itemVariants} className="flex-1 flex flex-col overflow-hidden bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
+                        <div className="flex flex-1 min-h-0 gap-3">
+                            {/* Chat alanı — mesaj kutusu da bu kartın içinde */}
+                            <motion.div variants={itemVariants} className="relative flex-1 flex flex-col min-h-0 bg-bg-card border border-border-main rounded-2xl shadow-card min-w-0">
                                 {/* Arama */}
-                                <div className="flex items-center justify-end px-5 pt-4 pb-0 gap-2">
+                                <div className="flex items-center gap-1.5 h-12 shrink-0 pl-5 pr-3 border-b border-border-main">
+                                    <span className="text-[13px] font-semibold text-text-muted mr-auto">Sohbet</span>
                                     <AnimatePresence>
                                         {showSearch && (
                                             <motion.input initial={{ width: 0, opacity: 0 }} animate={{ width: 200, opacity: 1 }} exit={{ width: 0, opacity: 0 }}
@@ -1722,7 +1723,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     </button>
                                 </div>
 
-                                <div ref={chatScrollRef} onScroll={handleChatScroll} className="relative flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
+                                <div ref={chatScrollRef} onScroll={handleChatScroll} className="relative flex-1 min-h-0 overflow-y-auto px-5 py-4 sm:px-6 custom-scrollbar">
                                     {visibleMessages.length === 0 && !searchQuery && (
                                         <div className="absolute inset-0 flex items-center justify-center flex-col gap-4 pointer-events-none">
                                             <div className="p-4 bg-bg-surface rounded-2xl border border-border-main shadow-sm"><Send size={32} className="text-text-muted" /></div>
@@ -1876,6 +1877,94 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                         <div className="h-2" />
                                     </div>
                                 </div>
+                            {/* Mesaj input */}
+                            <div className="relative z-20 px-3 sm:px-4 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                                {replyingToMessage && (
+                                    <div className="absolute -top-12 left-3 right-3 sm:left-4 sm:right-4 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
+                                        <span className="text-primary-main flex items-center gap-2 font-medium"><Reply size={14} /> {replyingToMessage.username} yanıtlanıyor: <span className="text-text-muted truncate max-w-[150px]">{replyingToMessage.text}</span></span>
+                                        <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
+                                    </div>
+                                )}
+                                <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />
+                                <form onSubmit={handleSendMessage}
+                                    className="flex flex-row items-center p-1.5 bg-bg-surface border border-border-main rounded-xl focus-within:border-primary-main transition-all duration-200 relative z-20">
+                                
+                                    <button type="button" onClick={() => { setShowEmojiPicker(p => !p); setShowSoundboard(false); setShowYoutubeInput(false); }} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
+                                        <Smile size={20} />
+                                    </button>
+                                    <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
+                                        className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                        <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
+                                    </button>
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
+                                        <Paperclip size={20} />
+                                    </button>
+                                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
+                                    {isAnaSalon && (
+                                        <>
+                                            <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard & Ses Mağazası" data-open={showSoundboard} className="sb-trigger p-3 transition-colors cursor-pointer">
+                                                <Music2 size={20} />
+                                            </button>
+                                            <button type="button" onClick={() => { setShowYoutubeInput(p => !p); setShowSoundboard(false); setShowEmojiPicker(false); }} title="YouTube'dan müzik aç" className={`p-3 transition-colors cursor-pointer ${showYoutubeInput ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
+                                                <Youtube size={20} />
+                                            </button>
+                                        </>
+                                    )}
+                                
+                                    <input type="text" value={messageInput} onChange={handleInputChange}
+                                        onKeyDown={handleInputKeyDown} onPaste={pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
+                                        placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
+                                        className="w-full bg-transparent px-3 py-2.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
+                                
+                                    <button type="submit" disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
+                                        className="flex items-center justify-center px-3 sm:px-4 py-2.5 mr-0.5 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-fill-end))] text-white font-semibold disabled:opacity-50 transition-all hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
+                                        <Send size={18} className="mr-0 sm:mr-2" />
+                                        <span className="hidden sm:inline">Gönder</span>
+                                    </button>
+                                </form>
+                                <div className="absolute bottom-full mb-2 left-0 z-50">
+                                    <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
+                                    <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
+                                </div>
+                                {mentionQuery !== null && (
+                                    <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
+                                )}
+                                {isAnaSalon && (
+                                    <div className="absolute bottom-full mb-2 left-0 right-0 sm:right-auto z-50">
+                                        <SoundboardPanel isOpen={showSoundboard} onClose={() => setShowSoundboard(false)} roomId={roomId} apiBaseUrl={API_BASE_URL} />
+                                    </div>
+                                )}
+                                {isAnaSalon && showYoutubeInput && (
+                                    <div className="absolute bottom-full mb-2 left-0 z-50">
+                                        <div className="flex flex-col gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px] max-w-[calc(100vw-1.5rem)]">
+                                            <div className="flex items-center gap-2">
+                                                <Youtube size={18} className="text-red-500 shrink-0" />
+                                                <input
+                                                    type="text"
+                                                    value={youtubeUrlInput}
+                                                    onChange={e => setYoutubeUrlInput(e.target.value)}
+                                                    onKeyDown={e => { if (e.key === 'Enter') handleStartYoutube(); }}
+                                                    placeholder="YouTube linkini yapıştır..."
+                                                    autoFocus
+                                                    className="flex-1 min-w-0 bg-bg-base border border-border-main rounded-xl px-3 py-2 text-text-main text-sm outline-none focus:border-primary-main transition-colors"
+                                                />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button type="button" onClick={() => handleStartYoutube()} disabled={!youtubeUrlInput.trim()}
+                                                    title="Odadakilere izleme partisi daveti gönderir; kabul edenler birlikte izler"
+                                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-40">
+                                                    <Youtube size={14} /> Aç
+                                                </button>
+                                                <button type="button" onClick={() => handleEnqueueYoutube()} disabled={!youtubeUrlInput.trim()}
+                                                    title="Videoyu sıraya ekler; çalan bittiğinde otomatik geçilir"
+                                                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary-main/15 text-primary-main text-xs font-semibold hover:bg-primary-main/25 transition-colors disabled:opacity-40">
+                                                    <ListPlus size={14} /> Kuyruğa ekle
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             </motion.div>
 
                             {/* Mobil çekmece karartması */}
@@ -1890,7 +1979,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                             {/* Users Sidebar — masaüstünde sabit yan panel, mobilde sağdan kayan çekmece */}
                             <motion.div variants={itemVariants}
                                 className={`flex-col bg-bg-card border border-border-main shadow-card overflow-hidden shrink-0
-                                    md:static md:flex md:w-72 md:h-auto md:rounded-2xl md:z-auto md:translate-x-0 md:transition-none
+                                    md:static md:flex md:w-[260px] md:h-auto md:rounded-2xl md:z-auto md:translate-x-0 md:transition-none
                                     fixed top-0 right-0 h-[100dvh] w-[85%] max-w-xs z-50 border-l transition-transform duration-300 ease-out
                                     ${showMobileMembers ? 'flex translate-x-0' : 'flex translate-x-full md:translate-x-0'}`}>
                                 <div className="p-5 border-b border-border-main bg-bg-surface/30">
@@ -2012,95 +2101,6 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                 </div>
                             </motion.div>
                         </div>
-
-                        {/* Mesaj input */}
-                        <motion.div variants={itemVariants} className="relative sticky bottom-0 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-bg-base pt-2">
-                            {replyingToMessage && (
-                                <div className="absolute -top-12 left-0 right-0 flex items-center justify-between bg-bg-surface px-4 py-2.5 rounded-xl border border-primary-main/30 shadow-lg text-sm z-10">
-                                    <span className="text-primary-main flex items-center gap-2 font-medium"><Reply size={14} /> {replyingToMessage.username} yanıtlanıyor: <span className="text-text-muted truncate max-w-[150px]">{replyingToMessage.text}</span></span>
-                                    <button type="button" onClick={() => setReplyingToMessage(null)} className="text-text-muted hover:text-text-main p-1 cursor-pointer"><X size={14} /></button>
-                                </div>
-                            )}
-                            <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />
-                            <form onSubmit={handleSendMessage}
-                                className="flex flex-row items-center p-2.5 bg-bg-surface border border-border-main rounded-2xl shadow-card focus-within:border-primary-main transition-all duration-200 relative z-20">
-                                
-                                <button type="button" onClick={() => { setShowEmojiPicker(p => !p); setShowSoundboard(false); setShowYoutubeInput(false); }} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer ml-1">
-                                    <Smile size={20} />
-                                </button>
-                                <button type="button" onClick={() => { setShowGifPicker(p => !p); setShowEmojiPicker(false); }} title="GIF gönder" aria-label="GIF gönder"
-                                    className={`p-2.5 transition-colors cursor-pointer min-w-[40px] min-h-[44px] flex items-center justify-center ${showGifPicker ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
-                                    <span className="text-[10px] font-black leading-none tracking-wide border-[1.5px] border-current rounded-[5px] px-1 py-[3px]">GIF</span>
-                                </button>
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-text-muted hover:text-text-main transition-colors cursor-pointer">
-                                    <Paperclip size={20} />
-                                </button>
-                                <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileInputChange} />
-                                {isAnaSalon && (
-                                    <>
-                                        <button type="button" onClick={() => { setShowSoundboard(p => !p); setShowYoutubeInput(false); setShowEmojiPicker(false); }} title="Soundboard & Ses Mağazası" data-open={showSoundboard} className="sb-trigger p-3 transition-colors cursor-pointer">
-                                            <Music2 size={20} />
-                                        </button>
-                                        <button type="button" onClick={() => { setShowYoutubeInput(p => !p); setShowSoundboard(false); setShowEmojiPicker(false); }} title="YouTube'dan müzik aç" className={`p-3 transition-colors cursor-pointer ${showYoutubeInput ? 'text-primary-main' : 'text-text-muted hover:text-text-main'}`}>
-                                            <Youtube size={20} />
-                                        </button>
-                                    </>
-                                )}
-                                
-                                <input type="text" value={messageInput} onChange={handleInputChange}
-                                    onKeyDown={handleInputKeyDown} onPaste={pastedImage.onPaste} onBlur={() => setMentionQuery(null)}
-                                    placeholder={isUploading ? "Dosya yükleniyor..." : "Sohbete mesajını yaz..."} disabled={isUploading}
-                                    className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
-                                
-                                <button type="submit" disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
-                                    className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-fill-end))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
-                                    <Send size={18} className="mr-0 sm:mr-2" />
-                                    <span className="hidden sm:inline">Gönder</span>
-                                </button>
-                            </form>
-                            <div className="absolute bottom-full mb-2 left-0 z-50">
-                                <EmojiPicker isOpen={showEmojiPicker} onClose={() => setShowEmojiPicker(false)} onEmojiSelect={handleEmojiSelect} />
-                                <GifPicker isOpen={showGifPicker} onClose={() => setShowGifPicker(false)} onSelect={g => handleSendMessage(undefined, g.url)} />
-                            </div>
-                            {mentionQuery !== null && (
-                                <MentionAutocomplete candidates={mentionCandidates} activeIndex={mentionIndex} onSelect={handleSelectMention} onHover={setMentionIndex} />
-                            )}
-                            {isAnaSalon && (
-                                <div className="absolute bottom-full mb-2 left-0 right-0 sm:right-auto z-50">
-                                    <SoundboardPanel isOpen={showSoundboard} onClose={() => setShowSoundboard(false)} roomId={roomId} apiBaseUrl={API_BASE_URL} />
-                                </div>
-                            )}
-                            {isAnaSalon && showYoutubeInput && (
-                                <div className="absolute bottom-full mb-2 left-0 z-50">
-                                    <div className="flex flex-col gap-2 bg-bg-surface border border-border-main rounded-2xl shadow-2xl p-3 w-[320px] max-w-[calc(100vw-1.5rem)]">
-                                        <div className="flex items-center gap-2">
-                                            <Youtube size={18} className="text-red-500 shrink-0" />
-                                            <input
-                                                type="text"
-                                                value={youtubeUrlInput}
-                                                onChange={e => setYoutubeUrlInput(e.target.value)}
-                                                onKeyDown={e => { if (e.key === 'Enter') handleStartYoutube(); }}
-                                                placeholder="YouTube linkini yapıştır..."
-                                                autoFocus
-                                                className="flex-1 min-w-0 bg-bg-base border border-border-main rounded-xl px-3 py-2 text-text-main text-sm outline-none focus:border-primary-main transition-colors"
-                                            />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button type="button" onClick={() => handleStartYoutube()} disabled={!youtubeUrlInput.trim()}
-                                                title="Odadakilere izleme partisi daveti gönderir; kabul edenler birlikte izler"
-                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-40">
-                                                <Youtube size={14} /> Aç
-                                            </button>
-                                            <button type="button" onClick={() => handleEnqueueYoutube()} disabled={!youtubeUrlInput.trim()}
-                                                title="Videoyu sıraya ekler; çalan bittiğinde otomatik geçilir"
-                                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary-main/15 text-primary-main text-xs font-semibold hover:bg-primary-main/25 transition-colors disabled:opacity-40">
-                                                <ListPlus size={14} /> Kuyruğa ekle
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
                     </>
                 )}
             </motion.div>
