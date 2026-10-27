@@ -416,21 +416,26 @@ class SignalRService {
     }
 
     // DM Gönderme
-    public async sendDirectMessage(receiverId: string, content: string, replyToId?: number) {
-        if (!this.connection) return;
+    // false: sunucu reddetti (ör. engelleme) ya da bağlantı yok
+    public async sendDirectMessage(receiverId: string, content: string, replyToId?: number): Promise<boolean> {
+        if (!this.connection) return false;
         try {
             await this.connection.invoke("SendDirectMessage", receiverId, content, replyToId || null);
+            return true;
         } catch (err) {
             console.error("Send DM Error:", err);
+            return false;
         }
     }
 
-    public async sendDirectFileMessage(receiverId: string, fileUrl: string, fileName: string) {
-        if (!this.connection) return;
+    public async sendDirectFileMessage(receiverId: string, fileUrl: string, fileName: string): Promise<boolean> {
+        if (!this.connection) return false;
         try {
             await this.connection.invoke("SendDirectFileMessage", receiverId, fileUrl, fileName);
+            return true;
         } catch (err) {
             console.error("Send DM File Error:", err);
+            return false;
         }
     }
 

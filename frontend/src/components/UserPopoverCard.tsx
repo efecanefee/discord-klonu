@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { popoverMotion } from '../utils/motion';
-import { MessageSquare, Pencil, Shield, ShieldOff, LogOut, Ban, Gamepad2 } from 'lucide-react';
+import { MessageSquare, Pencil, Shield, ShieldOff, LogOut, Ban, Gamepad2, ShieldCheck } from 'lucide-react';
+import { useChatPrefs, blockUser, unblockUser } from '../utils/chatPrefs';
 import { useUserProfile, bannerBackground } from '../utils/userProfile';
 import { parseGameStatus } from '../utils/activity';
 import { renderAvatar } from '../constants/avatars';
@@ -49,6 +50,17 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
   user, isSelf, onSendMessage, onEditProfile, viewerRole, onSetModerator, onKick, onBan,
 }) => {
   const [showAvatar, setShowAvatar] = useState(false);
+  const chatPrefs = useChatPrefs();
+  const iBlocked = !!user.userId && chatPrefs.blocked.some(b => b.id === user.userId);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const toggleBlock = async () => {
+    if (!user.userId) return;
+    if (!iBlocked && !window.confirm(`${user.username} engellensin mi?\n\nSana mesaj gönderemez, odalardaki mesajları gizlenir.`)) return;
+    setBlockBusy(true);
+    if (iBlocked) await unblockUser(user.userId);
+    else await blockUser({ id: user.userId, username: user.username, avatarId: user.avatarId });
+    setBlockBusy(false);
+  };
   // Banner, vurgu rengi, hakkımda ve durum mesajı sunucudan (önbellekli) okunur
   const profile = useUserProfile(user.userId);
   const st = statusInfo(profile?.customStatus ?? user.customStatus);
@@ -136,6 +148,15 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
             style={{ background: accent ? `linear-gradient(135deg, ${accent} 0%, ${accent}cc 100%)` : 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 100%)' }}
           >
             <MessageSquare size={14} /> Mesaj Gönder
+          </button>
+        )}
+        {!isSelf && user.userId && (
+          <button
+            onClick={toggleBlock}
+            disabled={blockBusy}
+            className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[12px] font-medium transition-colors disabled:opacity-50 ${iBlocked ? 'text-emerald-300 hover:bg-emerald-500/10' : 'text-white/45 hover:text-red-400 hover:bg-red-500/10'}`}
+          >
+            {iBlocked ? <><ShieldCheck size={13} /> Engeli Kaldır</> : <><Ban size={13} /> Engelle</>}
           </button>
         )}
 

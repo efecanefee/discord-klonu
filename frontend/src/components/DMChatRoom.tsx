@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Check, CheckCheck, X, Pencil, Reply, Smile, Paperclip } from 'lucide-react';
+import { Send, Check, CheckCheck, X, Pencil, Reply, Smile, Paperclip, Pin, PinOff, MoreVertical, Ban, ShieldCheck } from 'lucide-react';
 import PastedImagePreview from './PastedImagePreview';
 import { usePastedImage } from '../hooks/usePastedImage';
 import { renderAvatar } from '../constants/avatars';
@@ -13,6 +13,12 @@ import TypingIndicator from './TypingIndicator';
 import EditedTag from './EditedTag';
 import LinkPreviews from './LinkPreviews';
 import { useStickToBottom } from '../hooks/useStickToBottom';
+import { renderMarkdown } from '../utils/markdown';
+import { useChatPrefs, dmMuteKey, blockUser, unblockUser, setDmPinned, loadChatPrefs } from '../utils/chatPrefs';
+import MuteMenuButton from './MuteMenuButton';
+import SaveMessageButton from './SaveMessageButton';
+import SavedMessagesButton from './SavedMessagesButton';
+import AnchoredPanel from './AnchoredPanel';
 
 // Metindeki http(s) linklerini tıklanabilir yapar; doğrudan resim/GIF linki görsel olarak açılır
 const linkify = (text: string, onDark: boolean): React.ReactNode[] =>
@@ -65,9 +71,25 @@ interface DMChatRoomProps {
   targetUser: UserData;
   API_BASE_URL: string;
   onLeave: () => void;
+  // Oda içi overlay'de sağ üstteki kapat butonuna yer bırak
+  reserveCloseSpace?: boolean;
 }
 
-const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BASE_URL, onLeave }) => {
+const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BASE_URL, onLeave, reserveCloseSpace }) => {
+  const chatPrefs = useChatPrefs();
+  const iBlocked = chatPrefs.blocked.some(b => b.id === targetUser.id);
+  const blockedMe = chatPrefs.blockedBy.includes(targetUser.id);
+  const isPinned = chatPrefs.pinnedDms.includes(targetUser.id);
+  const [showMore, setShowMore] = useState(false);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+
+  const toggleBlock = async () => {
+    setShowMore(false);
+    if (iBlocked) { await unblockUser(targetUser.id); return; }
+    if (!window.confirm(`${targetUser.username} engellensin mi?\n\nSana mesaj gönderemez, odalardaki mesajları gizlenir. İstediğin zaman engeli kaldırabilirsin.`)) return;
+    await blockUser({ id: targetUser.id, username: targetUser.username, avatarId: targetUser.avatarId });
+  };
+
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -186,7 +208,9 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
     if (!newMessage.trim()) return;
     scrollToBottom();
 
-    await signalrService.sendDirectMessage(targetUser.id, newMessage.trim(), replyingToMessage?.id);
+    const sent = await signalrService.sendDirectMessage(targetUser.id, newMessage.trim(), replyingToMessage?.id);
+    // Karşı taraf az önce engellemiş olabilir: tercihleri tazele, giriş kutusu kapansın
+    if (!sent) { loadChatPrefs(); return; }
     lastTypingSentRef.current = 0;
     setNewMessage('');
     setReplyingToMessage(null);
@@ -240,7 +264,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      await signalrService.sendDirectFileMessage(targetUser.id, data.url, file.name);
+      if (!await signalrService.sendDirectFileMessage(targetUser.id, data.url, file.name)) loadChatPrefs();
     } catch (err) {
       console.error('DM dosya yükleme hatası:', err);
       alert('Dosya yüklenemedi.');
@@ -291,6 +315,29 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             </p>
           </div>
         </div>
+
+        <div className={`flex items-center gap-1.5 shrink-0 ${reserveCloseSpace ? 'mr-10' : ''}`}>
+          <button onClick={() => setDmPinned(targetUser.id, !isPinned)} disabled={iBlocked}
+            title={isPinned ? 'Sabitlemeyi kaldır' : 'Sohbeti en üste sabitle'} aria-label={isPinned ? 'Sabitlemeyi kaldır' : 'Sohbeti sabitle'}
+            className={`p-2.5 rounded-xl transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${isPinned ? 'text-primary-main bg-primary-main/10' : 'text-white/50 hover:text-white hover:bg-white/10'}`}>
+            {isPinned ? <PinOff size={18} /> : <Pin size={18} />}
+          </button>
+          <MuteMenuButton muteKey={dmMuteKey(targetUser.id)} targetLabel="Sohbeti"
+            className="p-2.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" />
+          <SavedMessagesButton className="p-2.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer" />
+          <button ref={moreButtonRef} onClick={() => setShowMore(o => !o)} title="Diğer" aria-label="Diğer seçenekler"
+            className="p-2.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
+            <MoreVertical size={18} />
+          </button>
+          <AnchoredPanel open={showMore} anchorRef={moreButtonRef} onClose={() => setShowMore(false)} width={210}>
+            <div className="p-1.5">
+              <button onClick={toggleBlock}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${iBlocked ? 'text-emerald-300 hover:bg-emerald-500/10' : 'text-red-400 hover:bg-red-500/10'}`}>
+                {iBlocked ? <><ShieldCheck size={15} /> Engeli kaldır</> : <><Ban size={15} /> Engelle</>}
+              </button>
+            </div>
+          </AnchoredPanel>
+        </div>
       </div>
 
       <div ref={chatScrollRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
@@ -332,7 +379,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                   )}
                   
                   <div className="relative flex items-center gap-2" id={`msg-${msg.id}`}>
-                    <div className={`absolute top-1 ${isMe ? '-left-24' : '-right-8'} flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20`}>
+                    <div className={`absolute top-1 ${isMe ? '-left-[124px]' : '-right-16'} flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-20`}>
                         {isMe && !msg.isDeleted && (
                           <>
                             <button onClick={() => startEditing(msg)} className="w-6 h-6 rounded-full bg-blue-500/80 hover:bg-blue-500 flex items-center justify-center text-white" title="Düzenle">
@@ -346,6 +393,16 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                         <button onClick={() => setReplyingToMessage(msg)} className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white" title="Yanıtla">
                            <Reply size={12} />
                         </button>
+                        <SaveMessageButton
+                          className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center cursor-pointer"
+                          iconClassName="text-white/70"
+                          payload={() => ({
+                            kind: 'dm', location: `${targetUser.username} ile özel mesaj`,
+                            author: isMe ? currentUser.username : (msg.senderUsername || targetUser.username),
+                            authorAvatarId: isMe ? undefined : (msg.senderAvatarId || targetUser.avatarId),
+                            text: msg.content, fileUrl: msg.fileUrl, fileName: msg.fileName,
+                            messageTs: new Date(msg.createdAt).getTime(),
+                          })} />
                     </div>
 
                     <div 
@@ -357,7 +414,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
                       {editingMessageId === msg.id ? (
                         <InlineMessageEditor value={editText} onChange={setEditText} onSave={saveEditing} onCancel={cancelEditing} onDark={isMe} />
                       ) : (!msg.fileUrl || !msg.content.startsWith('[Dosya:')) && (
-                        <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{linkify(msg.content, isMe)}{msg.isEdited && <EditedTag />}</p>
+                        <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{renderMarkdown(msg.content, `dm${msg.id}`, (t, k) => <React.Fragment key={k}>{linkify(t, isMe)}</React.Fragment>)}{msg.isEdited && <EditedTag />}</p>
                       )}
                       <div className={`flex items-center gap-1.5 mt-2 text-[10px] ${isMe ? 'text-white/60 justify-end' : 'text-white/40'}`}>
                         <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -393,6 +450,16 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             </button>
           </div>
         )}
+        {(iBlocked || blockedMe) ? (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm text-white/60">
+            <span className="flex items-center gap-2"><Ban size={16} className="shrink-0 text-red-400/80" />
+              {iBlocked ? 'Bu kullanıcıyı engelledin. Mesaj gönderemezsiniz.' : 'Bu kullanıcıya mesaj gönderemezsin.'}
+            </span>
+            {iBlocked && (
+              <button onClick={toggleBlock} className="shrink-0 font-semibold text-primary-main hover:underline cursor-pointer">Engeli kaldır</button>
+            )}
+          </div>
+        ) : (<>
         {!editingMessageId && <PastedImagePreview file={pastedImage.file} previewUrl={pastedImage.previewUrl} onCancel={pastedImage.clear} />}
         <form onSubmit={handleSendMessage} className="relative flex items-center bg-[#18181b]/50 border border-white/10 rounded-2xl transition-all shadow-inner focus-within:border-primary-main/50 focus-within:bg-[#18181b]/80">
           <div className="relative">
@@ -445,6 +512,7 @@ const DMChatRoom: React.FC<DMChatRoomProps> = ({ currentUser, targetUser, API_BA
             <Send size={18} />
           </button>
         </form>
+        </>)}
       </div>
     </div>
   );

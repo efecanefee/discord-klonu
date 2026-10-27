@@ -505,6 +505,58 @@ using (var scope = app.Services.CreateScope())
         } catch { }
         try { await db.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_feed_reactions_post_id_user_id_emoji"" ON feed_reactions (post_id, user_id, emoji);"); } catch { }
 
+        // 17. Engelleme, bildirim susturma, DM sabitleme, kaydedilen mesajlar
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS user_blocks (
+                    blocker_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    blocked_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at bigint NOT NULL DEFAULT 0,
+                    CONSTRAINT ""PK_user_blocks"" PRIMARY KEY (blocker_id, blocked_id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_user_blocks_blocked_id"" ON user_blocks (blocked_id);"); } catch { }
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS user_mutes (
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    target_key text NOT NULL,
+                    until_ms bigint,
+                    CONSTRAINT ""PK_user_mutes"" PRIMARY KEY (user_id, target_key)
+                );
+            ");
+        } catch { }
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS dm_pins (
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    other_user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at bigint NOT NULL DEFAULT 0,
+                    CONSTRAINT ""PK_dm_pins"" PRIMARY KEY (user_id, other_user_id)
+                );
+            ");
+        } catch { }
+        try {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS saved_messages (
+                    id bigserial NOT NULL,
+                    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    kind text NOT NULL DEFAULT 'room',
+                    location text NOT NULL DEFAULT '',
+                    author text NOT NULL DEFAULT '',
+                    author_avatar_id text NOT NULL DEFAULT 'default',
+                    text text NOT NULL DEFAULT '',
+                    file_url text,
+                    file_name text,
+                    message_ts bigint NOT NULL DEFAULT 0,
+                    saved_at bigint NOT NULL DEFAULT 0,
+                    CONSTRAINT ""PK_saved_messages"" PRIMARY KEY (id)
+                );
+            ");
+        } catch { }
+        try { await db.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_saved_messages_user_id"" ON saved_messages (user_id, saved_at DESC);"); } catch { }
+
     }
     catch (Exception ex)
     {

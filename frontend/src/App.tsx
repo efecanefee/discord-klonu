@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import ChatRoom from './components/ChatRoom';
 import TextChatRoom from './components/TextChatRoom';
 import DMChatRoom from './components/DMChatRoom';
@@ -13,12 +13,14 @@ import StatusMenu from './components/StatusMenu';
 import { useSettings } from './contexts/SettingsContext';
 import { renderAvatar } from './constants/avatars';
 import { playNotificationSound } from './utils/sound';
+import SavedMessagesButton from './components/SavedMessagesButton';
+import { loadChatPrefs, resetChatPrefs, useChatPrefs, isMuted, dmMuteKey, getChatPrefs } from './utils/chatPrefs';
 import { voiceControls, useVoiceControls } from './utils/voiceControls';
 import { notify } from './utils/browserNotifications';
 import { resyncWebPush, disableWebPush } from './utils/webPush';
 import { onUpdateReady, applyUpdate } from './utils/swUpdate';
 import ConnectionStatusBanner from './components/ConnectionStatusBanner';
-import { Lock, Mail, MessageSquare, Plus, User, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, HeadphoneOff, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, MessageSquare, Plus, User, X, Sparkles, Github, Linkedin, Instagram, ChevronDown, Mic, MicOff, Clapperboard, Zap, Server, MonitorUp, Headphones, HeadphoneOff, Settings, Search, Trash2, AlertTriangle, Eye, EyeOff, Pin, BellOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { spring, modalMotion, overlayMotion, staggerParent, staggerItem } from './utils/motion';
 import signalrService from './services/signalrService';
@@ -123,6 +125,15 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { settings } = useSettings();
+  const chatPrefs = useChatPrefs();
+  // DM listesi: engellediklerim gizli, sabitlenenler en üstte (sabitleme sırasıyla)
+  const sortedDMs = useMemo(() => {
+    const visible = activeDMs.filter(u => !chatPrefs.blocked.some(b => b.id === u.id));
+    const pinned = chatPrefs.pinnedDms
+      .map(id => visible.find(u => u.id === id))
+      .filter((u): u is ModalUserData => !!u);
+    return [...pinned, ...visible.filter(u => !chatPrefs.pinnedDms.includes(u.id))];
+  }, [activeDMs, chatPrefs.blocked, chatPrefs.pinnedDms]);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMainLogoFlipped, setIsMainLogoFlipped] = useState(false);
@@ -354,14 +365,16 @@ function App() {
         });
         if (roomDMUser?.id === contactId) isCurrentlyFocused = true;
 
+        // Susturulan DM: okunmamış sayısı artar ama ses/bildirim yok
+        const dmMuted = isMuted(dmMuteKey(contactId), getChatPrefs());
         if (!isCurrentlyFocused) {
-          playNotificationSound();
+          if (!dmMuted) playNotificationSound();
           setUnreadCounts(prev => ({
             ...prev,
             [contactId]: (prev[contactId] || 0) + 1
           }));
           // Tarayıcı bildirimi (sekme gizliyken; ayara saygılı)
-          if (settings.dmNotificationsEnabled) {
+          if (settings.dmNotificationsEnabled && !dmMuted) {
             const senderName = dm.senderUsername || dm.SenderUsername || 'Yeni mesaj';
             notify(`${senderName} (DM)`, dm.content || dm.Content || 'Yeni özel mesaj', { tag: `dm-${contactId}` });
           }
@@ -446,6 +459,7 @@ function App() {
       
       fetchRooms();
       fetchRecentDMs();
+      loadChatPrefs();
     }
   }, [authState, fetchRooms, fetchRecentDMs]);
 
@@ -625,6 +639,7 @@ function App() {
     // Paylaşılan cihazda eski hesaba push gelmesin (token silinmeden önce)
     await disableWebPush().catch(() => { });
     localStorage.removeItem('token');
+    resetChatPrefs();
     localStorage.removeItem('username');
     localStorage.removeItem('firstName');
     localStorage.removeItem('lastName');
@@ -964,6 +979,7 @@ function App() {
                   targetUser={roomDMUser}
                   API_BASE_URL={API_BASE_URL}
                   onLeave={() => setRoomDMUser(null)}
+                  reserveCloseSpace
                 />
               </motion.div>
             </>
@@ -1169,7 +1185,7 @@ function App() {
                     Henüz özel mesaj yok. Yeni bir mesaj başlat!
                   </div>
                 ) : (
-                  activeDMs.map(user => (
+                  sortedDMs.map(user => (
                     <button
                       key={user.id}
                       onClick={() => handleStartDM(user)}
@@ -1188,6 +1204,8 @@ function App() {
                           {user.username}
                         </span>
                       </div>
+                      {chatPrefs.pinnedDms.includes(user.id) && <Pin size={12} className="shrink-0 text-primary-main/80 rotate-45" aria-label="Sabitlendi" />}
+                      {isMuted(dmMuteKey(user.id), chatPrefs) && <BellOff size={12} className="shrink-0 text-white/35" aria-label="Susturuldu" />}
                       {unreadCounts[user.id] > 0 && (
                         <div className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
                           {unreadCounts[user.id]}
@@ -1198,14 +1216,17 @@ function App() {
                 )}
               </div>
 
-              {/* Yeni Mesaj Butonu */}
-              <button
-                onClick={() => setIsNewMessageModalOpen(true)}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary-main/10 text-primary-main hover:bg-primary-main hover:text-white transition-all font-semibold text-sm border border-primary-main/30 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.3)] shrink-0"
-              >
-                <Plus size={16} />
-                Yeni Mesaj
-              </button>
+              {/* Yeni Mesaj + Kaydedilenler */}
+              <div className="mt-4 flex gap-2 shrink-0">
+                <button
+                  onClick={() => setIsNewMessageModalOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary-main/10 text-primary-main hover:bg-primary-main hover:text-white transition-all font-semibold text-sm border border-primary-main/30 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.3)]"
+                >
+                  <Plus size={16} />
+                  Yeni Mesaj
+                </button>
+                <SavedMessagesButton className="shrink-0 w-12 flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/60 hover:text-primary-main hover:border-primary-main/40 transition-colors cursor-pointer" />
+              </div>
             </div>
           </div>
           </motion.div>
