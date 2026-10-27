@@ -1549,6 +1549,51 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ username, avatarId = 'default', roo
                                     </div>
                                 )}
                             </div>
+                            {/* Odada olanlar şeridi — sahne ne gösterirse göstersin herkes burada görünür */}
+                            <div className="shrink-0 flex items-center gap-2 px-3 py-2.5 border-t border-border-main overflow-x-auto custom-scrollbar" aria-label="Odada olanlar">
+                                <span className="shrink-0 text-[11px] font-semibold text-text-muted uppercase tracking-wider pr-1">
+                                    Odada · {Math.max(1, new Set(usersInRoom.map(u => u.username)).size)}
+                                </span>
+                                {sortedUsers.map((u) => {
+                                    const isMe = u.connectionId === signalrService.connectionId;
+                                    const isSpeaking = [...speakingUsers].some(id => id === u.connectionId);
+                                    const isDeaf = isMe ? deafened : deafenedUsers[u.connectionId];
+                                    const isMicOff = isMe ? isMuted : mutedUsers[u.connectionId];
+                                    const vol = userVolumes[u.username] ?? 1.0;
+                                    const badge = roleBadgeEmoji(u.role);
+                                    return (
+                                        <div key={u.connectionId}
+                                            className={`shrink-0 flex items-center gap-2 pl-1.5 pr-2.5 py-1.5 rounded-xl border transition-colors ${isSpeaking ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-bg-surface border-border-main'}`}>
+                                            <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-base bg-bg-card ${isSpeaking ? 'ring-2 ring-emerald-500' : ''}`}>
+                                                {renderAvatar(u.avatarId || 'default')}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="flex items-center gap-1 text-[13px] font-semibold text-text-main max-w-[140px] truncate">
+                                                    {u.username}{badge && <span>{badge}</span>}{isMe && <span className="text-[11px] font-normal text-text-muted">(Sen)</span>}
+                                                    {connectionIssues.has(u.connectionId)
+                                                        ? <span className="text-[10px] text-amber-400" title="Ses bağlantısı kurulamadı">bağlanılamadı</span>
+                                                        : isDeaf
+                                                            ? <span title="Sağırlaştırıldı"><HeadphoneOff size={12} className="text-red-500" /></span>
+                                                            : isMicOff && <span title="Mikrofonu kapalı"><MicOff size={12} className="text-red-500" /></span>}
+                                                </span>
+                                                {!isMe && (
+                                                    <div className="flex items-center gap-1">
+                                                        <button type="button" onClick={() => setUserVolumes(prev => ({ ...prev, [u.username]: vol === 0 ? 1 : 0 }))}
+                                                            title={vol === 0 ? 'Sesi aç' : 'Sesi kapat'} aria-label={vol === 0 ? `${u.username} sesini aç` : `${u.username} sesini kapat`}
+                                                            className="cursor-pointer text-text-muted hover:text-text-main">
+                                                            {vol === 0 ? <VolumeX size={12} className="text-red-400" /> : <Volume2 size={12} />}
+                                                        </button>
+                                                        <input type="range" min="0" max="1" step="0.01" value={vol}
+                                                            onChange={e => setUserVolumes(prev => ({ ...prev, [u.username]: parseFloat(e.target.value) }))}
+                                                            title={`${u.username} ses seviyesi`} aria-label={`${u.username} ses seviyesi`}
+                                                            className="w-20 h-1 accent-primary-main cursor-pointer" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </motion.div>
 
                         {/* Kompakt Chat */}
