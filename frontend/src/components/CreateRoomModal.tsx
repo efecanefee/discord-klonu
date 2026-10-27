@@ -124,7 +124,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
       >
         <motion.div
           {...modalMotion}
-          className="relative w-full max-w-md bg-bg-surface border border-[#334155] rounded-3xl overflow-hidden shadow-2xl"
+          className="relative w-full max-w-md bg-bg-surface border border-panel-line rounded-3xl overflow-hidden shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Üst Gradient Çizgi */}
@@ -187,7 +187,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="w-full flex items-center justify-between gap-3 bg-bg-base border border-[#334155] hover:border-primary-main/50 rounded-xl px-4 py-3.5 transition-colors group"
+                  className="w-full flex items-center justify-between gap-3 bg-bg-base border border-panel-line hover:border-primary-main/50 rounded-xl px-4 py-3.5 transition-colors group"
                 >
                   <span className="text-2xl font-mono font-bold tracking-[0.3em] text-text-main">{createdRoom.roomCode}</span>
                   <span className="flex items-center gap-1.5 text-xs text-text-muted group-hover:text-text-main transition-colors">
@@ -197,7 +197,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 <button
                   type="button"
                   onClick={handleCopyInviteLink}
-                  className="w-full flex items-center justify-center gap-2 bg-bg-base border border-[#334155] hover:border-primary-main/50 rounded-xl px-4 py-3 text-sm text-text-muted hover:text-text-main transition-colors"
+                  className="w-full flex items-center justify-center gap-2 bg-bg-base border border-panel-line hover:border-primary-main/50 rounded-xl px-4 py-3 text-sm text-text-muted hover:text-text-main transition-colors"
                 >
                   {linkCopied ? <><Check size={15} className="text-[#10b981]" /> Link kopyalandı</> : <><Link2 size={15} /> Davet linkini kopyala</>}
                 </button>
@@ -212,7 +212,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 type="button"
                 onClick={onClose}
                 className="w-full py-3.5 rounded-xl text-text-main font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)' }}
+                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-fill-end) 50%, var(--color-primary-main) 100%)' }}
               >
                 Tamam
               </button>
@@ -246,7 +246,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   maxLength={50}
                   autoFocus
                   disabled={isLoading}
-                  className="w-full bg-bg-base border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted disabled:opacity-50"
+                  className="w-full bg-bg-base border border-panel-line rounded-xl pl-10 pr-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted disabled:opacity-50"
                 />
                 <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-text-muted">
                   {name.length}/50
@@ -259,7 +259,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">
                 Kanallar
               </label>
-              <div className="rounded-xl border border-[#334155] bg-bg-base p-3 space-y-2.5">
+              <div className="rounded-xl border border-panel-line bg-bg-base p-3 space-y-2.5">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary-main/15 flex items-center justify-center shrink-0">
                     <Hash size={16} className="text-primary-main" />
@@ -270,8 +270,8 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#10b981]/15 flex items-center justify-center shrink-0">
-                    <Volume2 size={16} className="text-[#10b981]" />
+                  <div className="w-8 h-8 rounded-lg bg-room-voice/15 flex items-center justify-center shrink-0">
+                    <Volume2 size={16} className="text-room-voice" />
                   </div>
                   <div className="text-left">
                     <div className="text-sm font-semibold text-text-main">Sesli Sohbet</div>
@@ -297,7 +297,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   maxLength={200}
                   rows={3}
                   disabled={isLoading}
-                  className="w-full bg-bg-base border border-[#334155] rounded-xl px-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted resize-none disabled:opacity-50"
+                  className="w-full bg-bg-base border border-panel-line rounded-xl px-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted resize-none disabled:opacity-50"
                 />
                 <span className="absolute right-3 bottom-2 text-[10px] text-text-muted">
                   {description.length}/200
@@ -314,7 +314,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 text-left ${
                   isPrivate
                     ? 'bg-primary-main/10 border-primary-main/50 shadow-[0_0_20px_rgba(var(--accent-rgb),0.15)]'
-                    : 'bg-bg-base border-[#334155] hover:border-primary-main/30'
+                    : 'bg-bg-base border-panel-line hover:border-primary-main/30'
                 } disabled:opacity-50`}
               >
                 <div
@@ -340,7 +340,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
             </div>
 
             {/* Alt Gradient Ayırıcı */}
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-[#334155] to-transparent" />
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-panel-line to-transparent" />
 
             {/* Submit Button */}
             <motion.button
@@ -350,7 +350,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               whileTap={!isLoading && name.trim() ? { scale: 0.98 } : {}}
               className="w-full py-3.5 rounded-xl text-text-main font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               style={{
-                background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)',
+                background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-fill-end) 50%, var(--color-primary-main) 100%)',
                 boxShadow: !isLoading && name.trim()
                   ? '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset'
                   : 'none',

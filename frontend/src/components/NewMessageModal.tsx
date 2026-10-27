@@ -88,7 +88,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
       >
         <motion.div
           {...modalMotion}
-          className="relative w-full max-w-md bg-bg-surface border border-[#334155] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+          className="relative w-full max-w-md bg-bg-surface border border-panel-line rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -127,12 +127,12 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Kullanıcı ara..."
                 autoFocus
-                className="w-full bg-bg-base border border-[#334155] rounded-xl pl-10 pr-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted"
+                className="w-full bg-bg-base border border-panel-line rounded-xl pl-10 pr-4 py-3 text-text-main outline-none focus:border-primary-main transition-colors text-sm placeholder:text-text-muted"
               />
             </div>
           </div>
 
-          <div className="w-full h-px bg-[#334155] shrink-0" />
+          <div className="w-full h-px bg-panel-line shrink-0" />
 
           {/* User List */}
           <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
@@ -164,11 +164,11 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative">
-                        <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-xl bg-bg-base border border-[#334155]">
+                        <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-xl bg-bg-base border border-panel-line">
                           {renderAvatar(user.avatarId)}
                         </div>
                         {/* Status Indicator */}
-                        <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${getStatusColor(user.customStatus)}`} />
+                        <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 border-2 border-panel-deep rounded-full ${getStatusColor(user.customStatus)}`} />
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-text-main flex items-center gap-2">

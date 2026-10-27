@@ -111,7 +111,7 @@ export default function StatusMenu({ isOpen, onClose, currentStatus, currentMess
           width: MENU_WIDTH,
           visibility: pos ? 'visible' : 'hidden',
         }}
-        className="bg-[#09090b] border border-white/10 rounded-xl shadow-2xl p-2 z-[100]"
+        className="bg-panel-deep border border-white/10 rounded-xl shadow-2xl p-2 z-[100]"
       >
         <div className="mb-2 p-2">
           {isEditingMessage ? (

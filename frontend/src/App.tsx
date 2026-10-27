@@ -1087,7 +1087,7 @@ function App() {
 
           {/* Sidebar */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15, duration: 0.3 }}
-            className={`stagger-col fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 md:gap-4 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-[#09090b] md:bg-transparent p-5 md:p-0 transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+            className={`stagger-col fixed md:static top-0 left-0 h-full md:h-auto z-50 md:z-auto flex flex-col gap-3 md:gap-4 w-72 md:w-64 md:shrink-0 max-h-screen md:max-h-[calc(100vh-40px)] bg-panel-deep md:bg-transparent p-5 md:p-0 transition-transform duration-300 shadow-2xl md:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
           >
             {/* Close Button (Mobile) */}
             <div className="flex md:hidden justify-end mb-[-10px]">
@@ -1110,10 +1110,10 @@ function App() {
               className="flex items-center gap-2 flex-1 hover:bg-white/10 p-1 rounded-full transition-all group overflow-hidden"
             >
               <div className="avatar-container relative cursor-pointer group/avatar">
-                <div className="w-9 h-9 rounded-full overflow-hidden border border-primary-main bg-[#18181b] flex items-center justify-center text-lg shrink-0 group-hover/avatar:opacity-80 transition-opacity">
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-primary-main bg-panel-raised flex items-center justify-center text-lg shrink-0 group-hover/avatar:opacity-80 transition-opacity">
                   {renderAvatar(avatarId)}
                 </div>
-                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-panel-deep rounded-full ${myCustomStatus === 'online' ? 'bg-green-500' : myCustomStatus === 'idle' ? 'bg-yellow-500' : myCustomStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
               </div>
               <div className="flex flex-col items-start min-w-0 flex-1">
                 <span className="text-sm font-bold text-white group-hover:text-primary-main transition-colors truncate w-full text-left">{username}</span>
@@ -1194,10 +1194,10 @@ function App() {
                       }`}
                     >
                       <div className="relative">
-                        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm bg-[#18181b] border border-[#334155]">
+                        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm bg-panel-raised border border-panel-line">
                           {renderAvatar(user.avatarId)}
                         </div>
-                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-[#09090b] rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : user.customStatus === 'idle' ? 'bg-yellow-500' : user.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
+                        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-2 border-panel-deep rounded-full ${user.customStatus === 'online' ? 'bg-green-500' : user.customStatus === 'idle' ? 'bg-yellow-500' : user.customStatus === 'dnd' ? 'bg-red-500' : 'bg-gray-500'}`} />
                       </div>
                       <div className="flex flex-col items-start truncate flex-1">
                         <span className={`text-sm font-semibold truncate ${activeDMUser?.id === user.id ? 'text-white' : 'text-white/80'}`}>
@@ -1479,7 +1479,7 @@ function App() {
                  type="submit"
                  disabled={isLoading}
                  className="btn-fx btn-primary relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
-                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-fill-end) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                  {isLoading ? 'Gönderiliyor...' : 'Şifre Sıfırlama Linki Gönder'}
                </button>
                <div className="text-center pt-1.5">
@@ -1513,7 +1513,7 @@ function App() {
                  type="submit"
                  disabled={isLoading}
                  className="btn-fx btn-primary relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
-                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                 style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-fill-end) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                  {isLoading ? 'Güncelleniyor...' : 'Şifreyi Güncelle'}
                </button>
              </form>
@@ -1665,7 +1665,7 @@ function App() {
                 type="submit"
                 disabled={isLoading}
                 className="btn-fx btn-primary relative w-full py-3.5 mt-1 rounded-2xl text-white font-semibold text-[15px] overflow-hidden cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
+                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-fill-end) 50%, var(--color-primary-main) 100%)', boxShadow: '0 8px 32px rgba(var(--accent-rgb),0.35), 0 1px 0 rgba(255,255,255,0.15) inset', opacity: isLoading ? 0.7 : 1 }}>
                 <span className="relative flex items-center justify-center gap-2">
                   <Sparkles size={16} />
                   {isLoading ? 'Bekleniyor...' : (authState === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
@@ -1749,7 +1749,7 @@ function App() {
                       onMouseLeave={() => setOnlineUserList([])}
                     >
                       {globalActiveUsers} online
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-[#09090b] border border-[#334155] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 flex flex-col gap-1 text-[12px] font-medium text-white/90 max-h-48 overflow-y-auto">
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-2 bg-panel-deep border border-panel-line rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 flex flex-col gap-1 text-[12px] font-medium text-white/90 max-h-48 overflow-y-auto">
                         {onlineUserList.length > 0 ? (
                           onlineUserList[0].startsWith('[Hata') ? (
                             <span className="text-red-400">{onlineUserList[0]}</span>
@@ -1849,7 +1849,7 @@ function App() {
                             <motion.div
                               layoutId="roomTabPill"
                               className="absolute inset-0 rounded-xl"
-                              style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-light))', boxShadow: '0 6px 20px -4px rgba(var(--accent-rgb),0.55), inset 0 1px 0 rgba(255,255,255,0.2)' }}
+                              style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-fill-end))', boxShadow: '0 6px 20px -4px rgba(var(--accent-rgb),0.55), inset 0 1px 0 rgba(255,255,255,0.2)' }}
                               transition={reduce ? { duration: 0 } : spring.snappy}
                             />
                           )}

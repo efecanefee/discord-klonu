@@ -494,7 +494,43 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                 <div className="p-4 rounded-xl border border-border-main bg-surface-subtle">
                   <div className="flex flex-col mb-3">
                     <span className="font-semibold text-text-main">Tema</span>
-                    <span className="text-xs text-text-muted mt-1">Seçimin bu tarayıcıda kayıtlı kalır. Koyu: standart görünüm · OLED: saf siyah zemin.</span>
+                    <span className="text-xs text-text-muted mt-1">Tema tüm arayüzü değiştirir: zemin, paneller, yazılar, butonlar, sesli odalar ve soundboard. Seçimin bu tarayıcıda kayıtlı kalır.</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    {ACCENTS.map(a => {
+                      const active = settings.accent === a.id;
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => updateSettings({ accent: a.id })}
+                          aria-pressed={active}
+                          className={`group/theme relative rounded-xl overflow-hidden text-left transition-all cursor-pointer border-2 ${active ? 'border-primary-main shadow-[0_0_0_3px_rgba(var(--accent-rgb),0.25)]' : 'border-transparent hover:-translate-y-0.5'}`}
+                          style={{ background: a.bg }}
+                        >
+                          {/* Mini önizleme: zemin, kart, buton ve ikinci renk */}
+                          <div className="relative h-14 p-2 flex gap-1.5" style={{ background: `radial-gradient(ellipse 90% 80% at 0% 0%, ${a.swatch}55, transparent 70%), ${a.bg}` }}>
+                            <div className="w-5 rounded-md" style={{ background: a.card }} />
+                            <div className="flex-1 rounded-md p-1.5 flex flex-col justify-between" style={{ background: a.card }}>
+                              <div className="h-1.5 w-3/4 rounded-full" style={{ background: 'rgba(255,255,255,0.18)' }} />
+                              <div className="h-2.5 w-1/2 rounded-full" style={{ background: `linear-gradient(90deg, ${a.swatch}, ${a.swatch2})` }} />
+                            </div>
+                          </div>
+                          <div className="px-2.5 py-2 flex items-center justify-between gap-2" style={{ background: a.card }}>
+                            <span className="text-[12px] leading-tight font-semibold text-white/90 line-clamp-2 break-words">{a.label}</span>
+                            {active
+                              ? <CheckCircle2 size={14} className="shrink-0 text-primary-main" />
+                              : <span className="shrink-0 w-3 h-3 rounded-full" style={{ background: `linear-gradient(135deg, ${a.swatch} 50%, ${a.swatch2} 50%)` }} />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-border-main bg-surface-subtle">
+                  <div className="flex flex-col mb-3">
+                    <span className="font-semibold text-text-main">Zemin</span>
+                    <span className="text-xs text-text-muted mt-1">OLED siyah, zemini saf siyaha indirir; temanın renkleri butonlarda ve vurgularda kalır.</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {THEMES.map(t => (
@@ -509,30 +545,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, showLast
                       >
                         {t.label}
                       </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl border border-border-main bg-surface-subtle">
-                  <div className="flex flex-col mb-3">
-                    <span className="font-semibold text-text-main">Vurgu Rengi</span>
-                    <span className="text-xs text-text-muted mt-1">Butonlar, bağlantılar ve seçili öğeler bu rengi kullanır. Çift renkli noktalar ikili temalardır. Temadan bağımsız çalışır.</span>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {ACCENTS.map(a => (
-                      <button
-                        key={a.id}
-                        onClick={() => updateSettings({ accent: a.id })}
-                        title={a.label}
-                        aria-label={a.label}
-                        aria-pressed={settings.accent === a.id}
-                        className={`w-9 h-9 rounded-full transition-transform cursor-pointer ring-offset-2 ring-offset-bg-surface ${
-                          settings.accent === a.id ? 'ring-2 ring-white scale-110' : 'hover:scale-105'
-                        }`}
-                        style={a.swatch2
-                          ? { background: `linear-gradient(135deg, ${a.swatch} 50%, ${a.swatch2} 50%)` }
-                          : { backgroundColor: a.swatch }}
-                      />
                     ))}
                   </div>
                 </div>

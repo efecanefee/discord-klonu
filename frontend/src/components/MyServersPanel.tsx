@@ -15,7 +15,7 @@ interface MyServersPanelProps {
 
 const roleStyle = (role: string) => {
   if (role === 'owner') return { color: '#F59E0B', glow: 'rgba(245,158,11,0.35)', badge: '👑' };
-  if (role === 'moderator') return { color: '#3B82F6', glow: 'rgba(59,130,246,0.35)', badge: '🛡️' };
+  if (role === 'moderator') return { color: 'var(--accent-light)', glow: 'rgba(var(--accent-light-rgb),0.35)', badge: '🛡️' };
   return { color: 'var(--color-primary-main)', glow: 'rgba(var(--accent-rgb),0.30)', badge: '' };
 };
 
@@ -119,7 +119,7 @@ const MyServersPanel: React.FC<MyServersPanelProps> = ({ open, onToggle, refresh
                     <div className="room-card-glow" aria-hidden />
                     {/* Sunucu simgesi — baş harf, role rengiyle */}
                     <div className="relative w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-[15px] text-white"
-                      style={{ background: `linear-gradient(135deg, ${rs.color} 0%, ${rs.color}99 100%)` }}>
+                      style={{ background: `linear-gradient(135deg, ${rs.color} 0%, color-mix(in srgb, ${rs.color} 60%, transparent) 100%)` }}>
                       {room.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="relative min-w-0 flex-1">

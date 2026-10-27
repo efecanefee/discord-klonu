@@ -32,7 +32,7 @@ const MiniDock: React.FC<MiniDockProps> = ({
   onNewMessage,
 }) => {
   return (
-    <div className="flex flex-col items-center gap-2 w-[72px] shrink-0 h-full bg-[#09090b] border-r border-white/10 py-3 z-40">
+    <div className="flex flex-col items-center gap-2 w-[72px] shrink-0 h-full bg-panel-deep border-r border-white/10 py-3 z-40">
       {/* Logo → Lobiye dön */}
       <button
         onClick={onLogoClick}
@@ -61,10 +61,10 @@ const MiniDock: React.FC<MiniDockProps> = ({
             >
               {/* Aktif göstergesi (sol çubuk) */}
               <div className={`absolute -left-2 top-1/2 -translate-y-1/2 w-1 rounded-r-full bg-primary-main transition-all duration-200 ${isActive ? 'h-7' : 'h-0 group-hover:h-4'}`} />
-              <div className={`relative w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-lg bg-[#18181b] border-2 transition-all ${isActive ? 'border-primary-main shadow-[0_0_12px_rgba(var(--accent-rgb),0.4)]' : 'border-[#334155] group-hover:border-primary-main/50'}`}>
+              <div className={`relative w-11 h-11 rounded-full overflow-hidden flex items-center justify-center text-lg bg-panel-raised border-2 transition-all ${isActive ? 'border-primary-main shadow-[0_0_12px_rgba(var(--accent-rgb),0.4)]' : 'border-panel-line group-hover:border-primary-main/50'}`}>
                 {renderAvatar(user.avatarId)}
               </div>
-              <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#09090b] ${statusColor(user.customStatus)}`} />
+              <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-panel-deep ${statusColor(user.customStatus)}`} />
               {unread > 0 && (
                 <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse">
                   {unread > 9 ? '9+' : unread}
@@ -101,10 +101,10 @@ const MiniDock: React.FC<MiniDockProps> = ({
         title="Profili Düzenle"
         className="relative group shrink-0"
       >
-        <div className="w-11 h-11 rounded-full overflow-hidden border border-primary-main bg-[#18181b] flex items-center justify-center text-lg group-hover:opacity-80 transition-opacity">
+        <div className="w-11 h-11 rounded-full overflow-hidden border border-primary-main bg-panel-raised flex items-center justify-center text-lg group-hover:opacity-80 transition-opacity">
           {renderAvatar(avatarId)}
         </div>
-        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-[#09090b] rounded-full ${statusColor(myCustomStatus)}`} />
+        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-panel-deep rounded-full ${statusColor(myCustomStatus)}`} />
       </button>
     </div>
   );
