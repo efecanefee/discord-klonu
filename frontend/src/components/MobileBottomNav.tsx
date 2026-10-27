@@ -60,17 +60,17 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <div className="flex-1 flex items-center justify-center">
           <motion.button whileTap={{ scale: 0.9 }} onClick={onCreateRoom} aria-label="Oda oluştur"
             className="w-12 h-12 -mt-5 rounded-2xl flex items-center justify-center text-white shadow-[0_8px_24px_-6px_rgba(var(--accent-rgb),0.7)] border border-white/15 cursor-pointer"
-            style={{ background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%)' }}>
+            style={{ background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-fill-end) 100%)' }}>
             <Plus size={24} />
           </motion.button>
         </div>
 
         <button onClick={onProfile} aria-label="Profil" className="flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 cursor-pointer">
           <span className="relative">
-            <span className="block w-[22px] h-[22px] rounded-full overflow-hidden bg-[#18181b] border border-white/20 text-xs flex items-center justify-center">
+            <span className="block w-[22px] h-[22px] rounded-full overflow-hidden bg-panel-raised border border-white/20 text-xs flex items-center justify-center">
               {renderAvatar(avatarId)}
             </span>
-            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#12141d] ${statusColor}`} />
+            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-bg-surface ${statusColor}`} />
           </span>
           <span className="text-[10px] font-semibold text-white/45">Profil</span>
         </button>

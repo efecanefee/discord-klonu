@@ -25,15 +25,15 @@ interface RoomCardProps {
 
 const getRoomVisuals = (room: RoomCardData) => {
   if (room.type === 'voice') {
-    return { icon: Volume2, color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: room.description || 'Sesli Sohbet' };
+    return { icon: Volume2, color: 'var(--room-voice)', glow: 'rgba(var(--room-voice-rgb),0.3)', sub: room.description || 'Sesli Sohbet' };
   }
   if (room.name === 'Ana Salon') {
     return { icon: Users, color: 'var(--color-primary-main)', glow: 'rgba(var(--accent-rgb),0.3)', sub: room.description || 'Sohbet Odası' };
   }
   if (room.name === 'Müzik Odası') {
-    return { icon: Music, color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: room.description || 'Dinleme Odası' };
+    return { icon: Music, color: 'var(--room-voice)', glow: 'rgba(var(--room-voice-rgb),0.3)', sub: room.description || 'Dinleme Odası' };
   }
-  return { icon: Hash, color: '#3B82F6', glow: 'rgba(59,130,246,0.3)', sub: room.description || 'Yazı Kanalı' };
+  return { icon: Hash, color: 'var(--accent-light)', glow: 'rgba(var(--accent-light-rgb),0.3)', sub: room.description || 'Yazı Kanalı' };
 };
 
 // Hover gorselleri tamamen CSS'te (index.css: .room-card). Buradaki tek state,

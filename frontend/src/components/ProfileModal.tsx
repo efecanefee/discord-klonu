@@ -185,10 +185,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
       >
         <motion.div
           {...modalMotion}
-          className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-bg-surface border border-[#334155] rounded-3xl overflow-y-auto custom-scrollbar shadow-2xl flex flex-col md:flex-row"
+          className="relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] bg-bg-surface border border-panel-line rounded-3xl overflow-y-auto custom-scrollbar shadow-2xl flex flex-col md:flex-row"
         >
           {/* Sol Panel: Form ve Seçim */}
-          <div className="flex-1 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-[#334155]">
+          <div className="flex-1 p-4 sm:p-6 border-b md:border-b-0 md:border-r border-panel-line">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-text-main flex items-center gap-2">
                 <UserCircle className="text-primary-main" />
@@ -213,7 +213,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full bg-bg-base border border-[#334155] rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
+                    className="w-full bg-bg-base border border-panel-line rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Adınız"
                   />
                 </div>
@@ -223,7 +223,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full bg-bg-base border border-[#334155] rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
+                    className="w-full bg-bg-base border border-panel-line rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Soyadınız"
                   />
                 </div>
@@ -238,7 +238,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     maxLength={32}
-                    className="w-full bg-bg-base border border-[#334155] rounded-xl pl-9 pr-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
+                    className="w-full bg-bg-base border border-panel-line rounded-xl pl-9 pr-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
                     placeholder="Kullanıcı adınız"
                   />
                 </div>
@@ -254,12 +254,12 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   maxLength={MAX_BIO_LENGTH}
                   rows={2}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full resize-none bg-bg-base border border-[#334155] rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
+                  className="w-full resize-none bg-bg-base border border-panel-line rounded-xl px-4 py-2.5 text-text-main outline-none focus:border-primary-main transition-colors text-sm"
                   placeholder="Kendinden kısaca bahset..."
                 />
               </div>
 
-              <div className="space-y-3 p-3 rounded-2xl bg-bg-base/60 border border-[#334155]">
+              <div className="space-y-3 p-3 rounded-2xl bg-bg-base/60 border border-panel-line">
                 <label className="text-xs text-text-muted uppercase tracking-wider font-semibold flex items-center gap-1.5"><Palette size={13} /> Profil Renkleri</label>
                 <ColorRow label="Banner" value={bannerColor} onChange={setBannerColor} />
                 <ColorRow label="Vurgu" value={accentColor} onChange={setAccentColor} />
@@ -289,7 +289,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
                   className={`relative rounded-full flex items-center justify-center transition-all overflow-hidden aspect-square bg-bg-base ${
                     isCustomAvatar(avatarId)
                       ? 'border-2 border-primary-main shadow-[0_0_20px_rgba(var(--accent-rgb),0.5)] scale-[1.02] z-10'
-                      : 'border-2 border-dashed border-[#334155] hover:border-primary-main/50 hover:scale-[1.02]'
+                      : 'border-2 border-dashed border-panel-line hover:border-primary-main/50 hover:scale-[1.02]'
                   }`}
                 >
                   {isUploadingPhoto ? (
@@ -315,7 +315,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
 
           {/* Sağ Panel: Live Preview */}
-          <div className="w-full md:w-80 bg-[#0B1020] p-4 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center relative shrink-0">
+          <div className="w-full md:w-80 bg-[var(--profile-aside,#0B1020)] p-4 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col items-center justify-center relative shrink-0">
             <button onClick={onClose} className="absolute top-4 right-4 p-2 text-text-muted hover:text-text-main hover:bg-surface-subtle rounded-full transition-colors hidden md:block">
               <X size={20} />
             </button>
@@ -340,10 +340,10 @@ const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
 
             {/* Profil Kartı Önizlemesi */}
-            <div className="w-full rounded-2xl overflow-hidden border border-[#334155] bg-[#09090b]">
+            <div className="w-full rounded-2xl overflow-hidden border border-panel-line bg-panel-deep">
               <div className="h-16 transition-[background] duration-500" style={{ background: bannerBackground(bannerColor) }} />
               <div className="px-4 pb-4 -mt-7">
-                <div className="w-14 h-14 rounded-full border-4 border-[#09090b] overflow-hidden flex items-center justify-center text-2xl bg-bg-base transition-shadow duration-300"
+                <div className="w-14 h-14 rounded-full border-4 border-panel-deep overflow-hidden flex items-center justify-center text-2xl bg-bg-base transition-shadow duration-300"
                   style={{ boxShadow: `0 0 0 2px ${accentColor || 'var(--accent)'}` }}>
                   {renderAvatar(avatarId)}
                 </div>

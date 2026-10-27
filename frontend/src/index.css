@@ -8,10 +8,18 @@
      (genis, geometrik). Fontlar index.html'de yukleniyor. */
   --font-sans: "Plus Jakarta Sans", "Space Grotesk", system-ui, sans-serif;
   --font-display: "Sora", "Plus Jakarta Sans", system-ui, sans-serif;
-  --color-bg-base: #0a0b11;
-  --color-bg-surface: #12141d;
-  --color-bg-card: #181b27;
-  --color-border-main: #252a3a;
+  /* Zemin, yuzey, kenarlik ve metin renkleri de temaya gore degisir: degerler
+     asagidaki :root ve html[data-accent] bloklarinda (bkz. DIKKAT notu). */
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-card: var(--bg-card);
+  --color-border-main: var(--border-main);
+  /* Bilesenlerdeki eski sabit koyu tonlar (panel zemini, yukseltilmis yuzey,
+     ince cizgi). Mavi temada birebir eski hex'ler. */
+  --color-panel-deep: var(--panel-deep);
+  --color-panel-raised: var(--panel-raised);
+  --color-panel-line: var(--panel-line);
+  --color-room-voice: var(--room-voice);
   /* DIKKAT: burada dogrudan hex YAZMA. Tailwind @theme'deki sabit rengi
      uretilen kurala satir ici koyar; bg-primary-main/20 gibi opaklikli
      siniflar color-mix(#7c3aed 20%...) olur ve derleyici bunu #7c3aed33'e
@@ -19,9 +27,8 @@
      yonlendirince deger derleme aninda bilinmedigi icin katlanamaz. */
   --color-primary-main: var(--accent);
   --color-primary-hover: var(--accent-hover);
-  --color-text-main: #eceef6;
-  /* Eski #5c6380 koyu zeminde ~3:1 kaliyordu; 4.5:1 icin acildi. */
-  --color-text-muted: #7c84a0;
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
 
   /* Panel icindeki hafif yuzeyler (satir zemini, hover). Koyu temada
      beyazin bir tutami, acik temada lacivertin — bu yuzden sabit
@@ -41,7 +48,7 @@
   --app-bg-glow: radial-gradient(ellipse 70% 55% at 12% -10%, rgba(var(--accent-rgb), 0.26), transparent 70%),
                  radial-gradient(ellipse 60% 50% at 95% 5%, rgba(var(--accent-light-rgb), 0.14), transparent 70%),
                  radial-gradient(ellipse 90% 60% at 60% 115%, rgba(var(--accent-rgb), 0.16), transparent 70%);
-  --glass-solid-bg: rgba(16, 17, 25, 0.94);
+  --glass-solid-bg: rgba(var(--glass-solid-rgb), 0.94);
   --shine-base: #ffffff;
   --scrollbar-thumb: rgba(var(--accent-rgb), 0.4);
   --scrollbar-thumb-hover: rgba(var(--accent-rgb), 0.8);
@@ -63,7 +70,7 @@
      theme degiskenlerini cikti disi birakabiliyor, bunlar utility degil. */
   /* Ince nokta izgarasi: zemine derinlik verir, kenarlara dogru solar. */
   --app-bg-grid: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.2px);
-  --glass-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.015) 100%), rgba(16, 18, 27, 0.62);
+  --glass-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.015) 100%), rgba(var(--glass-tint-rgb), 0.62);
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-highlight: rgba(255, 255, 255, 0.09);
 
@@ -75,100 +82,353 @@
   --dur-base: 240ms;
   --dur-slow: 420ms;
 
-  /* Varsayilan ana renk: mavi (ilk boyamada da gecerli). */
+  /* Varsayilan tema: Gece Mavisi (ilk boyamada da gecerli). Bu bloktaki
+     degerler ana temanin kendisi — degistirme; yeni temalar asagida ustune yazar. */
+  --bg-base: #0a0b11;
+  --bg-surface: #12141d;
+  --bg-card: #181b27;
+  --border-main: #252a3a;
+  --text-main: #eceef6;
+  /* Eski #5c6380 koyu zeminde ~3:1 kaliyordu; 4.5:1 icin acildi. */
+  --text-muted: #7c84a0;
+  --panel-deep: #09090b;
+  --panel-raised: #18181b;
+  --panel-line: #334155;
+  --glass-tint-rgb: 16, 18, 27;
+  --glass-solid-rgb: 16, 17, 25;
+  /* Sesli/dinleme odasi rengi ve logo parlamasi */
+  --room-voice: #10b981;
+  --room-voice-rgb: 16, 185, 129;
+  --shine-a: #00B4D8;
+  --shine-b: #90E0EF;
+
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --accent-rgb: 37, 99, 235;
   --accent-light: #3b82f6;
   --accent-light-rgb: 59, 130, 246;
+  /* Uzerinde beyaz yazi olan gradyan dolgularin (buton, kendi mesaj balonu)
+     acik ucu. Varsayilan --accent-light; ikinci rengi cok acik olan temalar
+     yazi okunsun diye daha koyu bir ton verir. */
+  --accent-fill-end: var(--accent-light);
 
-  /* Soundboard'un kendi rengi: ana renkten (accent) bagimsiz, her temada
-     dikkat ceksin diye sabit pembe-turuncu gradyan. */
+  /* Soundboard'un kendi rengi: ana renkten ayri bir gradyan, dikkat ceksin
+     diye. Her tema kendi paletine uyan bir cift tanimlar. */
   --sb-from: #d946ef;
   --sb-to: #fb923c;
   --sb-rgb: 217, 70, 239;
   --sb-to-rgb: 251, 146, 60;
 }
 
+/* ===== Temalar =====
+   Her tema yalnizca vurguyu degil tum arayuzu boyar: zemin, yuzeyler,
+   kenarliklar, metin, cam paneller, sesli oda rengi, logo parlamasi ve
+   soundboard gradyani. Mavi (Gece Mavisi) :root'taki varsayilandir ve
+   burada tanimlanmaz. Ikili temalarda --accent buton zemini, --accent-light
+   gradyan ucu ve parilti rengidir.
+   OLED secildiginde zemin saf siyaha iner, vurgu ve sistem renkleri temada kalir. */
 html[data-accent="violet"] {
+  /* Ametist: derin mor gece, lila parilti */
   --accent: #7c3aed;
   --accent-hover: #6d28d9;
   --accent-rgb: 124, 58, 237;
-  --accent-light: #8b5cf6;
-  --accent-light-rgb: 139, 92, 246;
+  --accent-light: #a78bfa;
+  --accent-light-rgb: 167, 139, 250;
+  --bg-base: #0c0a13;
+  --bg-surface: #14111e;
+  --bg-card: #1b1728;
+  --border-main: #2c2541;
+  --text-main: #efebfa;
+  --text-muted: #8d84a6;
+  --panel-deep: #0a0810;
+  --panel-raised: #1a1626;
+  --panel-line: #3b3256;
+  --modal-bg: #14111e;
+  --modal-line: #3b3256;
+  --profile-aside: #0c0a13;
+  --glass-tint-rgb: 20, 17, 30;
+  --glass-solid-rgb: 20, 17, 30;
+  --room-voice: #2dd4bf;
+  --room-voice-rgb: 45, 212, 191;
+  --shine-a: #c4b5fd;
+  --shine-b: #f0abfc;
+  --sb-from: #e879f9;
+  --sb-to: #fb7185;
+  --sb-rgb: 232, 121, 249;
+  --sb-to-rgb: 251, 113, 133;
 }
 html[data-accent="emerald"] {
+  /* Orman: yesil tonlu koyu zemin, zumrut vurgu */
   --accent: #059669;
   --accent-hover: #047857;
   --accent-rgb: 5, 150, 105;
   --accent-light: #10b981;
   --accent-light-rgb: 16, 185, 129;
+  --bg-base: #070f0b;
+  --bg-surface: #0c1712;
+  --bg-card: #121f19;
+  --border-main: #1f3329;
+  --text-main: #e7f5ee;
+  --text-muted: #7b9a8b;
+  --panel-deep: #06100b;
+  --panel-raised: #12201a;
+  --panel-line: #2a4a3b;
+  --modal-bg: #0c1712;
+  --modal-line: #2a4a3b;
+  --profile-aside: #070f0b;
+  --glass-tint-rgb: 12, 23, 18;
+  --glass-solid-rgb: 12, 23, 18;
+  --room-voice: #2dd4bf;
+  --room-voice-rgb: 45, 212, 191;
+  --shine-a: #6ee7b7;
+  --shine-b: #d9f99d;
+  --sb-from: #a3e635;
+  --sb-to: #facc15;
+  --sb-rgb: 163, 230, 53;
+  --sb-to-rgb: 250, 204, 21;
 }
 html[data-accent="amber"] {
+  /* Kehribar: sicak kahve zemin, bal rengi vurgu */
   --accent: #d97706;
   --accent-hover: #b45309;
   --accent-rgb: 217, 119, 6;
   --accent-light: #f59e0b;
   --accent-light-rgb: 245, 158, 11;
+  --bg-base: #100b06;
+  --bg-surface: #18120b;
+  --bg-card: #211910;
+  --border-main: #3a2b19;
+  --text-main: #f8efe2;
+  --text-muted: #a8927a;
+  --panel-deep: #0e0905;
+  --panel-raised: #201810;
+  --panel-line: #4a3820;
+  --modal-bg: #18120b;
+  --modal-line: #4a3820;
+  --profile-aside: #100b06;
+  --glass-tint-rgb: 24, 18, 11;
+  --glass-solid-rgb: 24, 18, 11;
+  --room-voice: #84cc16;
+  --room-voice-rgb: 132, 204, 22;
+  --shine-a: #fcd34d;
+  --shine-b: #fde68a;
+  --sb-from: #f97316;
+  --sb-to: #ef4444;
+  --sb-rgb: 249, 115, 22;
+  --sb-to-rgb: 239, 68, 68;
 }
 html[data-accent="rose"] {
+  /* Yakut: bordo tonlu zemin, yakut kirmizisi vurgu */
   --accent: #e11d48;
   --accent-hover: #be123c;
   --accent-rgb: 225, 29, 72;
   --accent-light: #f43f5e;
   --accent-light-rgb: 244, 63, 94;
+  --bg-base: #110709;
+  --bg-surface: #1a0d11;
+  --bg-card: #231218;
+  --border-main: #3c1e28;
+  --text-main: #f9eaee;
+  --text-muted: #a9848e;
+  --panel-deep: #0f0608;
+  --panel-raised: #221117;
+  --panel-line: #4d2633;
+  --modal-bg: #1a0d11;
+  --modal-line: #4d2633;
+  --profile-aside: #110709;
+  --glass-tint-rgb: 26, 13, 17;
+  --glass-solid-rgb: 26, 13, 17;
+  --room-voice: #fb923c;
+  --room-voice-rgb: 251, 146, 60;
+  --shine-a: #fda4af;
+  --shine-b: #fecdd3;
+  --sb-from: #f43f5e;
+  --sb-to: #f59e0b;
+  --sb-rgb: 244, 63, 94;
+  --sb-to-rgb: 245, 158, 11;
 }
 html[data-accent="cyan"] {
+  /* Buzul: buz mavisi-yesil zemin, camgobegi vurgu */
   --accent: #0891b2;
   --accent-hover: #0e7490;
   --accent-rgb: 8, 145, 178;
   --accent-light: #06b6d4;
   --accent-light-rgb: 6, 182, 212;
+  --bg-base: #051013;
+  --bg-surface: #0a171b;
+  --bg-card: #0f1f24;
+  --border-main: #1b333b;
+  --text-main: #e5f6f9;
+  --text-muted: #7a9ca5;
+  --panel-deep: #040d10;
+  --panel-raised: #0f1e23;
+  --panel-line: #24444d;
+  --modal-bg: #0a171b;
+  --modal-line: #24444d;
+  --profile-aside: #051013;
+  --glass-tint-rgb: 10, 23, 27;
+  --glass-solid-rgb: 10, 23, 27;
+  --room-voice: #34d399;
+  --room-voice-rgb: 52, 211, 153;
+  --shine-a: #67e8f9;
+  --shine-b: #cffafe;
+  --sb-from: #22d3ee;
+  --sb-to: #a78bfa;
+  --sb-rgb: 34, 211, 238;
+  --sb-to-rgb: 167, 139, 250;
 }
-
-/* ===== İkili renk temaları =====
-   İki rengin kombinasyonu: --accent (ana/buton zemini, çiftin dolgun olanı)
-   + --accent-light (gradyan ucu/parıltı, çiftin açık olanı). Butonlardaki
-   linear-gradient(--color-primary-main → --accent-light) ikisini birden gösterir. */
 html[data-accent="ocean"] {
-  /* Okyanus: ocean water + brilliant blue */
+  /* Okyanus: derin deniz zemini, turkuaz + parlak mavi */
   --accent: #0E9AA7;
   --accent-hover: #0C8791;
   --accent-rgb: 14, 154, 167;
-  --accent-light: #0575E6;
-  --accent-light-rgb: 5, 117, 230;
+  --accent-light: #2B8CF0;
+  --accent-light-rgb: 43, 140, 240;
+  --bg-base: #03101a;
+  --bg-surface: #071925;
+  --bg-card: #0c2130;
+  --border-main: #153548;
+  --text-main: #e2f2fa;
+  --text-muted: #7397a8;
+  --panel-deep: #020c14;
+  --panel-raised: #0b202e;
+  --panel-line: #1d4660;
+  --modal-bg: #071925;
+  --modal-line: #1d4660;
+  --profile-aside: #03101a;
+  --glass-tint-rgb: 7, 25, 37;
+  --glass-solid-rgb: 7, 25, 37;
+  --room-voice: #2dd4bf;
+  --room-voice-rgb: 45, 212, 191;
+  --shine-a: #5eead4;
+  --shine-b: #93c5fd;
+  --sb-from: #14b8a6;
+  --sb-to: #3b82f6;
+  --sb-rgb: 20, 184, 166;
+  --sb-to-rgb: 59, 130, 246;
 }
 html[data-accent="sunsetpurple"] {
-  /* Turuncu & Mor: light orange + dark purple */
+  /* Gun Batimi: morumsu zemin, turuncu + mor */
   --accent: #F97316;
   --accent-hover: #EA6A0C;
   --accent-rgb: 249, 115, 22;
-  --accent-light: #6D28D9;
-  --accent-light-rgb: 109, 40, 217;
+  --accent-light: #A855F7;
+  --accent-light-rgb: 168, 85, 247;
+  --bg-base: #110912;
+  --bg-surface: #1a0f1b;
+  --bg-card: #231425;
+  --border-main: #3c2240;
+  --text-main: #fbeef0;
+  --text-muted: #a98a9c;
+  --panel-deep: #0e070f;
+  --panel-raised: #221324;
+  --panel-line: #4c2c50;
+  --modal-bg: #1a0f1b;
+  --modal-line: #4c2c50;
+  --profile-aside: #110912;
+  --glass-tint-rgb: 26, 15, 27;
+  --glass-solid-rgb: 26, 15, 27;
+  --room-voice: #f472b6;
+  --room-voice-rgb: 244, 114, 182;
+  --shine-a: #fdba74;
+  --shine-b: #d8b4fe;
+  --sb-from: #f97316;
+  --sb-to: #a855f7;
+  --sb-rgb: 249, 115, 22;
+  --sb-to-rgb: 168, 85, 247;
 }
 html[data-accent="pastelblue"] {
-  /* Pastel Mavi: sky blue + pastel blue */
+  /* Pastel Gokyuzu: yumusak arduvaz zemin, pastel mavi */
   --accent: #5FA8D3;
   --accent-hover: #4E97C2;
   --accent-rgb: 95, 168, 211;
   --accent-light: #A7C7E7;
   --accent-light-rgb: 167, 199, 231;
+  --accent-fill-end: #6E9CC4;
+  --bg-base: #0d1119;
+  --bg-surface: #141a25;
+  --bg-card: #1b2330;
+  --border-main: #2b394d;
+  --text-main: #eef4fb;
+  --text-muted: #8ea2bb;
+  --panel-deep: #0b0e15;
+  --panel-raised: #1a212d;
+  --panel-line: #3a4c66;
+  --modal-bg: #141a25;
+  --modal-line: #3a4c66;
+  --profile-aside: #0d1119;
+  --glass-tint-rgb: 20, 26, 37;
+  --glass-solid-rgb: 20, 26, 37;
+  --room-voice: #86efac;
+  --room-voice-rgb: 134, 239, 172;
+  --shine-a: #bae6fd;
+  --shine-b: #e0f2fe;
+  --sb-from: #93c5fd;
+  --sb-to: #f9a8d4;
+  --sb-rgb: 147, 197, 253;
+  --sb-to-rgb: 249, 168, 212;
 }
 html[data-accent="milano"] {
-  /* Milano Kırmızısı: milano red + lemon chiffon */
-  --accent: #B7070A;
-  --accent-hover: #9E0608;
-  --accent-rgb: 183, 7, 10;
-  --accent-light: #FFFACD;
-  --accent-light-rgb: 255, 250, 205;
+  /* Milano: koyu sarap zemin, kirmizi + krem */
+  --accent: #C8102E;
+  --accent-hover: #A50D26;
+  --accent-rgb: 200, 16, 46;
+  --accent-light: #FFF4C2;
+  --accent-light-rgb: 255, 244, 194;
+  --accent-fill-end: #B8862B;
+  --bg-base: #0f0707;
+  --bg-surface: #180c0b;
+  --bg-card: #211110;
+  --border-main: #3a1c1a;
+  --text-main: #fff8e6;
+  --text-muted: #b09a86;
+  --panel-deep: #0d0606;
+  --panel-raised: #201010;
+  --panel-line: #4a2522;
+  --modal-bg: #180c0b;
+  --modal-line: #4a2522;
+  --profile-aside: #0f0707;
+  --glass-tint-rgb: 24, 12, 11;
+  --glass-solid-rgb: 24, 12, 11;
+  --room-voice: #fbbf24;
+  --room-voice-rgb: 251, 191, 36;
+  --shine-a: #fff4c2;
+  --shine-b: #fca5a5;
+  --sb-from: #dc2626;
+  --sb-to: #fde68a;
+  --sb-rgb: 220, 38, 38;
+  --sb-to-rgb: 253, 230, 138;
 }
 html[data-accent="palesun"] {
-  /* Güneş & Lacivert: uniform blue + pale sun yellow */
-  --accent: #3A5BA0;
-  --accent-hover: #334F8D;
-  --accent-rgb: 58, 91, 160;
+  /* Gunes & Lacivert: lacivert zemin, gunes sarisi */
+  --accent: #4F74C8;
+  --accent-hover: #4264B0;
+  --accent-rgb: 79, 116, 200;
   --accent-light: #FFE08A;
   --accent-light-rgb: 255, 224, 138;
+  --accent-fill-end: #C29A35;
+  --bg-base: #070b16;
+  --bg-surface: #0d1322;
+  --bg-card: #131b2e;
+  --border-main: #22304d;
+  --text-main: #f5f1e4;
+  --text-muted: #8d96ad;
+  --panel-deep: #060912;
+  --panel-raised: #121a2c;
+  --panel-line: #2c3d61;
+  --modal-bg: #0d1322;
+  --modal-line: #2c3d61;
+  --profile-aside: #070b16;
+  --glass-tint-rgb: 13, 19, 34;
+  --glass-solid-rgb: 13, 19, 34;
+  --room-voice: #fcd34d;
+  --room-voice-rgb: 252, 211, 77;
+  --shine-a: #ffe08a;
+  --shine-b: #fff3c4;
+  --sb-from: #fbbf24;
+  --sb-to: #60a5fa;
+  --sb-rgb: 251, 191, 36;
+  --sb-to-rgb: 96, 165, 250;
 }
 
 /* Tema tanimlari tek kaynak: burasi. Bilesenler yalnizca <html>'e
@@ -176,18 +436,25 @@ html[data-accent="palesun"] {
    Secici html.theme-* (0,1,1) oldugundan Tailwind'in :root (0,1,0)
    degiskenlerini ezer. */
 html.theme-oled {
-  --color-bg-base: #000000;
-  --color-bg-surface: #0a0a0a;
-  --color-bg-card: #0d0d0d;
-  --color-border-main: #1a1a1a;
-  --color-text-main: #ffffff;
-  --color-text-muted: #737373;
+  --bg-base: #000000;
+  --bg-surface: #0a0a0a;
+  --bg-card: #0d0d0d;
+  --border-main: #1a1a1a;
+  --text-main: #ffffff;
+  --text-muted: #737373;
+  --panel-deep: #000000;
+  --panel-raised: #0d0d0d;
+  --panel-line: #1f1f1f;
+  --modal-bg: #050505;
+  --modal-line: #1f1f1f;
+  --profile-aside: #000000;
+  --glass-tint-rgb: 5, 5, 5;
+  --glass-solid-rgb: 0, 0, 0;
 
   /* OLED'in tek amaci pikselin sonmesi: zemine isik dusuren gradient
      bunu dogrudan bozar, o yuzden kapali. */
   --app-bg-glow: none;
   --app-bg-grid: none;
-  --glass-solid-bg: rgba(0, 0, 0, 0.94);
   --glass-bg: #050505;
   --glass-border: rgba(255, 255, 255, 0.07);
   --glass-highlight: rgba(255, 255, 255, 0.05);
@@ -579,7 +846,7 @@ html.reduce-motion *::after {
    will-change kasitli olarak yok: compositable olmayan bir ozellikte boyamayi
    ucuzlatmaz, yalnizca bos yere katman ayirir. */
 .text-shine {
-  background: linear-gradient(90deg, var(--shine-base) 0%, var(--shine-base) 45%, #00B4D8 50%, #90E0EF 52%, var(--shine-base) 57%, var(--shine-base) 100%);
+  background: linear-gradient(90deg, var(--shine-base) 0%, var(--shine-base) 45%, var(--shine-a) 50%, var(--shine-b) 52%, var(--shine-base) 57%, var(--shine-base) 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

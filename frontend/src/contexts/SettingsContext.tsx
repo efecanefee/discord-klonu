@@ -6,31 +6,32 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 // edecek bir sey kalmiyor.
 export type Theme = 'dark' | 'oled';
 
+// Zemin koyulugu: temadan bagimsiz. OLED secilince zemin saf siyah olur,
+// temanin vurgu ve sistem renkleri korunur.
 export const THEMES: { id: Theme; label: string }[] = [
-  { id: 'dark', label: 'Koyu' },
-  { id: 'oled', label: 'OLED' },
+  { id: 'dark', label: 'Tema zemini' },
+  { id: 'oled', label: 'OLED siyah' },
 ];
 
 export type Accent =
   | 'violet' | 'blue' | 'emerald' | 'amber' | 'rose' | 'cyan'
   | 'ocean' | 'sunsetpurple' | 'pastelblue' | 'milano' | 'palesun';
 
-// swatch: yalnizca ayarlardaki nokta icin. Gercek degerler index.css'te —
-// burada tutulan tek sey kullaniciya gosterilecek onizleme rengi.
-// swatch2 varsa ikili tema: nokta çapraz iki renge bölünerek gösterilir.
-export const ACCENTS: { id: Accent; label: string; swatch: string; swatch2?: string }[] = [
-  { id: 'blue', label: 'Mavi', swatch: '#2563eb' },
-  { id: 'violet', label: 'Mor', swatch: '#7c3aed' },
-  { id: 'emerald', label: 'Yeşil', swatch: '#059669' },
-  { id: 'amber', label: 'Turuncu', swatch: '#d97706' },
-  { id: 'rose', label: 'Kırmızı', swatch: '#e11d48' },
-  { id: 'cyan', label: 'Camgöbeği', swatch: '#0891b2' },
-  // İkili renk temaları
-  { id: 'ocean', label: 'Okyanus', swatch: '#0E9AA7', swatch2: '#0575E6' },
-  { id: 'sunsetpurple', label: 'Turuncu & Mor', swatch: '#F97316', swatch2: '#6D28D9' },
-  { id: 'pastelblue', label: 'Pastel Mavi', swatch: '#5FA8D3', swatch2: '#A7C7E7' },
-  { id: 'milano', label: 'Milano Kırmızısı', swatch: '#B7070A', swatch2: '#FFFACD' },
-  { id: 'palesun', label: 'Güneş & Lacivert', swatch: '#3A5BA0', swatch2: '#FFE08A' },
+// Her tema tum arayuzu boyar (zemin, yuzey, metin, vurgu, soundboard...).
+// Gercek degerler index.css'te; buradakiler yalnizca ayarlardaki onizleme
+// karti icin: swatch ana renk, swatch2 ikinci renk, bg/card temanin zemini.
+export const ACCENTS: { id: Accent; label: string; swatch: string; swatch2: string; bg: string; card: string }[] = [
+  { id: 'blue', label: 'Gece Mavisi', swatch: '#2563eb', swatch2: '#3b82f6', bg: '#0a0b11', card: '#181b27' },
+  { id: 'violet', label: 'Ametist', swatch: '#7c3aed', swatch2: '#a78bfa', bg: '#0c0a13', card: '#1b1728' },
+  { id: 'emerald', label: 'Orman', swatch: '#059669', swatch2: '#10b981', bg: '#070f0b', card: '#121f19' },
+  { id: 'amber', label: 'Kehribar', swatch: '#d97706', swatch2: '#f59e0b', bg: '#100b06', card: '#211910' },
+  { id: 'rose', label: 'Yakut', swatch: '#e11d48', swatch2: '#f43f5e', bg: '#110709', card: '#231218' },
+  { id: 'cyan', label: 'Buzul', swatch: '#0891b2', swatch2: '#06b6d4', bg: '#051013', card: '#0f1f24' },
+  { id: 'ocean', label: 'Okyanus', swatch: '#0E9AA7', swatch2: '#2B8CF0', bg: '#03101a', card: '#0c2130' },
+  { id: 'sunsetpurple', label: 'Gün Batımı', swatch: '#F97316', swatch2: '#A855F7', bg: '#110912', card: '#231425' },
+  { id: 'pastelblue', label: 'Pastel Gökyüzü', swatch: '#5FA8D3', swatch2: '#A7C7E7', bg: '#0d1119', card: '#1b2330' },
+  { id: 'milano', label: 'Milano', swatch: '#C8102E', swatch2: '#FFF4C2', bg: '#0f0707', card: '#211110' },
+  { id: 'palesun', label: 'Güneş & Lacivert', swatch: '#4F74C8', swatch2: '#FFE08A', bg: '#070b16', card: '#131b2e' },
 ];
 
 export interface Settings {
@@ -135,10 +136,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     root.style.colorScheme = 'dark';
   }, [settings.theme]);
 
-  // Vurgu rengi temadan (zeminden) bagimsiz secilir: ayri bir attribute.
+  // Tema (data-accent) tum renkleri belirler; OLED yalnizca zemini siyaha indirir.
   useEffect(() => {
     document.documentElement.dataset.accent = settings.accent;
-  }, [settings.accent]);
+    // Mobil tarayici cubugu da temanin zeminine uysun
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-base').trim();
+    if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
+  }, [settings.accent, settings.theme]);
 
   // Saf CSS efektlerini <html> sinifi uzerinden kontrol et — React'in
   // reducedMotion kontrolleri stylesheet'teki animasyonlara ulasamiyor.

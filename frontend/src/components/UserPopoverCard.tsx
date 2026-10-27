@@ -40,7 +40,7 @@ const statusInfo = (s?: string) => {
 
 const roleBadge = (role?: string) => {
   if (role === 'owner') return { icon: '👑', label: 'Kurucu', color: '#F59E0B' };
-  if (role === 'moderator') return { icon: '🛡️', label: 'Moderatör', color: '#3B82F6' };
+  if (role === 'moderator') return { icon: '🛡️', label: 'Moderatör', color: 'var(--accent-light)' };
   return null;
 };
 
@@ -81,7 +81,7 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
       {...popoverMotion}
       onClick={(e) => e.stopPropagation()}
       className="w-56 rounded-2xl overflow-hidden shadow-2xl"
-      style={{ background: '#09090b', border: '1px solid #334155' }}
+      style={{ background: 'var(--panel-deep)', border: '1px solid var(--panel-line)' }}
     >
       {/* Üst banner */}
       <div className="h-14 transition-[background] duration-500" style={{ background: bannerBackground(profile?.bannerColor) }} />
@@ -90,7 +90,7 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
           onClick={() => setShowAvatar(true)}
           title="Fotoğrafı büyüt"
           aria-label="Profil fotoğrafını büyüt"
-          className="w-14 h-14 rounded-full bg-[#18181b] border-4 border-[#09090b] flex items-center justify-center text-2xl overflow-hidden cursor-zoom-in hover:brightness-110 transition-all"
+          className="w-14 h-14 rounded-full bg-panel-raised border-4 border-panel-deep flex items-center justify-center text-2xl overflow-hidden cursor-zoom-in hover:brightness-110 transition-all"
           style={accent ? { boxShadow: `0 0 0 2px ${accent}` } : undefined}
         >
           {renderAvatar(user.avatarId || 'default')}
@@ -145,7 +145,7 @@ const UserPopoverCard: React.FC<UserPopoverCardProps> = ({
             onClick={onSendMessage}
             disabled={!user.userId}
             className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: accent ? `linear-gradient(135deg, ${accent} 0%, ${accent}cc 100%)` : 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 100%)' }}
+            style={{ background: accent ? `linear-gradient(135deg, ${accent} 0%, ${accent}cc 100%)` : 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-fill-end) 100%)' }}
           >
             <MessageSquare size={14} /> Mesaj Gönder
           </button>

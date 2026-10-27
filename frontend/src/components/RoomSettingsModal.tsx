@@ -63,7 +63,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
         {...modalMotion}
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
-        style={{ background: '#0f0f12', border: '1px solid #27272a' }}
+        style={{ background: 'var(--modal-bg, #0f0f12)', border: '1px solid var(--modal-line, #27272a)' }}
       >
         {/* Başlık */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-main">
@@ -94,7 +94,7 @@ const RoomSettingsModal: React.FC<RoomSettingsModalProps> = ({
                 onClick={saveDescription}
                 disabled={saving || description.trim() === initialDescription.trim()}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold text-text-main transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-light) 100%)' }}
+                style={{ background: 'linear-gradient(135deg, var(--color-primary-main) 0%, var(--accent-fill-end) 100%)' }}
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <Check size={14} /> : null}
                 {saved ? 'Kaydedildi' : 'Kaydet'}

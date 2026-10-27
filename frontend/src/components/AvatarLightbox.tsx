@@ -51,7 +51,7 @@ const AvatarLightbox: React.FC<AvatarLightboxProps> = ({ avatarId, username, onC
             className="max-w-[min(90vw,640px)] max-h-[75vh] rounded-2xl object-contain shadow-2xl"
           />
         ) : (
-          <div className="w-[min(70vw,320px)] h-[min(70vw,320px)] rounded-full overflow-hidden bg-[#18181b] flex items-center justify-center text-[120px] shadow-2xl">
+          <div className="w-[min(70vw,320px)] h-[min(70vw,320px)] rounded-full overflow-hidden bg-panel-raised flex items-center justify-center text-[120px] shadow-2xl">
             {renderAvatar(avatarId)}
           </div>
         )}

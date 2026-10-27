@@ -1279,7 +1279,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                                                         })()}
 
                                                         <div className="relative group/msg" id={`text-msg-${msg.id}`}>
-                                                            <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${editingMessageId != null && msg.serverId === editingMessageId ? 'msg-editing' : ''} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
+                                                            <div className={`px-5 py-3.5 rounded-2xl shadow-sm transition-opacity ${msg.pending ? 'opacity-60' : 'opacity-100'} ${editingMessageId != null && msg.serverId === editingMessageId ? 'msg-editing' : ''} ${isMine ? 'bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-fill-end))] text-white rounded-tr-sm' : containsMention(msg.text, username) ? 'bg-primary-main/20 border border-primary-main/50 text-text-main rounded-tl-sm' : 'bubble-in text-text-main rounded-tl-sm'}`}>
                                                                 {msg.fileUrl && <MessageFileAttachment fileUrl={msg.fileUrl} fileName={msg.fileName} onDark={isMine} />}
                                                                 {editingMessageId != null && msg.serverId === editingMessageId ? (
                                                                     <InlineMessageEditor value={editText} onChange={setEditText} onSave={handleSaveEdit} onCancel={handleCancelEdit} onDark={isMine} />
@@ -1438,7 +1438,7 @@ const TextChatRoom: React.FC<TextChatRoomProps> = ({ username, avatarId = 'defau
                             className="w-full bg-transparent px-3 py-3.5 placeholder:text-text-muted text-text-main focus:outline-none text-[15px] flex-1" autoFocus />
 
                         <button type="submit" disabled={(!messageInput.trim() && !pastedImage.file) || isUploading}
-                            className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-light))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
+                            className="flex items-center justify-center px-4 sm:px-6 py-4 mr-1 rounded-xl bg-[linear-gradient(135deg,var(--color-primary-main),var(--accent-fill-end))] text-white font-semibold disabled:opacity-50 transition-all hover:-translate-y-[2px] hover:brightness-110 active:scale-[0.97] shadow-sm cursor-pointer min-w-[44px] min-h-[44px]">
                             <Send size={18} className="mr-0 sm:mr-2" />
                             <span className="hidden sm:inline">Gönder</span>
                         </button>
